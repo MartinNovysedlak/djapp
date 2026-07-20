@@ -5,9 +5,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Lightweight health check for UptimeRobot / external pingers.
- * Hits Supabase with a tiny SELECT so a paused free-tier project wakes up
- * and the inactivity timer resets. Safe: read-only, no auth required.
+ * Vercel Cron keep-alive: tiny Supabase SELECT so a paused free-tier DB
+ * wakes up and the inactivity timer resets. Read-only, no auth required.
+ * Scheduled in vercel.json → every 6 hours (`0 */6 * * *`).
  */
 export async function GET() {
   try {
