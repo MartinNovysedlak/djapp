@@ -1,0 +1,12 @@
+-- =============================================
+-- Harmonogram akcie (booking_timeline)
+-- Program pre kapelu / hudobný sprievod
+-- =============================================
+-- Key fields:
+--   item_type: setup, ceremony, entrance, first_dance, parent_dance,
+--              dance_round, song_cue, speech, toast, dinner, cake,
+--              changeover, party, photo, announcement, break,
+--              performance, show, special, moment, other
+--   start_mode: timed | on_signal | on_word | after_previous | flexible
+--   start_detail: slovo / popis znamenia
+--   tech_notes: technika a rekvizity (nie "tech cue")

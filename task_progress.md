@@ -1,0 +1,6 @@
+- [x] **Step 1: Database Migration** - Added `instagram_url`, `soundcloud_url`, `youtube_url` columns to profiles table + updated SQL scripts. Note: SQL migration needs to be run manually in Supabase Dashboard (SQL Editor).
+- [x] **Step 2: Storage Bucket** - Created `avatars` bucket in Supabase Storage. RLS policies added to SQL script.
+- [x] **Step 3: Dashboard Profile** - Added avatar upload with preview (circular crop, next/image), loading state, file validation (type + size 5MB), auto-save to Supabase Storage + profiles table. Added social link inputs (Instagram, SoundCloud, YouTube) with icons and save functionality.
+- [x] **Step 4: DJ Catalogue** - Updated to use `next/image` with circular crop (`rounded-full`) for avatar display.
+- [x] **Step 5: DJ Detail Page** - Large profile photo (rounded-2xl, next/image), "Siete a Hudba" section with branded buttons (Instagram pink, SoundCloud orange, YouTube red) using lucide-react icons + custom SVG icons.
+- [x] **Step 6: Build** - Project compiles successfully.
