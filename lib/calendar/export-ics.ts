@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "crypto";
-import ical, { ICalCalendarMethod } from "ical-generator";
+import ical, { ICalCalendarMethod, ICalEventStatus } from "ical-generator";
 import { formatEventTypeLabel } from "@/lib/event-types";
 import { normalizeTime } from "@/lib/dates";
 
@@ -97,7 +97,7 @@ export function buildDjCalendarIcs(
         description: descriptionParts.join("\n\n"),
         location: booking.event_location?.trim() || undefined,
         url: detailUrl,
-        status: "CONFIRMED",
+        status: ICalEventStatus.CONFIRMED,
       });
       continue;
     }
@@ -114,7 +114,7 @@ export function buildDjCalendarIcs(
       description: descriptionParts.join("\n\n"),
       location: booking.event_location?.trim() || undefined,
       url: detailUrl,
-      status: "CONFIRMED",
+      status: ICalEventStatus.CONFIRMED,
     });
   }
 

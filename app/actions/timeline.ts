@@ -80,43 +80,45 @@ function parseItemInput(input: TimelineItemInput) {
   const isCritical = Boolean(input.isCritical);
 
   if (!ITEM_TYPE_VALUES.has(itemType)) {
-    return { error: "Neplatný typ bodu programu." } as const;
+    return { ok: false as const, error: "Neplatný typ bodu programu." };
   }
   if (energy && !ENERGY_VALUES.has(energy)) {
-    return { error: "Neplatná energia." } as const;
+    return { ok: false as const, error: "Neplatná energia." };
   }
   if (startMode && !START_MODE_VALUES.has(startMode)) {
-    return { error: "Neplatný spôsob spustenia." } as const;
+    return { ok: false as const, error: "Neplatný spôsob spustenia." };
   }
   if (!title) {
-    return { error: "Zadaj názov bodu programu." } as const;
+    return { ok: false as const, error: "Zadaj názov bodu programu." };
   }
   if (input.eventTime?.trim() && !eventTime) {
-    return { error: "Neplatný začiatok (napr. 18:00)." } as const;
+    return { ok: false as const, error: "Neplatný začiatok (napr. 18:00)." };
   }
   if (input.endTime?.trim() && !endTime) {
-    return { error: "Neplatný koniec (napr. 18:30)." } as const;
+    return { ok: false as const, error: "Neplatný koniec (napr. 18:30)." };
   }
   if (
     input.durationMinutes != null &&
     String(input.durationMinutes) !== "" &&
     durationMinutes == null
   ) {
-    return { error: "Trvanie musí byť 1–1440 minút." } as const;
+    return { ok: false as const, error: "Trvanie musí byť 1–1440 minút." };
   }
   if (
     (startMode === "on_signal" || startMode === "on_word") &&
     !startDetail
   ) {
     return {
+      ok: false as const,
       error:
         startMode === "on_word"
           ? "Dopíš konkrétne slovo alebo vetu."
           : "Dopíš, na aké znamenie sa má spustiť.",
-    } as const;
+    };
   }
 
   return {
+    ok: true as const,
     data: {
       event_time: eventTime,
       end_time: endTime,
@@ -132,7 +134,7 @@ function parseItemInput(input: TimelineItemInput) {
       start_detail: startDetail,
       is_critical: isCritical,
     },
-  } as const;
+  };
 }
 
 async function getAcceptedBookingAccess(bookingId: string) {
@@ -214,8 +216,8 @@ export async function addTimelineItem(input: {
   }
 
   const parsed = parseItemInput(input);
-  if ("error" in parsed) {
-    return { ok: false, error: parsed.error ?? "Neznáma chyba pri spracovaní" };
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error };
   }
 
   try {
@@ -274,8 +276,8 @@ export async function updateTimelineItem(input: {
   }
 
   const parsed = parseItemInput(input);
-  if ("error" in parsed) {
-    return { ok: false, error: parsed.error ?? "Neznáma chyba pri spracovaní" };
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error };
   }
 
   try {

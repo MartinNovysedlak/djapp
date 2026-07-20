@@ -680,6 +680,7 @@ export default function EditInvoiceTemplatePage() {
         .map((p) => ({
           key: p.placeholder_key,
           label: getPlaceholderDisplayLabel(p),
+          defaultType: "manual_input" as const,
         }));
       const dbKeys = new Set(fromDb.map((m) => m.key));
       const unused = prev.filter((m) => !dbKeys.has(m.key));

@@ -151,7 +151,10 @@ export async function POST(request: Request) {
     };
 
     const pdfBuffer = await renderToBuffer(
-      React.createElement(TimelinePdfDocument, { data: pdfData })
+      // @react-pdf typings expect DocumentProps; TimelinePdfDocument is a valid Document wrapper at runtime.
+      React.createElement(TimelinePdfDocument, {
+        data: pdfData,
+      }) as Parameters<typeof renderToBuffer>[0]
     );
 
     const fileName = `program-${safeFileName(pdfData.clientName) || "akcia"}.pdf`;

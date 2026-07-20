@@ -206,7 +206,7 @@ function wrapLooseInlineContent(container: HTMLElement) {
       container.insertBefore(p, anchor);
       run.forEach((n) => p.appendChild(n));
     } else {
-      run.forEach((n) => n.remove());
+      run.forEach((n) => n.parentNode?.removeChild(n));
     }
     run = [];
   };
