@@ -215,7 +215,7 @@ export async function addTimelineItem(input: {
 
   const parsed = parseItemInput(input);
   if ("error" in parsed) {
-    return { ok: false, error: parsed.error };
+    return { ok: false, error: parsed.error ?? "Neznáma chyba pri spracovaní" };
   }
 
   try {
@@ -275,7 +275,7 @@ export async function updateTimelineItem(input: {
 
   const parsed = parseItemInput(input);
   if ("error" in parsed) {
-    return { ok: false, error: parsed.error };
+    return { ok: false, error: parsed.error ?? "Neznáma chyba pri spracovaní" };
   }
 
   try {

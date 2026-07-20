@@ -12,6 +12,7 @@ import {
   FileSignature,
   LogOut,
   Menu,
+  Megaphone,
   Receipt,
   Sparkles,
   TrendingUp,
@@ -61,6 +62,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       label: "Kalendár",
       href: "/dashboard/calendar",
       icon: <Calendar className="size-4" />,
+    },
+    {
+      label: "Marketing",
+      href: "/dashboard/settings/marketing",
+      icon: <Megaphone className="size-4" />,
     },
     {
       label: "Špeciálna ponuka",

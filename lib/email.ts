@@ -10,6 +10,7 @@ import {
   contactAdminEmailHtml,
   contractDocumentEmailHtml,
   contractFilledEmailHtml,
+  googleReviewRequestEmailHtml,
 } from "@/lib/email/templates";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -212,6 +213,37 @@ export async function sendContactEmail(input: {
       email: input.email,
       subject: input.subject,
       message: input.message,
+    }),
+  });
+}
+
+/**
+ * Thank-you + Google review request for the client after a completed gig.
+ * Reply-To is the DJ so the client can answer directly.
+ */
+export async function sendGoogleReviewRequestEmail(input: {
+  clientEmail: string;
+  clientName?: string | null;
+  djName?: string | null;
+  djEmail?: string | null;
+  eventType: string;
+  eventDate: string;
+  reviewUrl: string;
+}): Promise<{ ok: boolean; mode: "stub" | "resend"; error?: string }> {
+  const label = formatEventType(input.eventType);
+  const prettyDate = formatEventDate(input.eventDate);
+  const djName = input.djName?.trim() || "DJ";
+
+  return sendAppEmail({
+    to: input.clientEmail,
+    subject: `Ďakujem za akciu — ohodnoť ${djName} na Google`,
+    replyTo: input.djEmail,
+    html: googleReviewRequestEmailHtml({
+      clientName: input.clientName,
+      djName,
+      eventTypeLabel: label,
+      eventDateLabel: prettyDate,
+      reviewUrl: input.reviewUrl,
     }),
   });
 }

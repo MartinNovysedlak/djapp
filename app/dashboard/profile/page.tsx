@@ -24,6 +24,7 @@ import {
   Check,
   Globe,
   Receipt,
+  Megaphone,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -394,6 +395,13 @@ export default function ProfilePage() {
           >
             <Receipt className="size-3.5" />
             Fakturačné údaje (IČO, IBAN, adresa…)
+          </Link>
+          <Link
+            href="/dashboard/settings/marketing"
+            className="mt-3 ml-0 inline-flex items-center gap-2 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-2 text-sm text-fuchsia-200 transition-colors hover:bg-fuchsia-500/15 sm:ml-2"
+          >
+            <Megaphone className="size-3.5" />
+            Marketing — Google recenzie
           </Link>
         </div>
       </Reveal>

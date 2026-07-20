@@ -12,13 +12,13 @@ function shell(opts: {
   title: string;
   titleColor?: string;
   bodyHtml: string;
-  cta?: { href: string; label: string } | null;
+  cta?: { href: string; label: string; large?: boolean } | null;
   footer?: string;
 }): string {
   const titleColor = opts.titleColor ?? "#f4f4f5";
   const cta = opts.cta
     ? `<a href="${escapeHtml(opts.cta.href)}"
-         style="display:inline-block;margin-top:8px;padding:12px 20px;border-radius:999px;background:linear-gradient(90deg,#7c3aed,#c026d3);color:#fff;text-decoration:none;font-size:14px;font-weight:600;">
+         style="display:inline-block;margin-top:${opts.cta.large ? "16px" : "8px"};padding:${opts.cta.large ? "16px 32px" : "12px 20px"};border-radius:${opts.cta.large ? "14px" : "999px"};background:linear-gradient(90deg,#7c3aed,#c026d3);color:#fff;text-decoration:none;font-size:${opts.cta.large ? "16px" : "14px"};font-weight:600;box-shadow:0 8px 24px rgba(124,58,237,0.35);">
         ${escapeHtml(opts.cta.label)}
       </a>`
     : "";
@@ -223,5 +223,50 @@ export function contactAdminEmailHtml(input: {
       ])}
       <p style="margin:16px 0 0;padding:14px 16px;background:#18181b;border-radius:12px;font-size:14px;line-height:1.55;color:#e4e4e7;white-space:pre-wrap;">${escapeHtml(input.message)}</p>
     `,
+  });
+}
+
+/** Thank-you + Google review request sent 1–2 days after a successful event. */
+export function googleReviewRequestEmailHtml(input: {
+  clientName?: string | null;
+  djName?: string | null;
+  eventTypeLabel: string;
+  eventDateLabel: string;
+  reviewUrl: string;
+}): string {
+  const greeting = input.clientName
+    ? `Dobrý deň ${escapeHtml(input.clientName)},`
+    : "Dobrý deň,";
+  const dj = escapeHtml(input.djName || "DJ");
+
+  return shell({
+    title: "Ďakujem za úžasnú akciu",
+    titleColor: "#f0abfc",
+    bodyHtml: `
+      <p style="color:#a1a1aa;margin:0 0 8px;font-size:15px;line-height:1.55;">${greeting}</p>
+      <p style="color:#d4d4d8;margin:0 0 8px;font-size:15px;line-height:1.55;">
+        Bola to úžasná akcia! Ďakujem, že som mohol byť súčasťou vášho dňa.
+      </p>
+      <p style="color:#d4d4d8;margin:0 0 8px;font-size:15px;line-height:1.55;">
+        Veľmi mi pomôže, ak moju prácu ohodnotíte krátkou recenziou na Google —
+        zaberie to len chvíľku a znamená to pre mňa veľa.
+      </p>
+      ${detailRows([
+        { label: "DJ", value: input.djName },
+        { label: "Typ akcie", value: input.eventTypeLabel },
+        { label: "Dátum", value: input.eventDateLabel },
+      ])}
+      <p style="color:#71717a;margin:12px 0 0;font-size:13px;line-height:1.5;">
+        S pozdravom,<br/>
+        <strong style="color:#e4e4e7;">${dj}</strong>
+      </p>
+    `,
+    cta: {
+      href: input.reviewUrl,
+      label: "Ohodnotiť DJ-a",
+      large: true,
+    },
+    footer:
+      "DJ App — mix smarter. Tento e-mail bol odoslaný automaticky po ukončení akcie.",
   });
 }
