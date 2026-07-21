@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, cloneElement, type ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useState, cloneElement, type ReactElement } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { useToast } from "@/lib/toast-context";
 import { submitBooking } from "@/app/actions/bookings";
+import { getClientProfile } from "@/app/actions/client-profile";
 import {
   combineLocalDateTime,
   normalizeTime,
@@ -41,14 +42,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { COUNTRIES, type Country } from "@/lib/locations";
-import { EVENT_TYPES } from "@/lib/event-types";
+import { EVENT_TYPES, formatEventTypeLabel } from "@/lib/event-types";
 import { cn } from "@/lib/utils";
+import { getArtistNoun, getArtistNounCap, getArtistWillSend, normalizeArtistKind, type ArtistKind } from "@/lib/dj-display";
 
 const TIME_OPTS = timeOptions(30);
 
 type BookingDialogProps = {
   djId: string;
   djName: string;
+  artistKind?: ArtistKind | string | null;
   children: ReactElement<Record<string, unknown>>;
 };
 
@@ -59,6 +62,7 @@ type BusySlot = {
   end_date: string;
   start_time: string;
   end_time: string;
+  all_day?: boolean;
 };
 
 function formatFullAddress(parts: {
@@ -76,11 +80,17 @@ function formatFullAddress(parts: {
 export default function BookingDialog({
   djId,
   djName,
+  artistKind: artistKindProp = null,
   children,
 }: BookingDialogProps) {
   const { showToast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
+  const [resolvedKind, setResolvedKind] = useState<ArtistKind>(
+    normalizeArtistKind(artistKindProp)
+  );
+  const artistKind = normalizeArtistKind(resolvedKind);
+  const artistWillSend = getArtistWillSend(artistKind);
 
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [open, setOpen] = useState(false);
@@ -98,7 +108,32 @@ export default function BookingDialog({
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [message, setMessage] = useState("");
+  const [clientBudget, setClientBudget] = useState("");
   const [busySlots, setBusySlots] = useState<BusySlot[]>([]);
+  const [phoneFromProfile, setPhoneFromProfile] = useState(false);
+  const [addressFromProfile, setAddressFromProfile] = useState(false);
+
+  useEffect(() => {
+    setResolvedKind(normalizeArtistKind(artistKindProp));
+  }, [artistKindProp]);
+
+  useEffect(() => {
+    if (!open || !djId) return;
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("artist_kind")
+        .eq("id", djId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setResolvedKind(normalizeArtistKind(data.artist_kind));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, djId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -115,6 +150,45 @@ export default function BookingDialog({
       setAuthState(profile?.role === "dj" ? "dj" : "client");
     });
   }, []);
+
+  useEffect(() => {
+    if (!open || authState !== "client") return;
+    let cancelled = false;
+    void (async () => {
+      const result = await getClientProfile();
+      if (!result.ok || cancelled) return;
+      if (result.profile.phone?.trim()) {
+        setClientPhone(result.profile.phone.trim());
+        setPhoneFromProfile(true);
+      }
+      const b = result.billing;
+      if (b) {
+        let filled = false;
+        if (b.street_address?.trim() && !street) {
+          setStreet(b.street_address.trim());
+          filled = true;
+        }
+        if (b.city?.trim() && !city) {
+          setCity(b.city.trim());
+          filled = true;
+        }
+        if (b.postal_code?.trim() && !postalCode) {
+          setPostalCode(b.postal_code.trim());
+          filled = true;
+        }
+        if (b.country === "Slovensko" || b.country === "SK") {
+          setEventCountry("SK");
+        } else if (b.country === "Česko" || b.country === "CZ") {
+          setEventCountry("CZ");
+        }
+        if (filled) setAddressFromProfile(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, authState]);
 
   useEffect(() => {
     if (!open || !djId) return;
@@ -148,6 +222,7 @@ export default function BookingDialog({
               row.all_day ? "23:59" : row.end_time,
               "23:59"
             ),
+            all_day: Boolean(row.all_day),
           }))
         );
       } catch {
@@ -159,12 +234,19 @@ export default function BookingDialog({
           .eq("dj_id", djId);
         if (cancelled) return;
         setBusySlots(
-          ((data ?? []) as BusySlot[]).map((row) => ({
-            event_date: row.event_date,
-            end_date: row.end_date,
-            start_time: normalizeTime(row.start_time),
-            end_time: normalizeTime(row.end_time),
-          }))
+          ((data ?? []) as BusySlot[]).map((row) => {
+            const start = normalizeTime(row.start_time);
+            const end = normalizeTime(row.end_time);
+            const allDay =
+              start === "00:00" && (end === "23:59" || end === "23:59:00");
+            return {
+              event_date: row.event_date,
+              end_date: row.end_date,
+              start_time: start,
+              end_time: end,
+              all_day: allDay,
+            };
+          })
         );
       }
     };
@@ -175,9 +257,17 @@ export default function BookingDialog({
     };
   }, [open, djId]);
 
+  // Only full-day blockouts disable the calendar day.
+  // Partial bookings stay selectable — conflict is checked by time overlap.
   const blockedDates = useMemo(() => {
     const set = new Set<string>();
     for (const slot of busySlots) {
+      const isFullDay =
+        slot.all_day ||
+        (slot.start_time.slice(0, 5) === "00:00" &&
+          (slot.end_time.slice(0, 5) === "23:59" ||
+            slot.end_time.slice(0, 5) === "24:00"));
+      if (!isFullDay) continue;
       const start = slot.event_date;
       const end = slot.end_date || slot.event_date;
       const [ys, ms, ds] = start.split("-").map(Number);
@@ -196,6 +286,73 @@ export default function BookingDialog({
     }
     return set;
   }, [busySlots]);
+
+  const isStartTimeBlocked = useCallback(
+    (time: string) => {
+      if (!startDate) return false;
+      const t = time.slice(0, 5);
+      // Point-in-busy: can't start during an existing gig
+      for (const slot of busySlots) {
+        if (startDate < slot.event_date || startDate > (slot.end_date || slot.event_date)) {
+          continue;
+        }
+        const s = slot.start_time.slice(0, 5);
+        const e = slot.end_time.slice(0, 5);
+        if (t >= s && t < e) return true;
+      }
+      // Full proposed range vs busy (when end time already chosen)
+      if (!endDate || !endTime || endTime <= time) return false;
+      const proposedStart = combineLocalDateTime(startDate, time);
+      const proposedEnd = combineLocalDateTime(endDate, endTime);
+      return busySlots.some((slot) =>
+        rangesOverlap(
+          proposedStart,
+          proposedEnd,
+          combineLocalDateTime(slot.event_date, slot.start_time),
+          combineLocalDateTime(slot.end_date, slot.end_time)
+        )
+      );
+    },
+    [busySlots, startDate, endDate, endTime]
+  );
+
+  const isEndTimeBlocked = useCallback(
+    (time: string) => {
+      if (!startDate || !endDate || !startTime) return false;
+      if (startDate === endDate && time.slice(0, 5) <= startTime.slice(0, 5)) {
+        return true;
+      }
+      const proposedStart = combineLocalDateTime(startDate, startTime);
+      const proposedEnd = combineLocalDateTime(endDate, time);
+      if (!(proposedStart < proposedEnd)) return true;
+      return busySlots.some((slot) =>
+        rangesOverlap(
+          proposedStart,
+          proposedEnd,
+          combineLocalDateTime(slot.event_date, slot.start_time),
+          combineLocalDateTime(slot.end_date, slot.end_time)
+        )
+      );
+    },
+    [busySlots, startDate, endDate, startTime]
+  );
+
+  useEffect(() => {
+    if (!startDate) return;
+    if (isStartTimeBlocked(startTime)) {
+      const next = TIME_OPTS.find((t) => !isStartTimeBlocked(t));
+      if (next) setStartTime(next);
+    }
+  }, [startDate, busySlots, startTime, isStartTimeBlocked]);
+
+  useEffect(() => {
+    if (!startDate || !endDate) return;
+    if (isEndTimeBlocked(endTime)) {
+      const next = TIME_OPTS.find((t) => !isEndTimeBlocked(t));
+      if (next) setEndTime(next);
+    }
+  }, [startDate, endDate, startTime, busySlots, endTime, isEndTimeBlocked]);
+
   const overlap = useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) {
       return { conflict: false as const, slots: [] as BusySlot[] };
@@ -232,10 +389,10 @@ export default function BookingDialog({
 
     return {
       conflict: true as const,
-      reason: "Tento termín sa prekrýva s už potvrdenou akciou DJ-a.",
+      reason: `Tento termín sa prekrýva s už potvrdenou akciou ${getArtistNoun(artistKind, "gen")}.`,
       slots: colliding,
     };
-  }, [busySlots, startDate, endDate, startTime, endTime]);
+  }, [busySlots, startDate, endDate, startTime, endTime, artistKind]);
 
   const addressComplete =
     street.trim().length > 0 &&
@@ -253,7 +410,9 @@ export default function BookingDialog({
         startTime &&
         endTime &&
         resolvedEventType &&
-        clientPhone.trim()
+        clientPhone.trim() &&
+        message.trim() &&
+        clientBudget.trim()
     ) &&
     addressComplete &&
     !overlap.conflict &&
@@ -273,6 +432,9 @@ export default function BookingDialog({
     setCity("");
     setPostalCode("");
     setMessage("");
+    setClientBudget("");
+    setPhoneFromProfile(false);
+    setAddressFromProfile(false);
   };
 
   const handleTriggerClick = (e: React.MouseEvent) => {
@@ -288,7 +450,7 @@ export default function BookingDialog({
       return;
     }
     if (authState === "dj") {
-      showToast("DJ účty nemôžu odosielať rezervácie.", "error");
+      showToast("Účty umelcov nemôžu odosielať rezervácie.", "error");
       return;
     }
     setOpen(true);
@@ -311,6 +473,12 @@ export default function BookingDialog({
       return;
     }
 
+    const budget = Number(clientBudget.replace(",", "."));
+    if (!Number.isFinite(budget) || budget < 0) {
+      showToast("Zadaj približný rozpočet v EUR.", "error");
+      return;
+    }
+
     setSubmitting(true);
 
     const result = await submitBooking({
@@ -328,7 +496,8 @@ export default function BookingDialog({
         postalCode,
         country: eventCountry,
       }),
-      message: message.trim() || undefined,
+      message: message.trim(),
+      clientBudget: budget,
     });
 
     setSubmitting(false);
@@ -339,7 +508,9 @@ export default function BookingDialog({
     }
 
     showToast(
-      "Vaša správa bola odoslaná! DJ bol upozornený e-mailom.",
+      `Vaša správa bola odoslaná! ${getArtistNounCap(artistKind)} ${
+        artistKind === "band" ? "bola upozornená" : "bol upozornený"
+      } e-mailom.`,
       "success"
     );
     resetForm();
@@ -360,8 +531,8 @@ export default function BookingDialog({
           <DialogHeader>
             <DialogTitle>Nezáväzná rezervácia</DialogTitle>
             <DialogDescription>
-              Pošli DJ-ovi <span className="text-zinc-200">{djName}</span>{" "}
-              dopyt s dátumom, časom a adresou akcie.
+              Pošli {djName} popis akcie a rozpočet. {artistWillSend} svoju cenu
+              — potom môžete chatovať a ty rezerváciu potvrdíš.
             </DialogDescription>
           </DialogHeader>
 
@@ -369,6 +540,11 @@ export default function BookingDialog({
             <div className="space-y-2">
               <Label htmlFor="client-phone">
                 Telefón <span className="text-red-400">*</span>
+                {phoneFromProfile ? (
+                  <span className="ml-1.5 text-[10px] font-normal text-zinc-500">
+                    (z profilu)
+                  </span>
+                ) : null}
               </Label>
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
@@ -376,7 +552,10 @@ export default function BookingDialog({
                   id="client-phone"
                   type="tel"
                   value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
+                  onChange={(e) => {
+                    setClientPhone(e.target.value);
+                    setPhoneFromProfile(false);
+                  }}
                   placeholder="+421 900 123 456"
                   required
                   className="pl-9"
@@ -385,42 +564,42 @@ export default function BookingDialog({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>
-                  Dátum od <span className="text-red-400">*</span>
-                </Label>
-                <DatePicker
-                  value={startDate}
-                  placeholder="Od"
-                  disabledDates={blockedDates}
-                  onChange={(iso) => {
-                    setStartDate(iso);
-                    if (!endDate || endDate < iso) setEndDate(iso);
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  Dátum do <span className="text-red-400">*</span>
-                </Label>
-                <DatePicker
-                  value={endDate}
-                  placeholder="Do"
-                  disabledDates={blockedDates}
-                  minDate={
-                    startDate
-                      ? (() => {
-                          const [y, m, d] = startDate.split("-").map(Number);
-                          return new Date(y, (m ?? 1) - 1, d ?? 1);
-                        })()
-                      : undefined
-                  }
-                  onChange={(iso) => {
-                    setEndDate(iso);
-                    if (!startDate || startDate > iso) setStartDate(iso);
-                  }}
-                />
-              </div>
+              <DatePicker
+                label={
+                  <>
+                    Dátum od <span className="text-red-400">*</span>
+                  </>
+                }
+                value={startDate}
+                placeholder="Od"
+                disabledDates={blockedDates}
+                onChange={(iso) => {
+                  setStartDate(iso);
+                  if (!endDate || endDate < iso) setEndDate(iso);
+                }}
+              />
+              <DatePicker
+                label={
+                  <>
+                    Dátum do <span className="text-red-400">*</span>
+                  </>
+                }
+                value={endDate}
+                placeholder="Do"
+                disabledDates={blockedDates}
+                minDate={
+                  startDate
+                    ? (() => {
+                        const [y, m, d] = startDate.split("-").map(Number);
+                        return new Date(y, (m ?? 1) - 1, d ?? 1);
+                      })()
+                    : undefined
+                }
+                onChange={(iso) => {
+                  setEndDate(iso);
+                  if (!startDate || startDate > iso) setStartDate(iso);
+                }}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -437,11 +616,23 @@ export default function BookingDialog({
                     <SelectValue placeholder="Čas začiatku" />
                   </SelectTrigger>
                   <SelectContent className="max-h-60" side="bottom">
-                    {TIME_OPTS.map((t) => (
-                      <SelectItem key={`s-${t}`} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
+                    {TIME_OPTS.map((t) => {
+                      const blocked = isStartTimeBlocked(t);
+                      return (
+                        <SelectItem
+                          key={`s-${t}`}
+                          value={t}
+                          disabled={blocked}
+                          className={
+                            blocked
+                              ? "line-through decoration-zinc-500 opacity-40"
+                              : undefined
+                          }
+                        >
+                          {t}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -458,11 +649,23 @@ export default function BookingDialog({
                     <SelectValue placeholder="Čas konca" />
                   </SelectTrigger>
                   <SelectContent className="max-h-60" side="bottom">
-                    {TIME_OPTS.map((t) => (
-                      <SelectItem key={`e-${t}`} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
+                    {TIME_OPTS.map((t) => {
+                      const blocked = isEndTimeBlocked(t);
+                      return (
+                        <SelectItem
+                          key={`e-${t}`}
+                          value={t}
+                          disabled={blocked}
+                          className={
+                            blocked
+                              ? "line-through decoration-zinc-500 opacity-40"
+                              : undefined
+                          }
+                        >
+                          {t}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -506,7 +709,11 @@ export default function BookingDialog({
                   className="w-full justify-start gap-2 rounded-xl px-3 data-[size=default]:h-11"
                 >
                   <PartyPopper className="size-4 shrink-0 text-muted-foreground/60" />
-                  <SelectValue placeholder="Vyber typ akcie" />
+                  <SelectValue placeholder="Vyber typ akcie">
+                    {(value: string | null) =>
+                      value ? formatEventTypeLabel(value) : null
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {EVENT_TYPES.map((type) => (
@@ -531,6 +738,11 @@ export default function BookingDialog({
               <Label className="flex items-center gap-1.5">
                 <MapPin className="size-3.5 text-violet-300" />
                 Adresa akcie <span className="text-red-400">*</span>
+                {addressFromProfile ? (
+                  <span className="ml-1 text-[10px] font-normal text-zinc-500">
+                    (z fakturačných údajov)
+                  </span>
+                ) : null}
               </Label>
 
               <div className="flex h-10 items-center gap-0.5 rounded-xl border border-input bg-transparent p-1">
@@ -559,7 +771,10 @@ export default function BookingDialog({
                   <Input
                     id="street"
                     value={street}
-                    onChange={(e) => setStreet(e.target.value)}
+                    onChange={(e) => {
+                      setStreet(e.target.value);
+                      setAddressFromProfile(false);
+                    }}
                     placeholder="Hlavná"
                     required
                     className="h-10 rounded-xl"
@@ -572,7 +787,10 @@ export default function BookingDialog({
                   <Input
                     id="house"
                     value={houseNumber}
-                    onChange={(e) => setHouseNumber(e.target.value)}
+                    onChange={(e) => {
+                      setHouseNumber(e.target.value);
+                      setAddressFromProfile(false);
+                    }}
                     placeholder="12"
                     required
                     className="h-10 rounded-xl"
@@ -588,7 +806,10 @@ export default function BookingDialog({
                   <Input
                     id="psc"
                     value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
+                    onChange={(e) => {
+                      setPostalCode(e.target.value);
+                      setAddressFromProfile(false);
+                    }}
                     placeholder="81101"
                     required
                     className="h-10 rounded-xl"
@@ -601,7 +822,10 @@ export default function BookingDialog({
                   <Input
                     id="city"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      setAddressFromProfile(false);
+                    }}
                     placeholder="Bratislava"
                     required
                     className="h-10 rounded-xl"
@@ -611,13 +835,35 @@ export default function BookingDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="message">Správa</Label>
+              <Label htmlFor="budget">
+                Rozpočet cca (EUR) <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="budget"
+                inputMode="decimal"
+                value={clientBudget}
+                onChange={(e) => setClientBudget(e.target.value)}
+                placeholder="napr. 400"
+                required
+                className="rounded-xl"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Orientačná suma — {artistWillSend} svoju skutočnú ponuku.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="message">
+                Čo chceš / ako si to predstavuješ{" "}
+                <span className="text-red-400">*</span>
+              </Label>
               <Textarea
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Rozpovedz DJ-ovi viac o svojej akcii…"
-                rows={3}
+                placeholder="Typ hostí, vibe, playlist, čo má umelec pripraviť…"
+                rows={4}
+                required
               />
             </div>
 

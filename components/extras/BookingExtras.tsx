@@ -60,8 +60,9 @@ export function BookingExtras({
   }, [bookingId, showToast]);
 
   useEffect(() => {
+    if (!open || loaded) return;
     void load();
-  }, [load]);
+  }, [open, loaded, load]);
 
   const selectedIds = useMemo(
     () => new Set(selected.map((s) => s.extra_id).filter(Boolean) as string[]),

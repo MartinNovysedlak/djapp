@@ -213,7 +213,7 @@ export function MusicPlanner({
           <p className="text-sm font-semibold text-white">Hudba</p>
           <p className="text-[11px] text-zinc-500">
             {mode === "client"
-              ? "Hudobný plánovač pre DJ-a"
+              ? "Hudobný plánovač pre umelca"
               : "Zoznam od klienta"}
             {loaded ? (
               <>

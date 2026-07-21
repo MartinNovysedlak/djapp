@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   Megaphone,
+  MessageCircle,
   Receipt,
   Sparkles,
   TrendingUp,
@@ -23,6 +24,8 @@ import {
 } from "@/components/DashboardUserContext";
 import { clearDashboardAuthCache } from "@/lib/nav-cache";
 import { BrandLogo } from "@/components/BrandLogo";
+import { countUnreadBookingMessages } from "@/app/actions/booking-messages";
+import { NewMessageToaster } from "@/components/chat/NewMessageToaster";
 
 export default function DashboardLayout({
   children,
@@ -40,7 +43,23 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const { user, loading } = useDashboardUser();
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadMessages(0);
+      return;
+    }
+    const refresh = () => {
+      void countUnreadBookingMessages().then((r) => {
+        if (r.ok) setUnreadMessages(r.count);
+      });
+    };
+    refresh();
+    const id = window.setInterval(refresh, 10000);
+    return () => window.clearInterval(id);
+  }, [user, pathname]);
 
   const navItems = [
     {
@@ -52,6 +71,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       label: "Rezervácie",
       href: "/dashboard/bookings",
       icon: <CalendarCheck className="size-4" />,
+    },
+    {
+      label: "Správy",
+      href: "/dashboard/messages",
+      icon: <MessageCircle className="size-4" />,
     },
     {
       label: "Analytika",
@@ -139,15 +163,21 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 space-y-1.5 px-3 py-5">
           {navItems.map((item) => {
-            // Longest-prefix match so e.g. "/dashboard/contracts/generate" only
-            // highlights "PDF zmluvy", not the shorter "Šablóny" href it also starts with.
-            const bestMatch = navItems
-              .filter(
-                (i) =>
-                  pathname === i.href || pathname?.startsWith(`${i.href}/`)
-              )
-              .sort((a, b) => b.href.length - a.href.length)[0];
-            const isActive = bestMatch?.href === item.href;
+            // Chat under /bookings/:id/chat belongs to Správy, not Rezervácie.
+            const isChatRoute =
+              pathname?.includes("/bookings/") && pathname.includes("/chat");
+            let isActive = false;
+            if (isChatRoute) {
+              isActive = item.href === "/dashboard/messages";
+            } else {
+              const bestMatch = navItems
+                .filter(
+                  (i) =>
+                    pathname === i.href || pathname?.startsWith(`${i.href}/`)
+                )
+                .sort((a, b) => b.href.length - a.href.length)[0];
+              isActive = bestMatch?.href === item.href;
+            }
             return (
               <Link
                 key={item.href}
@@ -171,6 +201,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   {item.icon}
                 </span>
                 <span className="flex-1">{item.label}</span>
+                {(item.href === "/dashboard/messages") &&
+                unreadMessages > 0 &&
+                !isActive ? (
+                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                    {unreadMessages > 9 ? "9+" : unreadMessages}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -236,6 +273,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </main>
+      <NewMessageToaster
+        chatBasePath="/dashboard/bookings"
+        inboxHref="/dashboard/messages"
+      />
     </div>
   );
 }

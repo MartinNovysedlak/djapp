@@ -945,7 +945,7 @@ export default function EditInvoiceTemplatePage() {
 
             <div className="space-y-2 border-t border-white/5 pt-3">
               <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                Vyplní DJ (sumy, služba…)
+                Vyplní umelec (sumy, služba…)
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {manualPalette
@@ -1159,7 +1159,7 @@ export default function EditInvoiceTemplatePage() {
                     <Label className="text-xs text-zinc-500">
                       {isClient
                         ? "Názov poľa pre zákazníka"
-                        : "Názov poľa pre DJ-a pri generovaní"}
+                        : "Názov poľa pre umelca pri generovaní"}
                     </Label>
                     <Input
                       value={placeholder.label ?? ""}

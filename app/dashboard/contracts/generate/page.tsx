@@ -29,6 +29,11 @@ import { useDashboardUser } from "@/components/DashboardUserContext";
 import { useDjBookings } from "@/hooks/useDjBookings";
 import { useToast } from "@/lib/toast-context";
 import {
+  formatBookingPrice,
+  getEffectiveBookingPrice,
+  isContractPricePlaceholderKey,
+} from "@/lib/booking-price";
+import {
   getContractGaps,
   getContractPlaceholders,
   getGeneratedContractDownloadUrl,
@@ -182,6 +187,25 @@ function GenerateContractForm() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, bookingId]);
+
+  useEffect(() => {
+    if (!selectedBooking || placeholders.length === 0) return;
+    const price = getEffectiveBookingPrice(selectedBooking);
+    if (price == null) return;
+    const formatted = formatBookingPrice(price);
+    setManualValues((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const p of placeholders) {
+        if (p.type !== "manual_input") continue;
+        if (!isContractPricePlaceholderKey(p.placeholder_key)) continue;
+        if (prev[p.placeholder_key]?.trim()) continue;
+        next[p.placeholder_key] = formatted;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [selectedBooking, placeholders, bookingId]);
 
   const manualPlaceholders = useMemo(
     () => placeholders.filter((p) => p.type === "manual_input"),

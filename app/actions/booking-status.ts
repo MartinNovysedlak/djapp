@@ -31,6 +31,192 @@ export async function rejectBooking(
   return updateBookingStatus(bookingId, "rejected", reason.trim());
 }
 
+/**
+ * Client confirms DJ's price offer → booking becomes accepted.
+ * Uses service role after auth check (clients typically can't UPDATE bookings).
+ */
+export async function confirmClientBookingOffer(
+  bookingId: string
+): Promise<BookingStatusResult> {
+  if (!bookingId) return { ok: false, error: "Chýba ID rezervácie." };
+
+  try {
+    const supabase = await createSSRClient();
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      return { ok: false, error: "Musíš byť prihlásený." };
+    }
+
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select(
+        "id, client_id, status, dj_offer_price, dj_id, event_date, end_date, start_time, end_time, bulk_inquiry_id, event_type, client_email, client_name"
+      )
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (!booking || booking.client_id !== authData.user.id) {
+      return { ok: false, error: "Rezervácia sa nenašla." };
+    }
+    if (booking.status !== "pending") {
+      return { ok: false, error: "Túto rezerváciu už nie je možné potvrdiť." };
+    }
+    if (booking.dj_offer_price == null) {
+      return {
+        ok: false,
+        error: "Umelec ešte neposlal ponuku. Počkaj na cenu, alebo chatujte.",
+      };
+    }
+    if (booking.bulk_inquiry_id) {
+      return {
+        ok: false,
+        error: "Skupinový dopyt potvrď v sekcii Dopyty.",
+      };
+    }
+
+    const conflict = await hasAcceptedConflict(
+      booking.dj_id,
+      booking.event_date,
+      booking.end_date ?? booking.event_date,
+      normalizeTime(booking.start_time),
+      normalizeTime(booking.end_time),
+      booking.id
+    );
+    if (conflict.conflict) {
+      return {
+        ok: false,
+        error:
+          conflict.label ??
+          "Termín sa medzitým obsadil. Napíš umelcovi do chatu.",
+      };
+    }
+
+    const { createClient: createServiceClient } = await import(
+      "@supabase/supabase-js"
+    );
+    const admin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const offerPrice = Number(booking.dj_offer_price);
+    const { error } = await admin
+      .from("bookings")
+      .update({
+        status: "accepted",
+        price: offerPrice,
+        rejection_reason: null,
+      })
+      .eq("id", bookingId);
+
+    if (error) return { ok: false, error: error.message };
+
+    try {
+      const { data: djProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", booking.dj_id)
+        .maybeSingle();
+      const { data: djUser } = await admin.auth.admin.getUserById(booking.dj_id);
+      if (djUser.user?.email) {
+        await sendBookingStatusEmail(
+          djUser.user.email,
+          "accepted",
+          booking.event_type,
+          booking.event_date,
+          {
+            djName: djProfile?.full_name,
+            clientName: booking.client_name,
+          }
+        );
+      }
+    } catch (emailErr) {
+      console.warn("[confirmClientBookingOffer] email failed:", emailErr);
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Potvrdenie zlyhalo.";
+    return { ok: false, error: msg };
+  }
+}
+
+/** Client declines DJ offer on a single (non-bulk) booking. */
+export async function declineClientBookingOffer(
+  bookingId: string,
+  reason?: string
+): Promise<BookingStatusResult> {
+  if (!bookingId) return { ok: false, error: "Chýba ID rezervácie." };
+
+  try {
+    const supabase = await createSSRClient();
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      return { ok: false, error: "Musíš byť prihlásený." };
+    }
+
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("id, client_id, status, dj_offer_price, bulk_inquiry_id, dj_id, event_type, event_date, client_name")
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (!booking || booking.client_id !== authData.user.id) {
+      return { ok: false, error: "Rezervácia sa nenašla." };
+    }
+    if (booking.status !== "pending") {
+      return { ok: false, error: "Túto rezerváciu už nie je možné odmietnuť." };
+    }
+    if (booking.bulk_inquiry_id) {
+      return { ok: false, error: "Skupinový dopyt rieš v sekcii Dopyty." };
+    }
+
+    const { createClient: createServiceClient } = await import(
+      "@supabase/supabase-js"
+    );
+    const admin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const { error } = await admin
+      .from("bookings")
+      .update({
+        status: "rejected",
+        rejection_reason:
+          reason?.trim() || "Klient odmietol ponuku umelca.",
+      })
+      .eq("id", bookingId);
+
+    if (error) return { ok: false, error: error.message };
+
+    try {
+      const { data: djUser } = await admin.auth.admin.getUserById(booking.dj_id);
+      if (djUser.user?.email) {
+        await sendBookingStatusEmail(
+          djUser.user.email,
+          "rejected",
+          booking.event_type,
+          booking.event_date,
+          {
+            clientName: booking.client_name,
+            rejectionReason: reason?.trim() || "Klient odmietol ponuku.",
+          }
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Odmietnutie zlyhalo.";
+    return { ok: false, error: msg };
+  }
+}
+
 async function updateBookingStatus(
   bookingId: string,
   status: "accepted" | "rejected",

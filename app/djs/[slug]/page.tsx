@@ -13,7 +13,7 @@ async function fetchDjBySlug(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, bio, public_slug, avatar_url")
+    .select("id, full_name, bio, public_slug, avatar_url, artist_kind")
     .eq("public_slug", slug)
     .maybeSingle();
   return data;
@@ -24,14 +24,22 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const dj = await fetchDjBySlug(slug);
-  const djName = getDjStageName(dj ?? { full_name: null }, "DJ");
+  const djName = getDjStageName(dj ?? { full_name: null }, "Umelec");
+  const kindLabel =
+    dj?.artist_kind === "band"
+      ? "Kapela"
+      : dj?.artist_kind === "dj_band"
+        ? "DJ + Kapela"
+        : "DJ";
 
-  const title = `${djName} | Event DJ na ${PLATFORM_NAME}`;
-  const description = `Pozri si profil DJ-a ${djName}, prečítaj si recenzie a zarezervuj si termín na svoju akciu.`;
+  const title = `${djName} | ${kindLabel} na ${PLATFORM_NAME}`;
+  const description = `Pozri si profil ${
+    dj?.artist_kind === "band" ? "kapely" : "umelca"
+  } ${djName}, prečítaj si recenzie a zarezervuj si termín na svoju akciu.`;
 
   if (!dj) {
     return {
-      title: `DJ nenájdený | ${PLATFORM_NAME}`,
+      title: `Profil nenájdený | ${PLATFORM_NAME}`,
       description,
     };
   }

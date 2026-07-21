@@ -1143,7 +1143,11 @@ function OwnEventDialog({
             <Label>Typ akcie</Label>
             <Select value={eventType} onValueChange={setEventType}>
               <SelectTrigger className="w-full rounded-[0.75rem]">
-                <SelectValue placeholder="Vyber typ" />
+                <SelectValue placeholder="Vyber typ">
+                  {(value: string | null) =>
+                    value ? formatEventTypeLabel(value) : null
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {EVENT_TYPES.map((t) => (

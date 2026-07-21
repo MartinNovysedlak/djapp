@@ -1,3 +1,8 @@
+import {
+  formatBookingPrice,
+  getEffectiveBookingPrice,
+  isInvoicePricePlaceholderKey,
+} from "@/lib/booking-price";
 import { resolveInvoiceFieldValue, type InvoiceResolveContext } from "./fields";
 import type { InvoicePlaceholderRow } from "./types";
 
@@ -13,7 +18,7 @@ function escapeHtml(value: string) {
 /**
  * Resolves every placeholder:
  * - database_field → booking/computed (+ optional DJ override)
- * - manual_input → DJ values at generate time
+ * - manual_input → DJ values at generate time (cena/sumy fall back to booking price)
  * - client_input → values the client submits later
  */
 export function resolveInvoiceValues(
@@ -22,6 +27,9 @@ export function resolveInvoiceValues(
   manualValues: Record<string, string> = {},
   clientValues: Record<string, string> = {}
 ): Record<string, string> {
+  const bookingPrice = formatBookingPrice(
+    getEffectiveBookingPrice(ctx.booking)
+  );
   const resolved: Record<string, string> = {};
   for (const placeholder of placeholders) {
     if (placeholder.type === "database_field") {
@@ -34,8 +42,14 @@ export function resolveInvoiceValues(
       resolved[placeholder.placeholder_key] =
         clientValues[placeholder.placeholder_key]?.trim() ?? "";
     } else {
-      resolved[placeholder.placeholder_key] =
-        manualValues[placeholder.placeholder_key]?.trim() ?? "";
+      const typed = manualValues[placeholder.placeholder_key]?.trim() ?? "";
+      if (typed) {
+        resolved[placeholder.placeholder_key] = typed;
+      } else if (isInvoicePricePlaceholderKey(placeholder.placeholder_key)) {
+        resolved[placeholder.placeholder_key] = bookingPrice;
+      } else {
+        resolved[placeholder.placeholder_key] = "";
+      }
     }
   }
   return resolved;

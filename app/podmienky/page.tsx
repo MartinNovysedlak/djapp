@@ -60,12 +60,12 @@ export default function PodmienkyPage() {
             <h2 className="text-lg font-semibold text-white">2. Popis služby</h2>
             <p>
               {BRAND.name} je online platforma, ktorá spája klientov (osoby
-              hľadajúce DJ služby) s DJ-mi (osoby alebo subjekty ponúkajúce
-              hudobné / eventové služby). Platforma umožňuje najmä:
+              hľadajúce hudobné / eventové služby) s umelcami (DJ, kapela alebo
+              DJ + Kapela). Platforma umožňuje najmä:
             </p>
             <ul className="list-disc space-y-1.5 pl-5">
-              <li>vytvorenie a správu používateľských účtov (DJ / klient),</li>
-              <li>zverejnenie verejného profilu DJ-a v katalógu,</li>
+              <li>vytvorenie a správu používateľských účtov (umelec / klient),</li>
+              <li>zverejnenie verejného profilu umelca v katalógu,</li>
               <li>odosielanie a správu nezáväzných dopytov / rezervácií,</li>
               <li>kalendár, blokácie a synchronizáciu s externými kalendármi,</li>
               <li>nástroje na dokumenty (zmluvy, faktúry), playlist, live requesty a súvisiacu komunikáciu,</li>
@@ -74,7 +74,7 @@ export default function PodmienkyPage() {
             <p>
               Platforma vystupuje ako technický sprostredkovateľ. Pokiaľ nie je
               výslovne uvedené inak, {BRAND.name} nie je zmluvnou stranou medzi
-              klientom a DJ-om ohľadom samotného vystúpenia, ceny služby ani
+              klientom a umelcom ohľadom samotného vystúpenia, ceny služby ani
               jej plnenia.
             </p>
           </section>
@@ -101,20 +101,21 @@ export default function PodmienkyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-white">4. Role: DJ a klient</h2>
+            <h2 className="text-lg font-semibold text-white">4. Role: Umelec a klient</h2>
             <p>
-              <strong className="text-zinc-300">DJ</strong> môže zverejniť
-              profil, prijímať dopyty, spravovať kalendár a používať nástroje
-              dashboardu podľa zvoleného plánu (Free / Pro). DJ je výhradne
-              zodpovedný za obsah svojho profilu, dostupnosť, cenu, kvalitu
-              služby a plnenie dohôd s klientom.
+              <strong className="text-zinc-300">Umelec</strong> (DJ, kapela
+              alebo DJ + Kapela) môže zverejniť profil, prijímať dopyty,
+              spravovať kalendár a používať nástroje dashboardu podľa zvoleného
+              plánu (Free / Pro). Umelec je výhradne zodpovedný za obsah svojho
+              profilu, dostupnosť, cenu, kvalitu služby a plnenie dohôd s
+              klientom.
             </p>
             <p>
               <strong className="text-zinc-300">Klient</strong> môže prehliadať
               katalóg, odosielať dopyty a spravovať svoje rezervácie a
               dokumenty. Klient je zodpovedný za správnosť údajov v dopyte
               (dátum, čas, miesto, kontakt) a za plnenie dohôd uzavretých s
-              DJ-om.
+              umelcom.
             </p>
           </section>
 
@@ -122,13 +123,13 @@ export default function PodmienkyPage() {
             <h2 className="text-lg font-semibold text-white">5. Rezervácie a komunikácia</h2>
             <p>
               Dopyt odoslaný cez Platformu je spravidla nezáväzný návrh na
-              dohodu, pokiaľ DJ a klient výslovne nedohodnú inak (napr.
+              dohodu, pokiaľ umelec a klient výslovne nedohodnú inak (napr.
               prijatím rezervácie a následnou zmluvou). Potvrdenie, zmena alebo
-              zrušenie termínu je vecou dohody medzi DJ-om a klientom.
+              zrušenie termínu je vecou dohody medzi umelcom a klientom.
             </p>
             <p>
               Platforma môže zobrazovať obsadenosť na základe údajov zadaných
-              DJ-om a/alebo importovaných z externého kalendára. Prevádzkovateľ
+              umelcom a/alebo importovaných z externého kalendára. Prevádzkovateľ
               neručí za úplnosť, aktuálnosť ani bezchybnosť týchto údajov.
             </p>
             <p>
@@ -209,7 +210,7 @@ export default function PodmienkyPage() {
               za:
             </p>
             <ul className="list-disc space-y-1.5 pl-5">
-              <li>škody vzniknuté zo vzťahu medzi DJ-om a klientom (neuskutočnenie akcie, oneskorenie, kvalita vystúpenia, platby medzi stranami),</li>
+              <li>škody vzniknuté zo vzťahu medzi umelcom a klientom (neuskutočnenie akcie, oneskorenie, kvalita vystúpenia, platby medzi stranami),</li>
               <li>nepriame, následné alebo ušlé zisky,</li>
               <li>stratu dát spôsobenú konaním Používateľa alebo tretích strán,</li>
               <li>obsah profilov, recenzií a dokumentov vytvorených Používateľmi.</li>

@@ -7,7 +7,7 @@ import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Obchodné podmienky",
-  description: `Obchodné podmienky ${BRAND.name} pre platené plány, dokumenty, fakturáciu a komerčné využívanie platformy DJ-mi a podnikateľmi.`,
+  description: `Obchodné podmienky ${BRAND.name} pre platené plány, dokumenty, fakturáciu a komerčné využívanie platformy umelcami a podnikateľmi.`,
   alternates: { canonical: "/obchodne-podmienky" },
 };
 
@@ -66,7 +66,7 @@ export default function ObchodnePodmienkyPage() {
               poskytovateľ Platformy {BRAND.name}, kontakt: {BRAND.email}.
             </p>
             <p>
-              <strong className="text-zinc-300">Zákazník / DJ</strong> —
+              <strong className="text-zinc-300">Zákazník / Umelec</strong> —
               registrovaný Používateľ (fyzická osoba podnikateľ, právnická
               osoba alebo iný oprávnený subjekt), ktorý objednáva platenú
               službu Platformy. Spotrebiteľské práva podľa osobitných predpisov
@@ -84,9 +84,9 @@ export default function ObchodnePodmienkyPage() {
               live nástroje a marketingové funkcie.
             </p>
             <p>
-              Prevádzkovateľ neposkytuje DJ vystúpenie, neuzatvára v mene DJ-a
-              zmluvy s klientmi DJ-a a nie je platobným sprostredkovateľom
-              medzi DJ-om a jeho klientom, pokiaľ nie je výslovne uvedené inak.
+              Prevádzkovateľ neposkytuje vystúpenie umelca, neuzatvára v mene
+              umelca zmluvy s jeho klientmi a nie je platobným sprostredkovateľom
+              medzi umelcom a jeho klientom, pokiaľ nie je výslovne uvedené inak.
             </p>
           </section>
 
@@ -158,12 +158,12 @@ export default function ObchodnePodmienkyPage() {
               Šablóny zmlúv, faktúr a PDF výstupy sú pomocné nástroje.
               Prevádzkovateľ neručí za právnu úplnosť, daňovú správnosť ani
               vhodnosť konkrétneho dokumentu pre daný obchodný prípad.
-              Zákazník (DJ) je povinný skontrolovať obsah pred odoslaním
+              Zákazník (umelec) je povinný skontrolovať obsah pred odoslaním
               klientovi a v prípade potreby konzultovať právnika / účtovníka.
             </p>
             <p>
               Za údaje vložené do dokumentov (ceny, osobné údaje klientov,
-              obchodné podmienky DJ-a) zodpovedá výhradne Zákazník.
+              obchodné podmienky umelca) zodpovedá výhradne Zákazník.
             </p>
           </section>
 
@@ -201,8 +201,8 @@ export default function ObchodnePodmienkyPage() {
               mesiacov pred vznikom nároku.
             </p>
             <p>
-              Prevádzkovateľ nezodpovedá za ušlý zisk, stratu zákaziek DJ-a,
-              reputačné škody ani za spory medzi DJ-om a jeho klientmi.
+              Prevádzkovateľ nezodpovedá za ušlý zisk, stratu zákaziek umelca,
+              reputačné škody ani za spory medzi umelcom a jeho klientmi.
             </p>
           </section>
 
@@ -219,10 +219,10 @@ export default function ObchodnePodmienkyPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-white">13. Ochrana údajov a bezpečnosť</h2>
             <p>
-              Spracúvanie osobných údajov klientov DJ-a v rámci dokumentov a
-              rezervácií vykonáva DJ vo vlastnej zodpovednosti (spravidla ako
+              Spracúvanie osobných údajov klientov umelca v rámci dokumentov a
+              rezervácií vykonáva umelec vo vlastnej zodpovednosti (spravidla ako
               samostatný prevádzkovateľ alebo v inom zákonnom postavení).
-              Platforma poskytuje technické prostriedky; DJ je povinný
+              Platforma poskytuje technické prostriedky; umelec je povinný
               dodržiavať GDPR a informovať svojich klientov.
             </p>
           </section>

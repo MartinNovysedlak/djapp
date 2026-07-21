@@ -32,7 +32,7 @@ async function requireDj() {
 
   if (!profile || profile.role === "client") {
     return {
-      error: "Len DJ účty môžu upravovať marketingové nastavenia." as const,
+      error: "Len umelecké účty môžu upravovať marketingové nastavenia." as const,
       supabase,
       userId: null,
     };

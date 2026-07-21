@@ -43,6 +43,9 @@ export type InvoiceBookingData = {
   event_date: string;
   end_date: string | null;
   event_location: string | null;
+  price?: number | null;
+  dj_offer_price?: number | null;
+  base_price?: number | null;
 };
 
 export type InvoiceDjProfileData = {

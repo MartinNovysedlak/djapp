@@ -35,7 +35,7 @@ async function requireDj() {
 
   if (!profile || profile.role === "client") {
     return {
-      error: "Len DJ účty môžu spravovať synchronizáciu kalendára." as const,
+      error: "Len umelecké účty môžu spravovať synchronizáciu kalendára." as const,
       supabase,
       userId: null,
     };

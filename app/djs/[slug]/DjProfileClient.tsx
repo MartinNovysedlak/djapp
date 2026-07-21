@@ -30,7 +30,7 @@ import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { Reveal, Aurora, Equalizer } from "@/components/motion";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getVideoEmbedUrl, isDirectVideoFile, isValidUrl } from "@/lib/video";
-import { getDjRealName, getDjStageName } from "@/lib/dj-display";
+import { getDjRealName, getDjStageName, getArtistKindLabel, getArtistPlanBadge, normalizeArtistKind, type ArtistKind } from "@/lib/dj-display";
 import { isValidGoogleMapsUrl } from "@/lib/google-maps";
 import { setReviewVote } from "@/app/actions/review-votes";
 import { useToast } from "@/lib/toast-context";
@@ -85,6 +85,7 @@ type DJProfile = {
   real_first_name: string | null;
   real_last_name: string | null;
   show_real_name: boolean;
+  artist_kind: ArtistKind | null;
 };
 
 type Review = {
@@ -362,7 +363,7 @@ export default function DjProfileClient() {
             <div className="mb-6 flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-[0_0_40px_-10px_oklch(0.6_0.26_295/0.4)]">
               <Music className="size-8 text-zinc-500" />
             </div>
-            <h1 className="text-2xl font-bold text-white">DJ nenájdený</h1>
+            <h1 className="text-2xl font-bold text-white">Profil nenájdený</h1>
             <p className="mt-2 text-sm text-zinc-500">
               Takýto profil neexistuje alebo bol odstránený.
             </p>
@@ -381,6 +382,8 @@ export default function DjProfileClient() {
 
   // ── Detail view ────────────────────────────────────────────────────────────
   const name = getDjStageName(dj);
+  const kindLabel = getArtistKindLabel(dj.artist_kind);
+  const kind = normalizeArtistKind(dj.artist_kind);
   const realName = getDjRealName(dj);
   const gradient = getGradient(name);
   const initials = getInitials(name);
@@ -430,7 +433,7 @@ export default function DjProfileClient() {
             className="group mb-8 inline-flex items-center gap-1.5 text-xs text-zinc-500 transition-colors duration-300 hover:text-zinc-200"
           >
             <ArrowLeft className="size-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
-            Späť na katalóg DJ-ov
+            Späť na katalóg umelcov
           </Link>
         </Reveal>
 
@@ -477,6 +480,11 @@ export default function DjProfileClient() {
                   <div className="flex flex-col items-center gap-2 md:flex-row">
                     <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
                       {name}
+                      {kindLabel ? (
+                        <span className="ml-2 text-lg font-medium text-zinc-500 md:text-xl">
+                          ({kindLabel})
+                        </span>
+                      ) : null}
                     </h1>
                     <span
                       className={`rounded-full border px-3 py-1 text-[10px] font-semibold ${
@@ -485,7 +493,7 @@ export default function DjProfileClient() {
                           : "border-white/10 bg-white/[0.04] text-zinc-500"
                       }`}
                     >
-                      {dj.plan_type === "pro" ? "PRO DJ" : "FREE DJ"}
+                      {getArtistPlanBadge(dj.plan_type, dj.artist_kind)}
                     </span>
                     {ratingCount > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
@@ -594,13 +602,23 @@ export default function DjProfileClient() {
               <div className="relative flex flex-col items-center gap-5 md:flex-row md:justify-between">
                 <div className="text-center md:text-left">
                   <h2 className="text-xl font-semibold text-white">
-                    Chceš tohto DJ-a na svoju akciu?
+                    {kind === "band"
+                      ? "Chceš túto kapelu na svoju akciu?"
+                      : kind === "dj_band"
+                        ? "Chceš tohto umelca na svoju akciu?"
+                        : "Chceš tohto DJ-a na svoju akciu?"}
                   </h2>
                   <p className="mt-1.5 text-sm text-zinc-400">
-                    Pošli mu nezáväznú rezervačnú požiadavku priamo cez platformu.
+                    Pošli{" "}
+                    {kind === "band" ? "jej" : "mu"} nezáväznú rezervačnú
+                    požiadavku priamo cez platformu.
                   </p>
                 </div>
-                <BookingDialog djId={dj.id} djName={name}>
+                <BookingDialog
+                  djId={dj.id}
+                  djName={name}
+                  artistKind={kind}
+                >
                   <button
                     type="button"
                     className="group inline-flex h-13 shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-8 text-sm font-semibold text-white shadow-[0_16px_44px_-12px_oklch(0.6_0.26_295)] transition-all duration-300 hover:shadow-[0_16px_54px_-8px_oklch(0.6_0.26_295)] hover:brightness-110 active:scale-[0.97]"
@@ -618,7 +636,7 @@ export default function DjProfileClient() {
           <Reveal delay={160}>
             <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-4 text-sm text-zinc-400">
               <Info className="size-4 shrink-0 text-zinc-500" />
-              Prezeráš profil ako DJ — rezervácie môžu odosielať len zákaznícke účty.
+              Prezeráš profil ako umelec — rezervácie môžu odosielať len zákaznícke účty.
             </div>
           </Reveal>
         )}
@@ -811,10 +829,20 @@ export default function DjProfileClient() {
               <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/15">
                 <Music className="size-4 text-violet-300" />
               </span>
-              O DJ-ovi
+              O{" "}
+              {kind === "band"
+                ? "kapele"
+                : kind === "dj_band"
+                  ? "umelcovi"
+                  : "DJ-ovi"}
             </h3>
             <div className="space-y-3 text-sm leading-relaxed text-zinc-400">
-              <p>{dj.bio || "Tento DJ zatiaľ nepridal popis o sebe."}</p>
+              <p>
+                {dj.bio ||
+                  (kind === "band"
+                    ? "Táto kapela zatiaľ nepridala popis o sebe."
+                    : "Tento umelec zatiaľ nepridal popis o sebe.")}
+              </p>
               <div className="pt-1 text-xs text-zinc-600">
                 Členom od{" "}
                 <span className="text-zinc-400">
@@ -1007,7 +1035,15 @@ export default function DjProfileClient() {
         </Reveal>
       </main>
 
-      <SiteFooter caption="Profil DJ-a" />
+      <SiteFooter
+        caption={
+          kind === "band"
+            ? "Profil kapely"
+            : kind === "dj_band"
+              ? "Profil umelca"
+              : "Profil DJ-a"
+        }
+      />
     </div>
   );
 }

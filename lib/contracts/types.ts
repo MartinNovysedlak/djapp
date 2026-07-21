@@ -47,6 +47,8 @@ export type ContractBookingData = {
   event_location: string | null;
   message: string | null;
   price: number | null;
+  dj_offer_price?: number | null;
+  base_price?: number | null;
 };
 
 /** Minimal DJ profile shape the contract engine needs — a subset of `profiles`. */

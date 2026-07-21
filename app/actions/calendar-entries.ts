@@ -28,7 +28,7 @@ async function requireDj() {
     .maybeSingle();
 
   if (profile?.role !== "dj") {
-    return { ok: false as const, error: "Len DJ môže spravovať kalendár." };
+    return { ok: false as const, error: "Len umelec môže spravovať kalendár." };
   }
 
   return { ok: true as const, ssr, djId: authData.user.id };

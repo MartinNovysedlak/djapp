@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, MapPin, Loader2, ArrowRight, Users, Star, ArrowUpDown } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Search,
+  MapPin,
+  Loader2,
+  ArrowRight,
+  Users,
+  Star,
+  ArrowUpDown,
+  Check,
+  Scale,
+} from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Reveal, Aurora, Equalizer } from "@/components/motion";
 import { cn } from "@/lib/utils";
-import { getDjRealName, getDjStageName } from "@/lib/dj-display";
+import { getDjRealName, getDjStageName, getArtistKindLabel, getArtistPlanBadge, normalizeArtistKind, type ArtistKind } from "@/lib/dj-display";
 import { SiteFooter } from "@/components/SiteFooter";
 
 type DJProfile = {
@@ -30,6 +41,7 @@ type DJProfile = {
   real_first_name: string | null;
   real_last_name: string | null;
   show_real_name: boolean;
+  artist_kind: ArtistKind | null;
 };
 
 type RatingInfo = { avg: number; count: number };
@@ -39,6 +51,13 @@ const SORT_OPTIONS = [
   { value: "name", label: "Abecedne (meno)" },
   { value: "location", label: "Podľa lokality" },
   { value: "newest", label: "Najnovší profil" },
+];
+
+const KIND_FILTERS: { value: "all" | ArtistKind; label: string }[] = [
+  { value: "all", label: "Všetci" },
+  { value: "dj", label: "DJ" },
+  { value: "band", label: "Kapely" },
+  { value: "dj_band", label: "DJ + Kapela" },
 ];
 
 // ── Helper to generate gradient from name ──────────────────────────────────────
@@ -90,19 +109,28 @@ function RatingBadge({ rating }: { rating: RatingInfo | undefined }) {
 }
 
 // ── DJ Card ────────────────────────────────────────────────────────────────────
-function DJCard({ dj, rating }: { dj: DJProfile; rating: RatingInfo | undefined }) {
+function DJCard({
+  dj,
+  rating,
+  compareMode,
+  selected,
+  onToggle,
+}: {
+  dj: DJProfile;
+  rating: RatingInfo | undefined;
+  compareMode: boolean;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   const name = getDjStageName(dj);
+  const kindLabel = getArtistKindLabel(dj.artist_kind);
   const realName = getDjRealName(dj);
   const gradient = getGradient(name);
   const initials = getInitials(name);
   const slug = dj.public_slug || dj.id;
 
-  return (
-    <Link
-      href={`/djs/${slug}`}
-      className="card-lift group relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/8 bg-card/80 backdrop-blur-md"
-    >
-      {/* Cover gradient */}
+  const body = (
+    <>
       <div
         className={`relative flex h-40 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br ${gradient}`}
       >
@@ -110,6 +138,18 @@ function DJCard({ dj, rating }: { dj: DJProfile; rating: RatingInfo | undefined 
           aria-hidden
           className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
         />
+        {compareMode ? (
+          <div
+            className={cn(
+              "absolute left-3 top-3 z-10 flex size-7 items-center justify-center rounded-full border-2 transition-colors",
+              selected
+                ? "border-violet-400 bg-violet-500 text-white"
+                : "border-white/40 bg-black/40 text-transparent"
+            )}
+          >
+            <Check className="size-4" />
+          </div>
+        ) : null}
         {dj.avatar_url ? (
           <div className="relative size-22 overflow-hidden rounded-full border-2 border-white/30 shadow-2xl transition-transform duration-500 group-hover:scale-110">
             <Image src={dj.avatar_url} alt={name} fill className="object-cover" />
@@ -121,12 +161,16 @@ function DJCard({ dj, rating }: { dj: DJProfile; rating: RatingInfo | undefined 
         )}
       </div>
 
-      {/* Content — flex-1 keeps all cards the same height in a row */}
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate font-semibold text-white transition-colors duration-300 group-hover:text-violet-200">
               {name}
+              {kindLabel ? (
+                <span className="ml-1.5 text-xs font-medium text-zinc-500">
+                  ({kindLabel})
+                </span>
+              ) : null}
             </h3>
             {realName && (
               <p className="mt-0.5 truncate text-xs text-zinc-500">{realName}</p>
@@ -139,7 +183,7 @@ function DJCard({ dj, rating }: { dj: DJProfile; rating: RatingInfo | undefined 
                 : "border-white/10 bg-white/[0.04] text-zinc-500"
             }`}
           >
-            {dj.plan_type === "pro" ? "PRO" : "FREE"}
+            {getArtistPlanBadge(dj.plan_type, dj.artist_kind)}
           </span>
         </div>
 
@@ -154,14 +198,49 @@ function DJCard({ dj, rating }: { dj: DJProfile; rating: RatingInfo | undefined 
         </div>
 
         <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-zinc-500">
-          {dj.bio || "Tento DJ zatiaľ nepridal popis."}
+          {dj.bio ||
+            (normalizeArtistKind(dj.artist_kind) === "band"
+              ? "Táto kapela zatiaľ nepridala popis."
+              : "Tento umelec zatiaľ nepridal popis.")}
         </p>
 
-        <div className="mt-auto flex items-center gap-1.5 pt-4 text-xs font-medium text-violet-300 opacity-0 transition-all duration-300 group-hover:opacity-100">
-          Zobraziť profil
-          <ArrowRight className="size-3 transition-transform duration-300 group-hover:translate-x-1" />
-        </div>
+        {!compareMode ? (
+          <div className="mt-auto flex items-center gap-1.5 pt-4 text-xs font-medium text-violet-300 opacity-0 transition-all duration-300 group-hover:opacity-100">
+            Zobraziť profil
+            <ArrowRight className="size-3 transition-transform duration-300 group-hover:translate-x-1" />
+          </div>
+        ) : (
+          <div className="mt-auto pt-4 text-xs font-medium text-violet-300">
+            {selected ? "Vybraný na porovnanie" : "Klikni pre výber"}
+          </div>
+        )}
       </div>
+    </>
+  );
+
+  if (compareMode) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className={cn(
+          "card-lift group relative flex h-full w-full flex-col overflow-hidden rounded-3xl border bg-card/80 text-left backdrop-blur-md transition-colors",
+          selected
+            ? "border-violet-500/50 ring-1 ring-violet-500/30"
+            : "border-white/8 hover:border-violet-500/30"
+        )}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href={`/djs/${slug}`}
+      className="card-lift group relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/8 bg-card/80 backdrop-blur-md"
+    >
+      {body}
     </Link>
   );
 }
@@ -169,13 +248,20 @@ function DJCard({ dj, rating }: { dj: DJProfile; rating: RatingInfo | undefined 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  DJ CATALOGUE PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function DJsPage() {
+function DJsCatalogue() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [djs, setDjs] = useState<DJProfile[]>([]);
   const [ratings, setRatings] = useState<Record<string, RatingInfo>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | ArtistKind>("all");
   const [sortBy, setSortBy] = useState<string>("rating");
+  const [compareMode, setCompareMode] = useState(
+    searchParams.get("compare") === "1"
+  );
+  const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -185,7 +271,7 @@ export default function DJsPage() {
         supabase
           .from("profiles")
           .select(
-            "id, full_name, bio, avatar_url, public_slug, location, plan_type, created_at, real_first_name, real_last_name, show_real_name"
+            "id, full_name, bio, avatar_url, public_slug, location, plan_type, created_at, real_first_name, real_last_name, show_real_name, artist_kind"
           )
           .eq("role", "dj")
           .not("full_name", "is", null)
@@ -229,7 +315,11 @@ export default function DJsPage() {
         !locationFilter ||
         (dj.location || "").toLowerCase().includes(locationFilter.toLowerCase());
 
-      return matchesName && matchesLocation;
+      const matchesKind =
+        kindFilter === "all" ||
+        normalizeArtistKind(dj.artist_kind) === kindFilter;
+
+      return matchesName && matchesLocation && matchesKind;
     });
 
     const sorted = [...result];
@@ -256,7 +346,7 @@ export default function DJsPage() {
         sorted.sort((a, b) => (a.full_name || "").localeCompare(b.full_name || "", "sk"));
     }
     return sorted;
-  }, [djs, search, locationFilter, sortBy, ratings]);
+  }, [djs, search, locationFilter, kindFilter, sortBy, ratings]);
 
   return (
     <div className="relative flex min-h-svh flex-col bg-background">
@@ -268,25 +358,72 @@ export default function DJsPage() {
           <Reveal>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-zinc-300 backdrop-blur-md">
               <Users className="size-3.5 text-violet-300" />
-              Katalóg DJ-ov
+              Katalóg umelcov
               <Equalizer className="h-3.5" />
             </div>
           </Reveal>
           <Reveal delay={100}>
             <h1 className="mt-6 text-balance text-4xl font-bold tracking-tight text-white md:text-6xl">
-              Nájdi svojho <span className="text-gradient">DJ-a</span>
+              Nájdi{" "}
+              <span className="text-gradient">umelca na svoju akciu</span>
             </h1>
           </Reveal>
           <Reveal delay={200}>
             <p className="mt-4 text-sm text-zinc-500 md:text-base">
-              Prehliadaj profily aktívnych DJ-ov a rezervuj si svojho favorita.
+              Prehliadaj profily alebo pošli jednu požiadavku až 4 umelcom naraz.
             </p>
+          </Reveal>
+          <Reveal delay={260}>
+            <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-violet-500/25 bg-violet-500/10 px-5 py-4 text-left backdrop-blur-md">
+              <p className="text-sm font-semibold text-violet-100">
+                Novinka: hromadný dopyt
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-violet-200/70">
+                Vyber až 4 umelcov, pošli jednu požiadavku a porovnaj ponuky na
+                jednom mieste.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCompareMode(true);
+                  setSelected([]);
+                }}
+                className={cn(
+                  "mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-colors",
+                  compareMode
+                    ? "border-violet-400/50 bg-violet-500/25 text-white"
+                    : "border-violet-500/40 bg-violet-500/15 text-violet-100 hover:bg-violet-500/25"
+                )}
+              >
+                <Scale className="size-3.5" />
+                {compareMode
+                  ? "Režim porovnania je zapnutý — klikaj na karty"
+                  : "Zapnúť porovnanie (max 4)"}
+              </button>
+            </div>
           </Reveal>
         </div>
 
         {/* ── Search, Location & Sort filters ──────────────────────────────── */}
         <Reveal delay={300}>
-          <div className="glass mx-auto mt-10 flex max-w-3xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_-24px_oklch(0.55_0.26_295/0.4)] sm:flex-row">
+          <div className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
+            {KIND_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setKindFilter(f.value)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                  kindFilter === f.value
+                    ? "border-violet-500/40 bg-violet-500/20 text-violet-100"
+                    : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="glass mx-auto mt-4 flex max-w-3xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_-24px_oklch(0.55_0.26_295/0.4)] sm:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
               <Input
@@ -330,11 +467,11 @@ export default function DJsPage() {
           <Reveal>
             <div className="py-32 text-center">
               <p className="text-sm text-zinc-500">
-                {search || locationFilter
-                  ? "Žiadny DJ nezodpovedá tvojmu hľadaniu."
-                  : "Zatiaľ tu nie sú žiadni DJ-ovia. Buď prvý!"}
+                {search || locationFilter || kindFilter !== "all"
+                  ? "Žiadny umelec nezodpovedá tvojmu hľadaniu."
+                  : "Zatiaľ tu nie sú žiadni umelci. Buď prvý!"}
               </p>
-              {!search && !locationFilter && (
+              {!search && !locationFilter && kindFilter === "all" && (
                 <Link
                   href="/register"
                   className="mt-4 inline-flex items-center gap-1.5 text-sm text-violet-300 transition-all duration-300 hover:gap-2.5 hover:brightness-125"
@@ -350,19 +487,34 @@ export default function DJsPage() {
             <p className="mb-5 mt-8 text-xs text-zinc-600">
               {filtered.length}{" "}
               {filtered.length === 1
-                ? "DJ nájdený"
+                ? "umelec nájdený"
                 : filtered.length < 5
-                  ? "DJ-i nájdení"
-                  : "DJ-ov nájdených"}
+                  ? "umelci nájdení"
+                  : "umelcov nájdených"}
             </p>
             <div
               className={cn(
-                "grid gap-5 pb-24 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                "grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+                compareMode ? "pb-36" : "pb-24"
               )}
             >
               {filtered.map((dj, i) => (
                 <Reveal key={dj.id} delay={(i % 4) * 90} className="h-full">
-                  <DJCard dj={dj} rating={ratings[dj.id]} />
+                  <DJCard
+                    dj={dj}
+                    rating={ratings[dj.id]}
+                    compareMode={compareMode}
+                    selected={selected.includes(dj.id)}
+                    onToggle={() => {
+                      setSelected((prev) => {
+                        if (prev.includes(dj.id)) {
+                          return prev.filter((id) => id !== dj.id);
+                        }
+                        if (prev.length >= 4) return prev;
+                        return [...prev, dj.id];
+                      });
+                    }}
+                  />
                 </Reveal>
               ))}
             </div>
@@ -370,7 +522,49 @@ export default function DJsPage() {
         )}
       </main>
 
-      <SiteFooter caption="Katalóg DJ-ov" />
+      {compareMode && selected.length > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0A0A]/95 px-4 py-4 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row">
+            <div>
+              <p className="text-sm text-zinc-300">
+                Vybraní umelci:{" "}
+                <span className="font-semibold text-white">
+                  {selected.length}/4
+                </span>
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Pošli jednu požiadavku všetkým — porovnáš ich ponuky a vyberieš.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                router.push(`/inquiry/new?djs=${selected.join(",")}`)
+              }
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_oklch(0.6_0.26_295/0.8)]"
+            >
+              Požiadať o ponuky
+              <ArrowRight className="size-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <SiteFooter caption="Katalóg umelcov" />
     </div>
+  );
+}
+
+export default function DJsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-svh items-center justify-center bg-background text-zinc-500">
+          <Loader2 className="size-5 animate-spin" />
+        </div>
+      }
+    >
+      <DJsCatalogue />
+    </Suspense>
   );
 }

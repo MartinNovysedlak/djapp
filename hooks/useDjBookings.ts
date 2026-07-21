@@ -41,10 +41,14 @@ export type CachedBooking = {
     | null;
   price: number | null;
   base_price: number | null;
+  bulk_inquiry_id: string | null;
+  client_budget: number | null;
+  dj_offer_price: number | null;
+  dj_offer_message: string | null;
 };
 
 const SELECT =
-  "id, client_name, client_email, client_phone, event_type, event_date, end_date, start_time, end_time, event_location, message, created_at, status, rejection_reason, type, title, client_id, all_day, pdf_delivery_status, invoice_delivery_status, price, base_price";
+  "id, client_name, client_email, client_phone, event_type, event_date, end_date, start_time, end_time, event_location, message, created_at, status, rejection_reason, type, title, client_id, all_day, pdf_delivery_status, invoice_delivery_status, price, base_price, bulk_inquiry_id, client_budget, dj_offer_price, dj_offer_message";
 
 /**
  * Shared bookings loader for dashboard pages — serves cached rows instantly,

@@ -7,6 +7,7 @@ import { sendAppEmail, getAdminEmail, getSiteUrl } from "@/lib/email/send-app-em
 import {
   bookingRequestEmailHtml,
   bookingStatusEmailHtml,
+  bookingChatEmailHtml,
   contactAdminEmailHtml,
   contractDocumentEmailHtml,
   contractFilledEmailHtml,
@@ -127,7 +128,7 @@ export async function sendContractDocumentEmail(input: {
   djEmail?: string | null;
   needsClientFill?: boolean;
 }): Promise<{ ok: boolean; mode: "stub" | "resend"; error?: string }> {
-  const djName = input.djName?.trim() || "DJ";
+  const djName = input.djName?.trim() || "Umelec";
   const docName = input.documentName?.trim() || "zmluvu / faktúru";
   const docsUrl =
     input.documentsUrl || `${getSiteUrl()}/client-dashboard/documents`;
@@ -232,7 +233,7 @@ export async function sendGoogleReviewRequestEmail(input: {
 }): Promise<{ ok: boolean; mode: "stub" | "resend"; error?: string }> {
   const label = formatEventType(input.eventType);
   const prettyDate = formatEventDate(input.eventDate);
-  const djName = input.djName?.trim() || "DJ";
+  const djName = input.djName?.trim() || "Umelec";
 
   return sendAppEmail({
     to: input.clientEmail,
@@ -244,6 +245,34 @@ export async function sendGoogleReviewRequestEmail(input: {
       eventTypeLabel: label,
       eventDateLabel: prettyDate,
       reviewUrl: input.reviewUrl,
+    }),
+  });
+}
+
+/** Notify peer about a new in-app chat message (debounced upstream). */
+export async function sendBookingChatEmail(input: {
+  to: string;
+  recipientName?: string | null;
+  senderName?: string | null;
+  preview: string;
+  chatUrl: string;
+  eventType: string;
+  eventDate: string;
+}): Promise<{ ok: boolean; mode: "stub" | "resend"; error?: string }> {
+  const label = formatEventType(input.eventType);
+  const prettyDate = formatEventDate(input.eventDate);
+  const sender = input.senderName?.trim() || "Účastník";
+
+  return sendAppEmail({
+    to: input.to,
+    subject: `Nová správa od ${sender} — ${label}`,
+    html: bookingChatEmailHtml({
+      recipientName: input.recipientName,
+      senderName: sender,
+      preview: input.preview,
+      chatUrl: input.chatUrl,
+      eventTypeLabel: label,
+      eventDateLabel: prettyDate,
     }),
   });
 }

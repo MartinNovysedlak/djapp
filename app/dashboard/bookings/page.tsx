@@ -12,6 +12,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
   FileText,
   Pencil,
   Receipt,
@@ -48,7 +49,6 @@ import { EventTimeline } from "@/components/timeline/EventTimeline";
 import { BookingExtras } from "@/components/extras/BookingExtras";
 import { LiveRequestQr } from "@/components/live/LiveRequestQr";
 import {
-  acceptBooking,
   rejectBooking,
   updateBookingDetails,
   updateBookingPdfDeliveryStatus,
@@ -71,6 +71,8 @@ import {
 } from "@/app/actions/invoices";
 import { EVENT_TYPES, formatEventTypeLabel } from "@/lib/event-types";
 import { useDjBookings, type CachedBooking } from "@/hooks/useDjBookings";
+import { DjOfferForm } from "@/components/bulk/BulkOfferForm";
+import { BookingChat } from "@/components/chat/BookingChat";
 
 type BookingStatus = "pending" | "accepted" | "rejected";
 
@@ -93,6 +95,10 @@ type Booking = {
   invoice_delivery_status: PdfDeliveryStatus | null;
   price: number | null;
   base_price: number | null;
+  bulk_inquiry_id: string | null;
+  client_budget: number | null;
+  dj_offer_price: number | null;
+  dj_offer_message: string | null;
 };
 
 function toBooking(row: CachedBooking): Booking {
@@ -115,6 +121,12 @@ function toBooking(row: CachedBooking): Booking {
     invoice_delivery_status: row.invoice_delivery_status ?? null,
     price: row.price == null ? null : Number(row.price),
     base_price: row.base_price == null ? null : Number(row.base_price),
+    bulk_inquiry_id: row.bulk_inquiry_id ?? null,
+    client_budget:
+      row.client_budget == null ? null : Number(row.client_budget),
+    dj_offer_price:
+      row.dj_offer_price == null ? null : Number(row.dj_offer_price),
+    dj_offer_message: row.dj_offer_message ?? null,
   };
 }
 
@@ -396,6 +408,7 @@ export default function BookingsPage() {
   const [rejectTarget, setRejectTarget] = useState<Booking | null>(null);
   const [editTarget, setEditTarget] = useState<Booking | null>(null);
   const [tab, setTab] = useState("new");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [contractByBooking, setContractByBooking] = useState<
     Record<string, BookingContractSummary>
   >({});
@@ -506,22 +519,6 @@ export default function BookingsPage() {
     } catch {
       showToast(url, "info");
     }
-  };
-
-  const handleAccept = async (booking: Booking) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === booking.id ? { ...b, status: "accepted" } : b))
-    );
-    const result = await acceptBooking(booking.id);
-    if (!result.ok) {
-      showToast(result.error ?? "Nepodarilo sa prijať rezerváciu.", "error");
-      setBookings((prev) =>
-        prev.map((b) => (b.id === booking.id ? { ...b, status: "pending" } : b))
-      );
-      return;
-    }
-    showToast("Rezervácia prijatá — klient bol upozornený.", "success");
-    setTab("confirmed");
   };
 
   const handleReject = async (reason: string) => {
@@ -751,7 +748,7 @@ export default function BookingsPage() {
               Rezervácie
             </h1>
             <p className="mt-1.5 text-sm text-zinc-500">
-              Veliteľské centrum — spravuj dopyty, potvrdené akcie a históriu.
+              Nové dopyty, potvrdené akcie a história na jednom mieste.
             </p>
           </div>
           <Button
@@ -768,7 +765,13 @@ export default function BookingsPage() {
       </Reveal>
 
       <Reveal delay={80}>
-        <Tabs value={tab} onValueChange={(v) => setTab(v ?? "new")}>
+        <Tabs
+          value={tab}
+          onValueChange={(v) => {
+            setTab(v ?? "new");
+            setExpandedId(null);
+          }}
+        >
           <TabsList className="mb-6 h-auto w-full flex-wrap gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1.5 sm:w-auto">
             <TabsTrigger
               value="new"
@@ -800,113 +803,131 @@ export default function BookingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="new" className="space-y-4 outline-none">
+          <TabsContent value="new" className="outline-none">
             {pending.length === 0 ? (
               <EmptyState
                 title="Žiadne nové dopyty"
                 text="Keď ti klient pošle rezerváciu, objaví sa tu."
               />
             ) : (
-              pending.map((b) => (
-                <BookingCard
-                  key={b.id}
-                  booking={b}
-                  contract={contractByBooking[b.id]}
-                  invoice={invoiceByBooking[b.id]}
-                  statusBusy={statusBusyBookingId === b.id}
-                  downloading={downloadingBookingId === b.id}
-                  downloadingInvoice={downloadingInvoiceBookingId === b.id}
-                  onAccept={() => handleAccept(b)}
-                  onReject={() => setRejectTarget(b)}
-                  onEdit={() => setEditTarget(b)}
-                  onOpenPdf={() => handleOpenPdf(b)}
-                  onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
-                  onChangeContractStatus={(workflow) =>
-                    handleChangeContractStatus(b, workflow)
-                  }
-                  onChangeInvoiceStatus={(workflow) =>
-                    handleChangeInvoiceStatus(b, workflow)
-                  }
-                  onChangePdfDeliveryStatus={(status) =>
-                    handleChangePdfDeliveryStatus(b, status)
-                  }
-                  onChangeInvoiceDeliveryStatus={(status) =>
-                    handleChangeInvoiceDeliveryStatus(b, status)
-                  }
-                />
-              ))
+              <div className="overflow-hidden rounded-3xl border border-white/10 bg-card/60 backdrop-blur-md">
+                {pending.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    expanded={expandedId === b.id}
+                    onToggle={() =>
+                      setExpandedId((id) => (id === b.id ? null : b.id))
+                    }
+                    contract={contractByBooking[b.id]}
+                    invoice={invoiceByBooking[b.id]}
+                    statusBusy={statusBusyBookingId === b.id}
+                    downloading={downloadingBookingId === b.id}
+                    downloadingInvoice={downloadingInvoiceBookingId === b.id}
+                    onReject={() => setRejectTarget(b)}
+                    onOfferDone={() => void refreshBookings()}
+                    onEdit={() => setEditTarget(b)}
+                    onOpenPdf={() => handleOpenPdf(b)}
+                    onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
+                    onChangeContractStatus={(workflow) =>
+                      handleChangeContractStatus(b, workflow)
+                    }
+                    onChangeInvoiceStatus={(workflow) =>
+                      handleChangeInvoiceStatus(b, workflow)
+                    }
+                    onChangePdfDeliveryStatus={(status) =>
+                      handleChangePdfDeliveryStatus(b, status)
+                    }
+                    onChangeInvoiceDeliveryStatus={(status) =>
+                      handleChangeInvoiceDeliveryStatus(b, status)
+                    }
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="confirmed" className="space-y-4 outline-none">
+          <TabsContent value="confirmed" className="outline-none">
             {confirmed.length === 0 ? (
               <EmptyState
                 title="Žiadne potvrdené akcie"
                 text="Prijaté rezervácie s budúcim termínom uvidíš tu."
               />
             ) : (
-              confirmed.map((b) => (
-                <BookingCard
-                  key={b.id}
-                  booking={b}
-                  contract={contractByBooking[b.id]}
-                  invoice={invoiceByBooking[b.id]}
-                  statusBusy={statusBusyBookingId === b.id}
-                  downloading={downloadingBookingId === b.id}
-                  downloadingInvoice={downloadingInvoiceBookingId === b.id}
-                  onEdit={() => setEditTarget(b)}
-                  onOpenPdf={() => handleOpenPdf(b)}
-                  onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
-                  onChangeContractStatus={(workflow) =>
-                    handleChangeContractStatus(b, workflow)
-                  }
-                  onChangeInvoiceStatus={(workflow) =>
-                    handleChangeInvoiceStatus(b, workflow)
-                  }
-                  onChangePdfDeliveryStatus={(status) =>
-                    handleChangePdfDeliveryStatus(b, status)
-                  }
-                  onChangeInvoiceDeliveryStatus={(status) =>
-                    handleChangeInvoiceDeliveryStatus(b, status)
-                  }
-                />
-              ))
+              <div className="overflow-hidden rounded-3xl border border-white/10 bg-card/60 backdrop-blur-md">
+                {confirmed.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    expanded={expandedId === b.id}
+                    onToggle={() =>
+                      setExpandedId((id) => (id === b.id ? null : b.id))
+                    }
+                    contract={contractByBooking[b.id]}
+                    invoice={invoiceByBooking[b.id]}
+                    statusBusy={statusBusyBookingId === b.id}
+                    downloading={downloadingBookingId === b.id}
+                    downloadingInvoice={downloadingInvoiceBookingId === b.id}
+                    onEdit={() => setEditTarget(b)}
+                    onOpenPdf={() => handleOpenPdf(b)}
+                    onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
+                    onChangeContractStatus={(workflow) =>
+                      handleChangeContractStatus(b, workflow)
+                    }
+                    onChangeInvoiceStatus={(workflow) =>
+                      handleChangeInvoiceStatus(b, workflow)
+                    }
+                    onChangePdfDeliveryStatus={(status) =>
+                      handleChangePdfDeliveryStatus(b, status)
+                    }
+                    onChangeInvoiceDeliveryStatus={(status) =>
+                      handleChangeInvoiceDeliveryStatus(b, status)
+                    }
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-4 outline-none">
+          <TabsContent value="history" className="outline-none">
             {history.length === 0 ? (
               <EmptyState
                 title="História je prázdna"
                 text="Ukončené a odmietnuté rezervácie sa zobrazia tu."
               />
             ) : (
-              history.map((b) => (
-                <BookingCard
-                  key={b.id}
-                  booking={b}
-                  contract={contractByBooking[b.id]}
-                  invoice={invoiceByBooking[b.id]}
-                  statusBusy={statusBusyBookingId === b.id}
-                  downloading={downloadingBookingId === b.id}
-                  downloadingInvoice={downloadingInvoiceBookingId === b.id}
-                  onEdit={() => setEditTarget(b)}
-                  onOpenPdf={() => handleOpenPdf(b)}
-                  onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
-                  onChangeContractStatus={(workflow) =>
-                    handleChangeContractStatus(b, workflow)
-                  }
-                  onChangeInvoiceStatus={(workflow) =>
-                    handleChangeInvoiceStatus(b, workflow)
-                  }
-                  onChangePdfDeliveryStatus={(status) =>
-                    handleChangePdfDeliveryStatus(b, status)
-                  }
-                  onChangeInvoiceDeliveryStatus={(status) =>
-                    handleChangeInvoiceDeliveryStatus(b, status)
-                  }
-                />
-              ))
+              <div className="overflow-hidden rounded-3xl border border-white/10 bg-card/60 backdrop-blur-md">
+                {history.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    expanded={expandedId === b.id}
+                    onToggle={() =>
+                      setExpandedId((id) => (id === b.id ? null : b.id))
+                    }
+                    contract={contractByBooking[b.id]}
+                    invoice={invoiceByBooking[b.id]}
+                    statusBusy={statusBusyBookingId === b.id}
+                    downloading={downloadingBookingId === b.id}
+                    downloadingInvoice={downloadingInvoiceBookingId === b.id}
+                    onEdit={() => setEditTarget(b)}
+                    onOpenPdf={() => handleOpenPdf(b)}
+                    onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
+                    onChangeContractStatus={(workflow) =>
+                      handleChangeContractStatus(b, workflow)
+                    }
+                    onChangeInvoiceStatus={(workflow) =>
+                      handleChangeInvoiceStatus(b, workflow)
+                    }
+                    onChangePdfDeliveryStatus={(status) =>
+                      handleChangePdfDeliveryStatus(b, status)
+                    }
+                    onChangeInvoiceDeliveryStatus={(status) =>
+                      handleChangeInvoiceDeliveryStatus(b, status)
+                    }
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>
@@ -947,7 +968,13 @@ function EmptyState({ title, text }: { title: string; text: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: BookingStatus }) {
+function StatusBadge({
+  status,
+  hasOffer,
+}: {
+  status: BookingStatus;
+  hasOffer?: boolean;
+}) {
   if (status === "accepted") {
     return (
       <Badge className="border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-200">
@@ -964,6 +991,14 @@ function StatusBadge({ status }: { status: BookingStatus }) {
       </Badge>
     );
   }
+  if (hasOffer) {
+    return (
+      <Badge className="border-violet-500/30 bg-violet-500/15 text-violet-200">
+        <Clock className="mr-1 size-3" />
+        Čaká na klienta
+      </Badge>
+    );
+  }
   return (
     <Badge className="border-violet-500/30 bg-violet-500/15 text-violet-200">
       <Clock className="mr-1 size-3" />
@@ -974,13 +1009,15 @@ function StatusBadge({ status }: { status: BookingStatus }) {
 
 function BookingCard({
   booking,
+  expanded,
+  onToggle,
   contract,
   invoice,
   statusBusy,
   downloading,
   downloadingInvoice,
-  onAccept,
   onReject,
+  onOfferDone,
   onEdit,
   onOpenPdf,
   onOpenInvoicePdf,
@@ -990,13 +1027,15 @@ function BookingCard({
   onChangeInvoiceDeliveryStatus,
 }: {
   booking: Booking;
+  expanded: boolean;
+  onToggle: () => void;
   contract?: BookingContractSummary;
   invoice?: BookingInvoiceSummary;
   statusBusy?: boolean;
   downloading?: boolean;
   downloadingInvoice?: boolean;
-  onAccept?: () => void;
   onReject?: () => void;
+  onOfferDone?: () => void;
   onEdit?: () => void;
   onOpenPdf?: () => void;
   onOpenInvoicePdf?: () => void;
@@ -1022,6 +1061,7 @@ function BookingCard({
   const canViewInvoicePdf = invoicePdfAvailable(invoice);
   const [statusOpen, setStatusOpen] = useState(false);
   const [invoiceStatusOpen, setInvoiceStatusOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (!statusOpen && !invoiceStatusOpen) return;
@@ -1039,108 +1079,206 @@ function BookingCard({
   return (
     <article
       className={cn(
-        "card-lift relative overflow-visible rounded-3xl border border-white/10 bg-card/70 p-5 backdrop-blur-md md:p-6",
+        "relative overflow-visible border-b border-white/8 last:border-b-0",
+        expanded && "bg-white/[0.025]",
         statusOpen || invoiceStatusOpen ? "z-40" : "z-0"
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-semibold text-white">
-              {booking.client_name}
-            </h3>
-            <StatusBadge status={booking.status} />
+      {/* Compact summary row */}
+      <div className="flex items-center gap-2 px-3 py-3 md:gap-3 md:px-4 md:py-3.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/15 text-sm font-bold text-violet-100">
+            {booking.client_name.charAt(0).toUpperCase()}
           </div>
-          <p className="mt-1 text-sm text-violet-200/90">
-            {formatEventTypeLabel(booking.event_type)}
-            <span className="text-zinc-600"> · </span>
-            {formatDateRange(booking.event_date, booking.end_date)}
-          </p>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-sm font-semibold text-white md:text-[0.95rem]">
+                {booking.client_name}
+              </p>
+              <StatusBadge
+                status={booking.status}
+                hasOffer={
+                  booking.status === "pending" && booking.dj_offer_price != null
+                }
+              />
+              {booking.bulk_inquiry_id ? (
+                <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
+                  Skupina
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 truncate text-xs text-zinc-500">
+              {formatEventTypeLabel(booking.event_type)}
+              <span className="text-zinc-600"> · </span>
+              {formatDateRange(booking.event_date, booking.end_date)}
+              {booking.event_location ? (
+                <>
+                  <span className="text-zinc-600"> · </span>
+                  {booking.event_location}
+                </>
+              ) : null}
+            </p>
+          </div>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-zinc-500 transition-transform duration-200",
+              expanded && "rotate-180 text-violet-300"
+            )}
+          />
+        </button>
+
+        {booking.status === "pending" && onReject ? (
+          <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+            {booking.dj_offer_price != null ? (
+              <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-200">
+                Ponuka {booking.dj_offer_price.toLocaleString("sk-SK")} €
+              </span>
+            ) : (
+              <span className="rounded-full border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[10px] font-medium text-violet-200">
+                Čaká na tvoju ponuku
+              </span>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onReject}
+              className="h-8 gap-1 rounded-full border-red-500/30 px-3 text-red-300 hover:bg-red-500/10"
+            >
+              <XCircle className="size-3.5" />
+              Odmietnuť
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {expanded ? (
+        <div className="space-y-4 border-t border-white/8 px-4 pb-5 pt-4 md:px-5">
+      {/* Meta chips */}
+      <div className="flex flex-wrap gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-200">
+          {formatEventTypeLabel(booking.event_type)}
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-200">
+          <CalendarDays className="size-3.5 text-violet-300" />
+          {formatDateRange(booking.event_date, booking.end_date)}
+        </span>
+        {(booking.start_time || booking.end_time) && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-200">
+            <Clock className="size-3.5 text-violet-300" />
+            {booking.start_time ? timeInputValue(booking.start_time) : "—"}
+            {" – "}
+            {booking.end_time ? timeInputValue(booking.end_time) : "—"}
+          </span>
+        )}
+        {booking.event_location ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
+            <MapPin className="size-3.5 text-violet-400/70" />
+            {booking.event_location}
+          </span>
+        ) : null}
+      </div>
+
+      {(booking.status === "pending" || booking.status === "accepted") && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setChatOpen((v) => !v)}
+            className={cn(
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors",
+              chatOpen
+                ? "border-violet-400/40 bg-violet-500/25 text-violet-100"
+                : "border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+            )}
+          >
+            <MessageCircle className="size-3.5" />
+            {chatOpen ? "Skryť chat" : "Chat"}
+          </button>
+          <p className="text-xs text-zinc-500">
             Prijaté {formatDateTime(booking.created_at)}
           </p>
         </div>
+      )}
+
+      {/* Contact */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-white/8 bg-white/[0.025] px-3.5 py-2.5 text-sm">
+        <Mail className="size-3.5 shrink-0 text-zinc-500" />
+        <a
+          href={`mailto:${booking.client_email}`}
+          className="truncate text-zinc-200 transition-colors hover:text-violet-300"
+        >
+          {booking.client_email}
+        </a>
+        {booking.client_phone ? (
+          <a
+            href={`tel:${booking.client_phone}`}
+            className="text-zinc-400 transition-colors hover:text-violet-300"
+          >
+            {booking.client_phone}
+          </a>
+        ) : null}
       </div>
 
-      <dl className="mt-4 grid gap-x-6 gap-y-2.5 border-t border-white/5 pt-4 text-sm sm:grid-cols-2">
-        {(booking.start_time || booking.end_time) && (
-          <div className="flex items-start gap-2.5">
-            <Clock className="mt-0.5 size-3.5 shrink-0 text-zinc-500" />
-            <div>
-              <dt className="text-[11px] uppercase tracking-wide text-zinc-500">
-                Čas
-              </dt>
-              <dd className="text-zinc-200">
-                {booking.start_time
-                  ? `od ${timeInputValue(booking.start_time)}`
-                  : null}
-                {booking.start_time && booking.end_time ? " · " : null}
-                {booking.end_time
-                  ? `do ${timeInputValue(booking.end_time)}`
-                  : null}
-              </dd>
-            </div>
-          </div>
-        )}
-        {booking.event_location && (
-          <div className="flex items-start gap-2.5">
-            <MapPin className="mt-0.5 size-3.5 shrink-0 text-zinc-500" />
-            <div>
-              <dt className="text-[11px] uppercase tracking-wide text-zinc-500">
-                Miesto
-              </dt>
-              <dd className="text-zinc-200">{booking.event_location}</dd>
-            </div>
-          </div>
-        )}
-        <div className="flex items-start gap-2.5 sm:col-span-2">
-          <Mail className="mt-0.5 size-3.5 shrink-0 text-zinc-500" />
-          <div className="min-w-0">
-            <dt className="text-[11px] uppercase tracking-wide text-zinc-500">
-              Kontakt
-            </dt>
-            <dd className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-              <a
-                href={`mailto:${booking.client_email}`}
-                className="truncate text-zinc-200 transition-colors hover:text-violet-300"
-              >
-                {booking.client_email}
-              </a>
-              {booking.client_phone ? (
-                <a
-                  href={`tel:${booking.client_phone}`}
-                  className="text-zinc-400 transition-colors hover:text-violet-300"
-                >
-                  {booking.client_phone}
-                </a>
-              ) : null}
-            </dd>
-          </div>
+      {chatOpen &&
+      (booking.status === "pending" || booking.status === "accepted") ? (
+        <div>
+          <BookingChat bookingId={booking.id} compact />
         </div>
-      </dl>
+      ) : null}
 
-      {booking.message && (
-        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-          {booking.message}
-        </p>
-      )}
+      {booking.message || booking.client_budget != null ? (
+        <div className="rounded-2xl border border-white/8 bg-black/20 px-3.5 py-2.5">
+          {booking.message ? (
+            <>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                Predstava / popis od klienta
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                {booking.message}
+              </p>
+            </>
+          ) : null}
+          {booking.client_budget != null ? (
+            <div
+              className={
+                booking.message
+                  ? "mt-2 flex items-baseline justify-between gap-4"
+                  : "flex items-baseline justify-between gap-4"
+              }
+            >
+              <span className="text-xs text-zinc-500">Rozpočet cca</span>
+              <span className="text-sm font-semibold tabular-nums text-zinc-200">
+                {booking.client_budget.toLocaleString("sk-SK")} €
+              </span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {booking.status === "rejected" && booking.rejection_reason && (
-        <div className="mt-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] px-3 py-2.5 text-xs text-red-300/90">
+        <div className="rounded-xl border border-red-500/15 bg-red-500/[0.04] px-3 py-2.5 text-xs text-red-300/90">
           <span className="font-medium text-red-300">Dôvod: </span>
           {booking.rejection_reason}
         </div>
       )}
 
-      {booking.status === "pending" && onAccept && onReject && (
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-white/5 pt-4">
-          <Button
-            type="button"
-            onClick={onAccept}
-            className="gap-1.5 rounded-full"
-          >
-            <Check className="size-4" />
-            Prijať
-          </Button>
+      {booking.status === "pending" ? (
+        <DjOfferForm
+          bookingId={booking.id}
+          mode={booking.bulk_inquiry_id ? "bulk" : "single"}
+          clientBudget={booking.client_budget}
+          existingOfferPrice={booking.dj_offer_price}
+          existingOfferMessage={booking.dj_offer_message}
+          onDone={onOfferDone}
+        />
+      ) : null}
+
+      {booking.status === "pending" && onReject && (
+        <div className="flex flex-wrap gap-2 border-t border-white/8 pt-4">
           <Button
             type="button"
             variant="outline"
@@ -1164,20 +1302,34 @@ function BookingCard({
         </div>
       )}
 
+      {booking.status === "pending" &&
+      booking.dj_offer_price != null &&
+      !booking.bulk_inquiry_id ? (
+        <p className="text-xs text-zinc-500">
+          Ponuka {booking.dj_offer_price.toLocaleString("sk-SK")} € čaká na
+          potvrdenie klienta.
+        </p>
+      ) : null}
+
       {booking.status === "accepted" && (
-        <div className="mt-5 space-y-2 border-t border-white/5 pt-4">
-          {onEdit ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onEdit}
-              className="mb-1 gap-1.5 rounded-full"
-            >
-              <Pencil className="size-3.5" />
-              Upraviť rezerváciu
-            </Button>
-          ) : null}
+        <div className="mt-5 space-y-3 border-t border-white/8 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              Dokumenty
+            </p>
+            {onEdit ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                className="h-8 gap-1.5 rounded-full"
+              >
+                <Pencil className="size-3.5" />
+                Upraviť
+              </Button>
+            ) : null}
+          </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
             {/* Contract status cell */}
@@ -1442,44 +1594,36 @@ function BookingCard({
       )}
 
       {booking.status === "accepted" ? (
-        <div className="mt-4 space-y-3">
-          {(booking.price != null || booking.base_price != null) && (
-            <p className="text-xs text-zinc-500">
-              Celková suma:{" "}
-              <span className="font-medium text-white">
-                {Number(booking.price ?? booking.base_price).toLocaleString(
-                  "sk-SK",
-                  { maximumFractionDigits: 2 }
-                )}{" "}
+        <div className="mt-5 space-y-3 border-t border-white/8 pt-4">
+          {(booking.price != null ||
+            booking.dj_offer_price != null ||
+            booking.base_price != null) && (
+            <div className="flex items-baseline justify-between gap-6 rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-3">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                Dohodnutá cena
+              </p>
+              <p className="text-xl font-semibold tabular-nums text-white">
+                {Number(
+                  booking.price ?? booking.dj_offer_price ?? booking.base_price
+                ).toLocaleString("sk-SK", { maximumFractionDigits: 2 })}{" "}
                 €
-              </span>
-            </p>
+              </p>
+            </div>
           )}
-          <LiveRequestQr
-            bookingId={booking.id}
-            mode="dj"
-            defaultOpen={false}
-          />
-          <BookingExtras
-            bookingId={booking.id}
-            mode="dj"
-            defaultOpen={false}
-          />
-          <MusicPlanner
-            bookingId={booking.id}
-            mode="dj"
-            defaultOpen={false}
-          />
-          <EventTimeline
-            bookingId={booking.id}
-            mode="dj"
-            defaultOpen={false}
-          />
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              Príprava akcie
+            </p>
+          </div>
+          <LiveRequestQr bookingId={booking.id} mode="dj" />
+          <BookingExtras bookingId={booking.id} mode="dj" />
+          <MusicPlanner bookingId={booking.id} mode="dj" />
+          <EventTimeline bookingId={booking.id} mode="dj" />
         </div>
       ) : null}
 
       {booking.status === "rejected" && onEdit ? (
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-white/5 pt-4">
+        <div className="flex flex-wrap gap-2 border-t border-white/8 pt-4">
           <Button
             type="button"
             variant="outline"
@@ -1490,6 +1634,8 @@ function BookingCard({
             <Pencil className="size-3.5" />
             Upraviť údaje
           </Button>
+        </div>
+      ) : null}
         </div>
       ) : null}
     </article>

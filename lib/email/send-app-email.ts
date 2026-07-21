@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { BRAND } from "@/lib/brand";
 
 export type SendAppEmailInput = {
   to: string | string[];
@@ -91,9 +92,17 @@ export function getAdminEmail(): string | null {
   );
 }
 
+/** Canonical public site URL for QR links, emails, etc. Never use request host. */
 export function getSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(
-    /\/$/,
-    ""
-  );
+  const raw = (process.env.NEXT_PUBLIC_SITE_URL || "").trim().replace(/\/$/, "");
+  const isLocalhost =
+    !raw ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw);
+
+  // Production must never emit localhost (e.g. mis-set env on Vercel).
+  if (process.env.NODE_ENV === "production" && isLocalhost) {
+    return BRAND.url.replace(/\/$/, "");
+  }
+
+  return (raw || BRAND.url).replace(/\/$/, "");
 }

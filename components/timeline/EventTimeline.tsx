@@ -102,18 +102,6 @@ function draftStorageKey(bookingId: string) {
   return `timeline-draft:${bookingId}`;
 }
 
-function readPersistedOpen(bookingId: string, fallback: boolean) {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = sessionStorage.getItem(openStorageKey(bookingId));
-    if (raw === "1") return true;
-    if (raw === "0") return false;
-  } catch {
-    /* ignore */
-  }
-  return fallback;
-}
-
 function readPersistedDraft(bookingId: string): {
   form: FormState;
   editingId: string | null;
@@ -175,9 +163,7 @@ export function EventTimeline({
 }: EventTimelineProps) {
   const { showToast } = useToast();
   const draft = useMemo(() => readPersistedDraft(bookingId), [bookingId]);
-  const [open, setOpen] = useState(() =>
-    mode === "dj" ? defaultOpen : readPersistedOpen(bookingId, defaultOpen)
-  );
+  const [open, setOpen] = useState(defaultOpen);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [items, setItems] = useState<TimelineItem[]>([]);

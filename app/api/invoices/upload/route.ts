@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     if (profile?.role === "client") {
       return NextResponse.json(
-        { error: "Len DJ účty môžu spravovať faktúry." },
+        { error: "Len umelecké účty môžu spravovať faktúry." },
         { status: 403 }
       );
     }

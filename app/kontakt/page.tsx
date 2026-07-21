@@ -35,7 +35,7 @@ export default function KontaktPage() {
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-zinc-500 md:text-base">
               BookTheVibe nie je anonymný web — je to platforma s jasnou víziou:
-              menej chaosu pre DJ-ov, viac istoty pre klientov.
+              menej chaosu pre umelcov, viac istoty pre klientov.
             </p>
           </div>
         </Reveal>
@@ -59,7 +59,7 @@ export default function KontaktPage() {
                 <div className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-300">
                   <Headphones className="size-5" />
                 </div>
-                <h3 className="text-base font-semibold text-white">Pre DJ-ov</h3>
+                <h3 className="text-base font-semibold text-white">Pre umelcov</h3>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-400">
                   Nástroj, ktorý ťa zbaví chaosu. Sústreď sa na hudbu, my riešime
                   manažment — rezervácie, kalendár a komunikáciu s klientmi na
@@ -75,7 +75,7 @@ export default function KontaktPage() {
                 </div>
                 <h3 className="text-base font-semibold text-white">Pre klientov</h3>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Koniec stresu pri hľadaní DJ-a. Transparentnosť, reálne
+                  Koniec stresu pri hľadaní umelca. Transparentnosť, reálne
                   recenzie a rýchla rezervácia — vyber si podľa hodnotení a
                   pošli dopyt za pár klikov.
                 </p>
@@ -120,7 +120,7 @@ export default function KontaktPage() {
                   <Link
                     href="/djs"
                     className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition-all hover:border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300"
-                    aria-label="Katalóg DJ-ov"
+                    aria-label="Katalóg umelcov"
                   >
                     <Disc3 className="size-4" />
                   </Link>

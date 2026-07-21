@@ -13,6 +13,7 @@ export type UpdateDjProfileInput = {
   realLastName?: string;
   phone?: string;
   showRealName: boolean;
+  artistKind?: "dj" | "band" | "dj_band";
   bio: string;
   location: string | null;
   googleMapsUrl?: string;
@@ -54,8 +55,13 @@ export async function updateDjProfile(
       .maybeSingle();
 
     if (profile?.role === "client") {
-      return { ok: false, error: "Len DJ účty môžu upravovať tento profil." };
+      return { ok: false, error: "Len účty umelcov môžu upravovať tento profil." };
     }
+
+    const artistKind =
+      input.artistKind === "band" || input.artistKind === "dj_band"
+        ? input.artistKind
+        : "dj";
 
     const { error } = await supabase.from("profiles").upsert({
       id: authData.user.id,
@@ -64,6 +70,7 @@ export async function updateDjProfile(
       real_last_name: input.realLastName?.trim() || null,
       phone: input.phone?.trim() || null,
       show_real_name: input.showRealName,
+      artist_kind: artistKind,
       bio: input.bio,
       location: input.location,
       google_maps_url: googleMapsUrl || null,

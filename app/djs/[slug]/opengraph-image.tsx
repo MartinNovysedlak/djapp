@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { createClient } from "@/utils/supabase/server";
 import { getDjStageName } from "@/lib/dj-display";
 
-export const alt = "BookTheVibe — profil DJ-a";
+export const alt = "BookTheVibe — profil umelca";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -25,7 +25,7 @@ export default async function Image({ params }: ImageProps) {
     .eq("public_slug", slug)
     .maybeSingle();
 
-  const djName = getDjStageName(dj ?? { full_name: null }, "DJ");
+  const djName = getDjStageName(dj ?? { full_name: null }, "Umelec");
   const location = dj?.location?.trim() || null;
 
   let ratingAvg = 0;
@@ -278,7 +278,7 @@ export default async function Image({ params }: ImageProps) {
             color: "rgba(113,113,122,1)",
           }}
         >
-          <span>Event DJ · Recenzie · Rezervácie</span>
+          <span>Umelec · Recenzie · Rezervácie</span>
           <span>djs/{slug}</span>
         </div>
       </div>

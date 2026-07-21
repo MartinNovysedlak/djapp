@@ -27,6 +27,7 @@ export type DashboardProfile = {
   google_maps_url: string | null;
   plan_type: string;
   role: "dj" | "client";
+  artist_kind?: "dj" | "band" | "dj_band" | null;
   social_links: Record<string, string> | null;
   gallery_urls: string[] | null;
   video_urls: string[] | null;

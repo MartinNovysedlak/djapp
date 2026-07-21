@@ -24,5 +24,12 @@ export function formatEventTypeLabel(
   fallback = "Akcia"
 ) {
   if (!eventType) return fallback;
-  return EVENT_TYPE_LABELS[eventType] ?? eventType;
+  const key = eventType.trim();
+  if (EVENT_TYPE_LABELS[key]) return EVENT_TYPE_LABELS[key];
+  // Humanize unknown slugs: rodinna_akcia → Rodinna akcia
+  return key
+    .replace(/[_:]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\w/, (c) => c.toUpperCase());
 }

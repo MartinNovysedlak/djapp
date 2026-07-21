@@ -1,8 +1,9 @@
 import { formatEventTypeLabel } from "@/lib/event-types";
-import type {
-  InvoiceBookingData,
-  InvoiceComputedData,
-} from "./types";
+import {
+  formatBookingPrice,
+  getEffectiveBookingPrice,
+} from "@/lib/booking-price";
+import type { InvoiceBookingData, InvoiceComputedData } from "./types";
 
 export type InvoiceFieldOption = {
   field: string;
@@ -30,7 +31,6 @@ export const INVOICE_SOURCE_FIELDS: InvoiceFieldGroup[] = [
     options: [
       { field: "client_name", label: "Meno / názov odberateľa" },
       { field: "client_email", label: "E-mail odberateľa" },
-      // Telefón nie je auto — ide ako client_input (voliteľné), nie gap pre DJ-a.
     ],
   },
   {
@@ -39,6 +39,7 @@ export const INVOICE_SOURCE_FIELDS: InvoiceFieldGroup[] = [
       { field: "event_type_label", label: "Typ akcie" },
       { field: "event_date", label: "Dátum akcie" },
       { field: "event_location", label: "Miesto konania" },
+      { field: "price", label: "Cena z rezervácie" },
     ],
   },
   {
@@ -114,6 +115,11 @@ export function resolveInvoiceFieldValue(
       return formatDateSk(booking.event_date);
     case "event_location":
       return booking.event_location ?? "";
+    case "price":
+    case "cena":
+    case "celkova_suma":
+    case "jednotkova_cena":
+      return formatBookingPrice(getEffectiveBookingPrice(booking));
     case "invoice_number":
       return computed.invoiceNumber;
     case "issue_date":

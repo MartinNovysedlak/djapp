@@ -3,9 +3,9 @@ export const BRAND = {
   name: "BookTheVibe",
   tagline: "Rezervuj vibe. Spravuj biznis.",
   shortDescription:
-    "Platforma, ktorá spája klientov s DJ-mi a dáva DJ-om nástroje na rezervácie, kalendár, zmluvy a eventy.",
+    "Platforma, ktorá spája klientov s umelcami a dáva im nástroje na rezervácie, kalendár, zmluvy a eventy.",
   description:
-    "BookTheVibe je webová platforma pre DJ-ov a klientov: katalóg, nezáväzné rezervácie, kalendár, zmluvy, faktúry, playlist a live requesty — všetko na jednom mieste.",
+    "BookTheVibe je webová platforma pre umelcov a klientov: katalóg, nezáväzné rezervácie, kalendár, zmluvy, faktúry, playlist a live requesty — všetko na jednom mieste.",
   url: "https://bookthevibe.com",
   email: "bookthevibeonline@gmail.com",
   locale: "sk_SK",
@@ -20,9 +20,11 @@ export const SEO_DEFAULT = {
   keywords: [
     "BookTheVibe",
     "DJ rezervácia",
+    "kapela rezervácia",
     "DJ katalóg",
     "prenájom DJ",
     "svadba DJ",
+    "svadba kapela",
     "event DJ Slovensko",
     "DJ kalendár",
     "DJ zmluvy",

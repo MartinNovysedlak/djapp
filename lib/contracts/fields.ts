@@ -1,4 +1,8 @@
 import { formatEventTypeLabel } from "@/lib/event-types";
+import {
+  formatBookingPrice,
+  getEffectiveBookingPrice,
+} from "@/lib/booking-price";
 import type { ContractBookingData, ContractDjProfileData } from "./types";
 
 export type ContractFieldOption = {
@@ -25,6 +29,7 @@ export const CONTRACT_SOURCE_FIELDS: ContractFieldGroup[] = [
       { field: "start_time", label: "Čas od" },
       { field: "end_time", label: "Čas do" },
       { field: "event_location", label: "Miesto konania" },
+      { field: "price", label: "Cena" },
       { field: "message", label: "Poznámka klienta" },
     ],
   },
@@ -104,11 +109,6 @@ function formatDateSk(iso: string | null) {
   });
 }
 
-function formatPrice(price: number | null) {
-  if (price === null || price === undefined) return "";
-  return `${price.toLocaleString("sk-SK")} €`;
-}
-
 /** Resolves a single catalog field key to its display value for a booking + profile. */
 export function resolveFieldValue(
   field: string,
@@ -135,7 +135,8 @@ export function resolveFieldValue(
     case "event_location":
       return booking.event_location ?? "";
     case "price":
-      return formatPrice(booking.price);
+    case "cena":
+      return formatBookingPrice(getEffectiveBookingPrice(booking));
     case "message":
       return booking.message ?? "";
     case "dj_full_name":

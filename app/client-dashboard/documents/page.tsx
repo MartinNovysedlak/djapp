@@ -237,7 +237,7 @@ export default function ClientDocumentsPage() {
       setDocs((prev) => prev.map((d) => (d.id === docId ? updated : d)));
       setFillOpenId(null);
       showToast(
-        "Dokument uložený. Teraz si môžeš stiahnuť PDF — DJ dostal upozornenie.",
+        "Dokument uložený. Teraz si môžeš stiahnuť PDF — umelec dostal upozornenie.",
         "success"
       );
 
@@ -287,7 +287,7 @@ export default function ClientDocumentsPage() {
           Dokumenty
         </h1>
         <p className="mt-1.5 text-sm text-zinc-500">
-          Zmluvy a faktúry, ktoré ti DJ poslal do profilu.
+          Zmluvy a faktúry, ktoré ti umelec poslal do profilu.
         </p>
       </Reveal>
 
@@ -295,8 +295,8 @@ export default function ClientDocumentsPage() {
         <Reveal delay={40}>
           <div className="mt-5 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-100">
             {unreadCount === 1
-              ? "Máš 1 nový dokument od DJ-a."
-              : `Máš ${unreadCount} nové dokumenty od DJ-a.`}
+              ? "Máš 1 nový dokument od umelca."
+              : `Máš ${unreadCount} nové dokumenty od umelca.`}
           </div>
         </Reveal>
       ) : null}
@@ -310,7 +310,7 @@ export default function ClientDocumentsPage() {
                 Zatiaľ žiadne dokumenty
               </h3>
               <p className="mx-auto mt-2 max-w-sm text-sm text-zinc-500">
-                Keď ti DJ pošle zmluvu alebo faktúru, objaví sa tu na doplnenie
+                Keď ti umelec pošle zmluvu alebo faktúru, objaví sa tu na doplnenie
                 alebo stiahnutie.
               </p>
             </div>
@@ -411,7 +411,7 @@ export default function ClientDocumentsPage() {
                         <>
                           <p className="text-sm text-zinc-400">
                             Všetky údaje už máš v profile. Potvrď dokončenie —
-                            DJ dostane hotovú faktúru.
+                            Umelec dostane hotovú faktúru.
                           </p>
                           <Button
                             type="button"

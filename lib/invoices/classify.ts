@@ -18,6 +18,7 @@ export type InvoiceManualPaletteItem = {
 
 /** DJ fills these when generating the invoice. */
 export const INVOICE_DJ_MANUAL_FIELDS: InvoiceManualPaletteItem[] = [
+  { key: "cena", label: "Cena", defaultType: "manual_input" },
   { key: "celkova_suma", label: "Celková suma k úhrade", defaultType: "manual_input" },
   { key: "cena_bez_dph", label: "Suma bez DPH", defaultType: "manual_input" },
   { key: "sadzba_dph", label: "Sadzba DPH", defaultType: "manual_input" },

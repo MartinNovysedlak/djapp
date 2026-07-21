@@ -63,7 +63,7 @@ export function buildDjCalendarIcs(
   options: { djName?: string | null; calendarName?: string } = {}
 ) {
   const cal = ical({
-    name: options.calendarName || `${options.djName || "DJ"} – BookTheVibe`,
+    name: options.calendarName || `${options.djName || "Umelec"} – BookTheVibe`,
     prodId: { company: "BookTheVibe", product: "Calendar Sync" },
     method: ICalCalendarMethod.PUBLISH,
     timezone: "Europe/Bratislava",

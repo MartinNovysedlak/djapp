@@ -99,7 +99,7 @@ export async function POST(request: Request) {
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .select(
-      "id, dj_id, client_id, client_name, client_email, client_phone, event_type, event_date, end_date, event_location"
+      "id, dj_id, client_id, client_name, client_email, client_phone, event_type, event_date, end_date, event_location, price, dj_offer_price, base_price"
     )
     .eq("id", bookingId)
     .eq("dj_id", djId)
@@ -327,7 +327,7 @@ export async function POST(request: Request) {
           .filter(Boolean)
           .join(" ")
           .trim() ||
-        "DJ";
+        "Umelec";
 
       if (clientEmail) {
         const site = (

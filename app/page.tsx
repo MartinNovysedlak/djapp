@@ -52,22 +52,22 @@ export const metadata: Metadata = {
 const faqItems = [
   {
     q: `Čo je ${BRAND.name}?`,
-    a: "Webová platforma, ktorá spája klientov s DJ-mi. Klient nájde DJ-a v katalógu a pošle nezáväzný dopyt. DJ spravuje rezervácie, kalendár, zmluvy, faktúry, playlist a live requesty na jednom mieste.",
+    a: "Webová platforma, ktorá spája klientov s umelcami (DJ, kapela alebo DJ + Kapela). Klient nájde umelca v katalógu a pošle nezáväzný dopyt. Umelec spravuje rezervácie, kalendár, zmluvy, faktúry, playlist a live requesty na jednom mieste.",
   },
   {
     q: "Je BookTheVibe zadarmo?",
     a: "Áno — free účet ti dá verejný profil a miesto v katalógu. Pokročilé nástroje (kalendár, rezervácie, dokumenty a ďalšie) sú súčasťou Pro plánu v tej istej webovej appke.",
   },
   {
-    q: "Ako sa dostanem do katalógu DJ-ov?",
-    a: "Zaregistruj sa ako DJ, vyplň profil (umelecké meno, bio, fotka, lokalita) a tvoja verejná vizitka sa zobrazí v katalógu. Klienti ťa nájdu podľa mena alebo mesta.",
+    q: "Ako sa dostanem do katalógu umelcov?",
+    a: "Zaregistruj sa ako umelec (DJ, kapela alebo DJ + Kapela), vyplň profil (umelecké meno / názov, bio, fotka, lokalita) a tvoja verejná vizitka sa zobrazí v katalógu. Klienti ťa nájdu podľa mena alebo mesta.",
   },
   {
     q: "Ako funguje rezervácia pre klientov?",
-    a: "Klient si vyberie DJ-a, zvolí dátum a čas a odošle dopyt. Obsadené termíny (vrátane synchronizovaného osobného kalendára) sa blokujú automaticky. DJ dopyt prijme alebo odmietne.",
+    a: "Klient si vyberie umelca, zvolí dátum a čas a odošle dopyt. Obsadené termíny (vrátane synchronizovaného osobného kalendára) sa blokujú automaticky. Umelec dopyt prijme alebo odmietne.",
   },
   {
-    q: "Čo všetko má DJ v dashboarde?",
+    q: "Čo všetko má umelec v dashboarde?",
     a: "Rezervácie, kalendár a blokácie, synchronizáciu s Google/Apple, PDF zmluvy a faktúry, harmonogram akcie, playlist, live song requesty, špeciálnu ponuku a žiadosť o Google recenziu po akcii.",
   },
   {
@@ -91,7 +91,7 @@ export default function Home() {
           <Reveal delay={60}>
             <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-zinc-300 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md">
               <Equalizer className="h-4" />
-              Platforma pre DJ-ov a klientov
+              Platforma pre umelcov a klientov
               <Sparkles className="size-3.5 text-violet-300" />
             </div>
           </Reveal>
@@ -106,8 +106,9 @@ export default function Home() {
 
           <Reveal delay={240}>
             <p className="mx-auto mt-6 max-w-xl text-balance text-base leading-relaxed text-zinc-400 md:text-lg">
-              Katalóg DJ-ov, nezáväzné rezervácie, kalendár, zmluvy a live
-              requesty. Klient nájde DJ-a. DJ drží celý event pod kontrolou.
+              Katalóg umelcov, nezáväzné rezervácie, kalendár, zmluvy a live
+              requesty. Klient nájde umelca. Umelec drží celý event pod
+              kontrolou.
             </p>
           </Reveal>
 
@@ -117,7 +118,7 @@ export default function Home() {
                 href="/register?role=dj"
                 className="group inline-flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-8 text-sm font-semibold text-white shadow-[0_16px_40px_-12px_oklch(0.6_0.26_295/0.8)] transition-all duration-300 hover:shadow-[0_16px_55px_-8px_oklch(0.6_0.26_295/1)] hover:brightness-110 active:scale-[0.98]"
               >
-                Som DJ — pridať profil
+                Som umelec — pridať profil
                 <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <Link
@@ -125,7 +126,14 @@ export default function Home() {
                 className="inline-flex h-12 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-8 text-sm font-medium text-zinc-200 backdrop-blur-md transition-all duration-300 hover:border-white/25 hover:bg-white/10 active:scale-[0.98]"
               >
                 <Users className="size-4" />
-                Hľadám DJ-a
+                Hľadám umelca
+              </Link>
+              <Link
+                href="/djs?compare=1"
+                className="inline-flex h-12 items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-8 text-sm font-medium text-violet-200 backdrop-blur-md transition-all duration-300 hover:border-violet-400/50 hover:bg-violet-500/20 active:scale-[0.98]"
+              >
+                Dostaň ponuky od 4 umelcov
+                <ArrowRight className="size-4" />
               </Link>
             </div>
           </Reveal>
@@ -492,7 +500,7 @@ export default function Home() {
                     Pre klientov
                   </div>
                   <h2 className="text-balance text-2xl font-bold tracking-tight text-white md:text-3xl">
-                    Nájdi DJ-a pre svoju akciu
+                    Nájdi umelca pre svoju akciu
                   </h2>
                   <p className="mt-3 max-w-lg text-sm leading-relaxed text-zinc-400">
                     Prehliadaj profily, pozri dostupnosť a pošli nezáväzný dopyt
@@ -543,7 +551,7 @@ export default function Home() {
                 <ul className="mb-8 flex-1 space-y-3.5">
                   {[
                     "Verejný profil s fotkou a bio",
-                    "Miesto v katalógu DJ-ov",
+                    "Miesto v katalógu umelcov",
                     "Sociálne a hudobné odkazy",
                     "Základná vizitka pre klientov",
                   ].map((item) => (
@@ -674,7 +682,7 @@ export default function Home() {
                     href="/djs"
                     className="inline-flex h-12 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-8 text-sm font-medium text-zinc-200 backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/10"
                   >
-                    Prehliadať DJ-ov
+                    Prehliadať katalóg
                   </Link>
                 </div>
               </div>

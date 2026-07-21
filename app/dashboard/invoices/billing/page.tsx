@@ -137,7 +137,7 @@ export default function InvoiceBillingSettingsPage() {
               <Input
                 value={form.legalName}
                 onChange={(e) => setField("legalName", e.target.value)}
-                placeholder="Napr. Ján Novák — DJ services"
+                placeholder="Napr. Ján Novák — event services"
                 className="h-10 rounded-xl bg-white/[0.03]"
               />
             </div>

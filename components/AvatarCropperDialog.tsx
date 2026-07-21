@@ -301,7 +301,7 @@ export default function AvatarCropperDialog({
                   </div>
                 </div>
                 <p className="flex items-center gap-1 text-[11px] text-zinc-500">
-                  <MapPin className="size-2.5" />V katalógu DJ-ov
+                  <MapPin className="size-2.5" />V katalógu umelcov
                 </p>
               </div>
             </div>

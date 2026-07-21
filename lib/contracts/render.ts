@@ -1,3 +1,8 @@
+import {
+  formatBookingPrice,
+  getEffectiveBookingPrice,
+  isContractPricePlaceholderKey,
+} from "@/lib/booking-price";
 import { resolveFieldValue } from "./fields";
 import type {
   ContractBookingData,
@@ -17,7 +22,7 @@ function escapeHtml(value: string) {
 /**
  * Resolves every placeholder row to a display string:
  * - `database_field` → booking/DJ profile (`source_field`), with optional DJ override
- * - `manual_input` → DJ values from the generate form
+ * - `manual_input` → DJ values from the generate form (price/cena falls back to booking)
  * - `client_input` → values the client submits later (or blank until then)
  */
 export function resolveContractValues(
@@ -27,6 +32,7 @@ export function resolveContractValues(
   manualValues: Record<string, string> = {},
   clientValues: Record<string, string> = {}
 ): Record<string, string> {
+  const bookingPrice = formatBookingPrice(getEffectiveBookingPrice(booking));
   const resolved: Record<string, string> = {};
   for (const placeholder of placeholders) {
     if (placeholder.type === "database_field") {
@@ -39,8 +45,14 @@ export function resolveContractValues(
       resolved[placeholder.placeholder_key] =
         clientValues[placeholder.placeholder_key]?.trim() ?? "";
     } else {
-      resolved[placeholder.placeholder_key] =
-        manualValues[placeholder.placeholder_key]?.trim() ?? "";
+      const typed = manualValues[placeholder.placeholder_key]?.trim() ?? "";
+      if (typed) {
+        resolved[placeholder.placeholder_key] = typed;
+      } else if (isContractPricePlaceholderKey(placeholder.placeholder_key)) {
+        resolved[placeholder.placeholder_key] = bookingPrice;
+      } else {
+        resolved[placeholder.placeholder_key] = "";
+      }
     }
   }
   return resolved;

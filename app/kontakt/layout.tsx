@@ -4,12 +4,12 @@ import { BRAND } from "@/lib/brand";
 export const metadata: Metadata = {
   title: "Kontakt",
   description:
-    "Kontaktuj tím BookTheVibe — otázky k rezerváciám, DJ profilu alebo spolupráci. Odpovieme ti čo najskôr.",
+    "Kontaktuj tím BookTheVibe — otázky k rezerváciám, profilu umelca alebo spolupráci. Odpovieme ti čo najskôr.",
   alternates: { canonical: "/kontakt" },
   openGraph: {
     title: `Kontakt | ${BRAND.name}`,
     description:
-      "Ozvi sa BookTheVibe. Pomôžeme DJ-om aj klientom s rezerváciami a eventami.",
+      "Ozvi sa BookTheVibe. Pomôžeme umelcom aj klientom s rezerváciami a eventami.",
     url: "/kontakt",
     siteName: BRAND.name,
     locale: BRAND.locale,

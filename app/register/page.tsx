@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Disc, Loader2, Lock, Mail, Phone, Sparkles, User, Users } from "lucide-react";
+import { CheckCircle2, Disc, Loader2, Lock, Mail, Music2, Phone, Sparkles, User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,11 @@ import { signUpWithEmail } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/BrandLogo";
+import {
+  ARTIST_KIND_OPTIONS,
+  getArtistNameFieldLabel,
+  type ArtistKind,
+} from "@/lib/dj-display";
 
 type Role = "client" | "dj";
 
@@ -22,6 +27,7 @@ function RegisterForm() {
   const initialRole = searchParams.get("role") === "dj" ? "dj" : "client";
 
   const [role, setRole] = useState<Role>(initialRole);
+  const [artistKind, setArtistKind] = useState<ArtistKind>("dj");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
@@ -30,9 +36,9 @@ function RegisterForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  // DJ-only field — public stage name, separate from the real name above.
+  // Artist-only field — public stage name, separate from the real name above.
   const [artistName, setArtistName] = useState("");
-  // DJ-only — whether the real first/last name may appear next to the stage name.
+  // Artist-only — whether the real first/last name may appear next to the stage name.
   const [showRealName, setShowRealName] = useState(false);
 
   const [email, setEmail] = useState("");
@@ -60,22 +66,32 @@ function RegisterForm() {
       return;
     }
     if (role === "dj" && !artistName.trim()) {
-      setErrorMessage("Zadaj svoje umelecké meno.");
+      setErrorMessage(
+        artistKind === "band"
+          ? "Zadaj názov kapely."
+          : "Zadaj svoje umelecké meno."
+      );
       return;
     }
 
-    const displayName = role === "client" ? `${trimmedFirst} ${trimmedLast}` : artistName.trim();
+    const displayName =
+      role === "client" ? `${trimmedFirst} ${trimmedLast}` : artistName.trim();
 
     setErrorMessage(null);
     setIsLoading(true);
-    const { error, needsEmailConfirmation } = await signUpWithEmail(email, password, {
-      displayName,
-      role,
-      firstName: trimmedFirst,
-      lastName: trimmedLast,
-      phone: trimmedPhone,
-      showRealName: role === "dj" ? showRealName : false,
-    });
+    const { error, needsEmailConfirmation } = await signUpWithEmail(
+      email,
+      password,
+      {
+        displayName,
+        role,
+        firstName: trimmedFirst,
+        lastName: trimmedLast,
+        phone: trimmedPhone,
+        showRealName: role === "dj" ? showRealName : false,
+        artistKind: role === "dj" ? artistKind : undefined,
+      }
+    );
     setIsLoading(false);
 
     if (error) {
@@ -183,7 +199,7 @@ function RegisterForm() {
                 Som Zákazník
               </span>
               <span className="text-[11px] leading-snug text-zinc-500">
-                Rezervuj si DJ-ov a hodnoť ich
+                Rezervuj umelcov na svoju akciu
               </span>
             </button>
 
@@ -211,13 +227,36 @@ function RegisterForm() {
                   role === "dj" ? "text-white" : "text-zinc-300"
                 )}
               >
-                Som DJ
+                Som umelec
               </span>
               <span className="text-[11px] leading-snug text-zinc-500">
-                Vytvor si profil a prijímaj dopyty
+                DJ, kapela alebo oboje
               </span>
             </button>
           </div>
+
+          {role === "dj" ? (
+            <div className="mb-6 grid grid-cols-3 gap-2">
+              {ARTIST_KIND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setArtistKind(opt.value)}
+                  className={cn(
+                    "rounded-xl border px-2 py-2.5 text-center transition-all",
+                    artistKind === opt.value
+                      ? "border-violet-500/40 bg-violet-500/15 text-violet-100"
+                      : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20"
+                  )}
+                >
+                  <span className="block text-xs font-semibold">{opt.label}</span>
+                  <span className="mt-0.5 block text-[10px] leading-snug text-zinc-500">
+                    {opt.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
@@ -254,13 +293,25 @@ function RegisterForm() {
 
             {role === "dj" && (
               <div className="space-y-2">
-                <Label htmlFor="artist-name">Umelecké meno</Label>
+                <Label htmlFor="artist-name">
+                  {getArtistNameFieldLabel(artistKind)}
+                </Label>
                 <div className="relative">
-                  <Sparkles className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
+                  {artistKind === "band" ? (
+                    <Music2 className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
+                  ) : (
+                    <Sparkles className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
+                  )}
                   <Input
                     id="artist-name"
                     type="text"
-                    placeholder="DJ Nova"
+                    placeholder={
+                      artistKind === "band"
+                        ? "The Vibes"
+                        : artistKind === "dj_band"
+                          ? "Nova Collective"
+                          : "DJ Nova"
+                    }
                     value={artistName}
                     onChange={(e) => setArtistName(e.target.value)}
                     required
@@ -280,8 +331,11 @@ function RegisterForm() {
                       Zobraziť aj skutočné meno a priezvisko
                     </span>
                     <br />
-                    Ak toto vypneš, klienti uvidia len umelecké meno. Nastavenie
-                    môžeš kedykoľvek zmeniť v dashboarde.
+                    Ak toto vypneš, klienti uvidia len{" "}
+                    {artistKind === "band"
+                      ? "názov kapely"
+                      : "umelecké meno"}
+                    . Nastavenie môžeš kedykoľvek zmeniť v dashboarde.
                   </span>
                 </label>
               </div>
@@ -374,7 +428,15 @@ function RegisterForm() {
                   Vytváram účet…
                 </>
               ) : (
-                `Vytvoriť účet ako ${role === "client" ? "zákazník" : "DJ"}`
+                `Vytvoriť účet ako ${
+                  role === "client"
+                    ? "zákazník"
+                    : artistKind === "band"
+                      ? "kapela"
+                      : artistKind === "dj_band"
+                        ? "DJ + Kapela"
+                        : "DJ"
+                }`}
               )}
             </Button>
           </form>

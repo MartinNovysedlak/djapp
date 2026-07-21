@@ -52,6 +52,13 @@ import {
 } from "@/lib/google-maps";
 import { updateDjProfile } from "@/app/actions/profile";
 import { cn } from "@/lib/utils";
+import {
+  ARTIST_KIND_OPTIONS,
+  getArtistNameFieldHint,
+  getArtistNameFieldLabel,
+  normalizeArtistKind,
+  type ArtistKind,
+} from "@/lib/dj-display";
 
 const MAX_GALLERY_PHOTOS = 12;
 const MAX_VIDEOS = 6;
@@ -73,6 +80,7 @@ export default function ProfilePage() {
   const [realLastName, setRealLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [showRealName, setShowRealName] = useState(false);
+  const [artistKind, setArtistKind] = useState<ArtistKind>("dj");
   const [bio, setBio] = useState("");
   const [country, setCountry] = useState<Country>("SK");
   const [cityName, setCityName] = useState<string | null>(null);
@@ -106,6 +114,7 @@ export default function ProfilePage() {
     setRealLastName(profile.real_last_name ?? "");
     setPhone(profile.phone ?? "");
     setShowRealName(Boolean(profile.show_real_name));
+    setArtistKind(normalizeArtistKind(profile.artist_kind));
     setBio(profile.bio ?? "");
     const parsedLocation = parseLocation(profile.location);
     setCountry(parsedLocation.country);
@@ -334,6 +343,7 @@ export default function ProfilePage() {
       realLastName,
       phone,
       showRealName,
+      artistKind,
       bio,
       location,
       googleMapsUrl,
@@ -355,6 +365,7 @@ export default function ProfilePage() {
               real_last_name: realLastName.trim() || null,
               phone: phone.trim() || null,
               show_real_name: showRealName,
+              artist_kind: artistKind,
               bio,
               location,
               public_slug: publicSlug,
@@ -387,22 +398,24 @@ export default function ProfilePage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-white">Môj profil</h1>
           <p className="mt-1.5 text-sm text-zinc-500">
-            Uprav si svoju verejnú vizitku, ktorú uvidia klienti pri rezervácii.
+            Verejná vizitka, ktorú uvidia klienti pri rezervácii.
           </p>
-          <Link
-            href="/dashboard/invoices/billing"
-            className="mt-4 inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-200 transition-colors hover:bg-violet-500/15"
-          >
-            <Receipt className="size-3.5" />
-            Fakturačné údaje (IČO, IBAN, adresa…)
-          </Link>
-          <Link
-            href="/dashboard/settings/marketing"
-            className="mt-3 ml-0 inline-flex items-center gap-2 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-2 text-sm text-fuchsia-200 transition-colors hover:bg-fuchsia-500/15 sm:ml-2"
-          >
-            <Megaphone className="size-3.5" />
-            Marketing — Google recenzie
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/invoices/billing"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-200"
+            >
+              <Receipt className="size-3.5" />
+              Fakturačné údaje
+            </Link>
+            <Link
+              href="/dashboard/settings/marketing"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-fuchsia-500/30 hover:bg-fuchsia-500/10 hover:text-fuchsia-200"
+            >
+              <Megaphone className="size-3.5" />
+              Marketing
+            </Link>
+          </div>
         </div>
       </Reveal>
 
@@ -485,14 +498,49 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Typ umelca</p>
+              <div className="grid grid-cols-3 gap-2">
+                {ARTIST_KIND_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setArtistKind(opt.value)}
+                    className={cn(
+                      "rounded-xl border px-2 py-2.5 text-center transition-all",
+                      artistKind === opt.value
+                        ? "border-violet-500/40 bg-violet-500/15 text-violet-100"
+                        : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20"
+                    )}
+                  >
+                    <span className="block text-xs font-semibold">{opt.label}</span>
+                    <span className="mt-0.5 block text-[10px] leading-snug text-zinc-500">
+                      {opt.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <label htmlFor="fullName" className="text-sm text-muted-foreground">
-                Umelecké meno (DJ prezývka)
+                {getArtistNameFieldLabel(artistKind)}
+                {getArtistNameFieldHint(artistKind) ? (
+                  <span className="ml-1 text-zinc-600">
+                    ({getArtistNameFieldHint(artistKind)})
+                  </span>
+                ) : null}
               </label>
               <Input
                 id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="DJ Nova"
+                placeholder={
+                  artistKind === "band"
+                    ? "The Vibes"
+                    : artistKind === "dj_band"
+                      ? "Nova Collective"
+                      : "DJ Nova"
+                }
               />
             </div>
 

@@ -107,7 +107,7 @@ export function bookingStatusEmailHtml(input: {
   const greeting = input.clientName
     ? `Ahoj ${escapeHtml(input.clientName)},`
     : "Ahoj,";
-  const dj = escapeHtml(input.djName || "DJ");
+  const dj = escapeHtml(input.djName || "Umelec");
 
   return shell({
     title: accepted
@@ -119,8 +119,8 @@ export function bookingStatusEmailHtml(input: {
       <p style="color:#d4d4d8;margin:0 0 8px;font-size:15px;line-height:1.55;">
         ${
           accepted
-            ? `DJ <strong style="color:#fff;">${dj}</strong> potvrdil tvoju rezerváciu.`
-            : `DJ <strong style="color:#fff;">${dj}</strong> bohužiaľ nemôže prijať tvoju rezerváciu.`
+            ? `<strong style="color:#fff;">${dj}</strong> potvrdil/a tvoju rezerváciu.`
+            : `<strong style="color:#fff;">${dj}</strong> bohužiaľ nemôže prijať tvoju rezerváciu.`
         }
         ${
           accepted
@@ -140,7 +140,7 @@ export function bookingStatusEmailHtml(input: {
     `,
     cta: {
       href: input.dashboardUrl,
-      label: accepted ? "Otvoriť moje dopyty" : "Nájsť iného DJ-a",
+      label: accepted ? "Otvoriť moje dopyty" : "Nájsť iného umelca",
     },
   });
 }
@@ -155,7 +155,7 @@ export function contractDocumentEmailHtml(input: {
   const greeting = input.clientName
     ? `Ahoj ${escapeHtml(input.clientName)},`
     : "Ahoj,";
-  const dj = escapeHtml(input.djName || "DJ");
+  const dj = escapeHtml(input.djName || "Umelec");
   const doc = escapeHtml(input.documentName || "zmluvu / faktúru");
   const needsFill = !!input.needsClientFill;
 
@@ -165,7 +165,7 @@ export function contractDocumentEmailHtml(input: {
     bodyHtml: `
       <p style="color:#a1a1aa;margin:0 0 8px;font-size:15px;line-height:1.55;">${greeting}</p>
       <p style="color:#d4d4d8;margin:0 0 8px;font-size:15px;line-height:1.55;">
-        DJ <strong style="color:#fff;">${dj}</strong> ti poslal dokument
+        <strong style="color:#fff;">${dj}</strong> ti poslal dokument
         <strong style="color:#fff;">${doc}</strong> do tvojho profilu.
         ${
           needsFill
@@ -242,7 +242,7 @@ export function googleReviewRequestEmailHtml(input: {
   const greeting = input.clientName
     ? `Dobrý deň ${escapeHtml(input.clientName)},`
     : "Dobrý deň,";
-  const dj = escapeHtml(input.djName || "DJ");
+  const dj = escapeHtml(input.djName || "Umelec");
 
   return shell({
     title: "Ďakujem za úžasnú akciu",
@@ -257,7 +257,7 @@ export function googleReviewRequestEmailHtml(input: {
         zaberie to len chvíľku a znamená to pre mňa veľa.
       </p>
       ${detailRows([
-        { label: "DJ", value: input.djName },
+        { label: "Umelec", value: input.djName },
         { label: "Typ akcie", value: input.eventTypeLabel },
         { label: "Dátum", value: input.eventDateLabel },
       ])}
@@ -268,10 +268,45 @@ export function googleReviewRequestEmailHtml(input: {
     `,
     cta: {
       href: input.reviewUrl,
-      label: "Ohodnotiť DJ-a",
+      label: "Ohodnotiť umelca",
       large: true,
     },
     footer:
       "BookTheVibe — tento e-mail bol odoslaný automaticky po ukončení akcie.",
+  });
+}
+
+export function bookingChatEmailHtml(input: {
+  recipientName?: string | null;
+  senderName: string;
+  preview: string;
+  chatUrl: string;
+  eventTypeLabel: string;
+  eventDateLabel: string;
+}): string {
+  const greeting = input.recipientName
+    ? `Ahoj ${escapeHtml(input.recipientName)},`
+    : "Ahoj,";
+  const fullMessage = escapeHtml(input.preview).replace(/\n/g, "<br/>");
+  return shell({
+    title: "Nová správa v chate",
+    titleColor: "#c4b5fd",
+    bodyHtml: `
+      <p style="color:#a1a1aa;margin:0 0 8px;font-size:15px;line-height:1.55;">${greeting}</p>
+      <p style="color:#d4d4d8;margin:0 0 8px;font-size:15px;line-height:1.55;">
+        <strong style="color:#f4f4f5;">${escapeHtml(input.senderName)}</strong> ti napísal(a) v BookTheVibe:
+      </p>
+      <div style="color:#e4e4e7;margin:12px 0;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;font-size:15px;line-height:1.55;white-space:pre-wrap;">
+        ${fullMessage}
+      </div>
+      ${detailRows([
+        { label: "Typ akcie", value: input.eventTypeLabel },
+        { label: "Dátum", value: input.eventDateLabel },
+      ])}
+      <p style="color:#71717a;margin:12px 0 0;font-size:13px;line-height:1.5;">
+        Toto je upozornenie aj kópia správy. Odpovedať môžeš priamo v chate v appke.
+      </p>
+    `,
+    cta: { href: input.chatUrl, label: "Otvoriť chat a odpovedať", large: true },
   });
 }

@@ -13,7 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Reveal } from "@/components/motion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import AvatarCropperDialog from "@/components/AvatarCropperDialog";
 import { useClientUser } from "@/components/ClientUserContext";
 import { useToast } from "@/lib/toast-context";
@@ -39,7 +45,7 @@ const EMPTY_BILLING: SaveClientBillingInput = {
 };
 
 export default function ClientProfilePage() {
-  const { user, profile, loading: userLoading, setProfile } = useClientUser();
+  const { user, loading: userLoading, setProfile } = useClientUser();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,7 +193,7 @@ export default function ClientProfilePage() {
 
   if (userLoading || loading) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 animate-pulse pt-6">
+      <div className="mx-auto max-w-2xl space-y-4 animate-pulse pt-4">
         <div className="h-8 w-40 rounded-xl bg-white/5" />
         <div className="h-40 rounded-3xl bg-white/[0.03]" />
       </div>
@@ -195,26 +201,29 @@ export default function ClientProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pt-6 pb-24">
-      <Reveal>
+    <div className="mx-auto max-w-2xl space-y-6 pb-28 pt-4">
+      <div>
         <h1 className="text-3xl font-bold tracking-tight text-white">
           Môj profil
         </h1>
         <p className="mt-1.5 text-sm text-zinc-500">
-          Osobné a fakturačné údaje na rýchlejšie zmluvy a faktúry.
+          Osobné a fakturačné údaje pre rýchlejšie zmluvy a faktúry.
         </p>
-      </Reveal>
+      </div>
 
-      <Reveal delay={40}>
-        <section className="rounded-3xl border border-white/10 bg-card/70 p-5 backdrop-blur-md md:p-6">
-          <div className="mb-5 flex items-center gap-2">
+      <Card className="rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base text-white">
             <Camera className="size-4 text-violet-300" />
-            <h2 className="text-base font-semibold text-white">
-              Profilová fotka
-            </h2>
-          </div>
+            Profilová fotka
+          </CardTitle>
+          <CardDescription className="text-zinc-500">
+            JPEG, PNG, WebP alebo GIF · max 5 MB · pomer 1:1
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="flex items-center gap-5">
-            <div className="relative size-20 shrink-0 overflow-hidden rounded-full border border-white/15">
+            <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-2 border-white/15">
               {avatarPreview ? (
                 <Image
                   src={avatarPreview}
@@ -223,8 +232,8 @@ export default function ClientProfilePage() {
                   className="object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center bg-violet-500/10">
-                  <User className="size-8 text-zinc-500" />
+                <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10">
+                  <User className="size-10 text-zinc-500" />
                 </div>
               )}
               {uploading ? (
@@ -250,27 +259,24 @@ export default function ClientProfilePage() {
               >
                 Nahrať fotku
               </Button>
-              <p className="mt-2 text-xs text-zinc-500">
-                JPEG, PNG, WebP alebo GIF · max 5 MB
-              </p>
             </div>
           </div>
-        </section>
-      </Reveal>
+        </CardContent>
+      </Card>
 
-      <Reveal delay={80}>
-        <form
-          onSubmit={handleSaveProfile}
-          className="rounded-3xl border border-white/10 bg-card/70 p-5 backdrop-blur-md md:p-6"
-        >
-          <div className="mb-5 flex items-center gap-2">
-            <User className="size-4 text-violet-300" />
-            <h2 className="text-base font-semibold text-white">
+      <form onSubmit={handleSaveProfile}>
+        <Card className="rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <User className="size-4 text-violet-300" />
               Osobné údaje
-            </h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
+            </CardTitle>
+            <CardDescription className="text-zinc-500">
+              Tvoje meno a kontakt, ktoré uvidia umelci pri rezervácii.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
               <Label className="text-xs text-zinc-400">Zobrazované meno</Label>
               <Input
                 value={fullName}
@@ -278,202 +284,204 @@ export default function ClientProfilePage() {
                 className="h-10 rounded-xl bg-white/[0.03]"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Meno</Label>
-              <Input
-                value={realFirstName}
-                onChange={(e) => setRealFirstName(e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-400">Meno</Label>
+                <Input
+                  value={realFirstName}
+                  onChange={(e) => setRealFirstName(e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-400">Priezvisko</Label>
+                <Input
+                  value={realLastName}
+                  onChange={(e) => setRealLastName(e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-400">Telefón</Label>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-400">E-mail</Label>
+                <Input
+                  value={email}
+                  disabled
+                  className="h-10 rounded-xl bg-white/[0.03] opacity-70"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Priezvisko</Label>
-              <Input
-                value={realLastName}
-                onChange={(e) => setRealLastName(e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Telefón</Label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">E-mail</Label>
-              <Input
-                value={email}
-                disabled
-                className="h-10 rounded-xl bg-white/[0.03] opacity-70"
-              />
-            </div>
-          </div>
-          <Button
-            type="submit"
-            disabled={savingProfile}
-            className="mt-5 gap-1.5 rounded-full"
-          >
-            {savingProfile ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Save className="size-4" />
-            )}
-            Uložiť profil
-          </Button>
-        </form>
-      </Reveal>
+            <Button
+              type="submit"
+              disabled={savingProfile}
+              className="gap-1.5 rounded-full"
+            >
+              {savingProfile ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              Uložiť profil
+            </Button>
+          </CardContent>
+        </Card>
+      </form>
 
-      <Reveal delay={120}>
-        <form
-          onSubmit={handleSaveBilling}
-          className="rounded-3xl border border-white/10 bg-card/70 p-5 backdrop-blur-md md:p-6"
-        >
-          <div className="mb-2 flex items-center gap-2">
-            <Building2 className="size-4 text-violet-300" />
-            <h2 className="text-base font-semibold text-white">
+      <form onSubmit={handleSaveBilling}>
+        <Card className="rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Building2 className="size-4 text-violet-300" />
               Fakturačné údaje
-            </h2>
-          </div>
-          <p className="mb-5 text-xs text-zinc-500">
-            Tieto údaje uvidia DJ-ovia, s ktorými máš rezerváciu — používajú sa
-            na rýchlejšie vystavenie zmlúv a faktúr. Upravuješ ich len ty.
-          </p>
+            </CardTitle>
+            <CardDescription className="text-zinc-500">
+              Používajú sa na rýchlejšie vystavenie zmlúv a faktúr. Upravuješ ich
+              len ty.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
+              <button
+                type="button"
+                onClick={() => setBillingField("personType", "individual")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  billing.personType === "individual"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Fyzická osoba
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingField("personType", "company")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  billing.personType === "company"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Právnická osoba
+              </button>
+            </div>
 
-          <div className="mb-5 flex gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
-            <button
-              type="button"
-              onClick={() => setBillingField("personType", "individual")}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                billing.personType === "individual"
-                  ? "bg-violet-500/20 text-violet-200"
-                  : "text-zinc-500 hover:text-zinc-300"
-              }`}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs text-zinc-400">
+                  {billing.personType === "company"
+                    ? "Názov firmy / odberateľa"
+                    : "Meno a priezvisko"}
+                </Label>
+                <Input
+                  value={billing.legalName}
+                  onChange={(e) => setBillingField("legalName", e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs text-zinc-400">Adresa (ulica)</Label>
+                <Input
+                  value={billing.streetAddress}
+                  onChange={(e) =>
+                    setBillingField("streetAddress", e.target.value)
+                  }
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-400">Mesto</Label>
+                <Input
+                  value={billing.city}
+                  onChange={(e) => setBillingField("city", e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-400">PSČ</Label>
+                <Input
+                  value={billing.postalCode}
+                  onChange={(e) => setBillingField("postalCode", e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs text-zinc-400">Krajina</Label>
+                <Input
+                  value={billing.country}
+                  onChange={(e) => setBillingField("country", e.target.value)}
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+              {billing.personType === "company" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">IČO</Label>
+                    <Input
+                      value={billing.ico}
+                      onChange={(e) => setBillingField("ico", e.target.value)}
+                      className="h-10 rounded-xl bg-white/[0.03]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">DIČ</Label>
+                    <Input
+                      value={billing.dic}
+                      onChange={(e) => setBillingField("dic", e.target.value)}
+                      className="h-10 rounded-xl bg-white/[0.03]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">IČ DPH</Label>
+                    <Input
+                      value={billing.icDph}
+                      onChange={(e) => setBillingField("icDph", e.target.value)}
+                      className="h-10 rounded-xl bg-white/[0.03]"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 sm:col-span-2">
+                    <Label className="text-sm text-zinc-300">
+                      Som platiteľ DPH
+                    </Label>
+                    <Switch
+                      checked={billing.isVatPayer}
+                      onCheckedChange={(v) => setBillingField("isVatPayer", v)}
+                    />
+                  </div>
+                </>
+              ) : null}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs text-zinc-400">Poznámka</Label>
+                <Input
+                  value={billing.companyNote}
+                  onChange={(e) =>
+                    setBillingField("companyNote", e.target.value)
+                  }
+                  className="h-10 rounded-xl bg-white/[0.03]"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={savingBilling}
+              className="gap-1.5 rounded-full"
             >
-              Fyzická osoba
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingField("personType", "company")}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                billing.personType === "company"
-                  ? "bg-violet-500/20 text-violet-200"
-                  : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              Právnická osoba
-            </button>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label className="text-xs text-zinc-400">
-                {billing.personType === "company"
-                  ? "Názov firmy / odberateľa"
-                  : "Meno a priezvisko"}
-              </Label>
-              <Input
-                value={billing.legalName}
-                onChange={(e) => setBillingField("legalName", e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label className="text-xs text-zinc-400">Adresa (ulica)</Label>
-              <Input
-                value={billing.streetAddress}
-                onChange={(e) =>
-                  setBillingField("streetAddress", e.target.value)
-                }
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Mesto</Label>
-              <Input
-                value={billing.city}
-                onChange={(e) => setBillingField("city", e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">PSČ</Label>
-              <Input
-                value={billing.postalCode}
-                onChange={(e) => setBillingField("postalCode", e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Krajina</Label>
-              <Input
-                value={billing.country}
-                onChange={(e) => setBillingField("country", e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-            {billing.personType === "company" ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-zinc-400">IČO</Label>
-                  <Input
-                    value={billing.ico}
-                    onChange={(e) => setBillingField("ico", e.target.value)}
-                    className="h-10 rounded-xl bg-white/[0.03]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-zinc-400">DIČ</Label>
-                  <Input
-                    value={billing.dic}
-                    onChange={(e) => setBillingField("dic", e.target.value)}
-                    className="h-10 rounded-xl bg-white/[0.03]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-zinc-400">IČ DPH</Label>
-                  <Input
-                    value={billing.icDph}
-                    onChange={(e) => setBillingField("icDph", e.target.value)}
-                    className="h-10 rounded-xl bg-white/[0.03]"
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 sm:col-span-2">
-                  <Label className="text-sm text-zinc-300">
-                    Som platiteľ DPH
-                  </Label>
-                  <Switch
-                    checked={billing.isVatPayer}
-                    onCheckedChange={(v) => setBillingField("isVatPayer", v)}
-                  />
-                </div>
-              </>
-            ) : null}
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label className="text-xs text-zinc-400">Poznámka</Label>
-              <Input
-                value={billing.companyNote}
-                onChange={(e) => setBillingField("companyNote", e.target.value)}
-                className="h-10 rounded-xl bg-white/[0.03]"
-              />
-            </div>
-          </div>
-          <Button
-            type="submit"
-            disabled={savingBilling}
-            className="mt-5 gap-1.5 rounded-full"
-          >
-            {savingBilling ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Save className="size-4" />
-            )}
-            Uložiť fakturačné údaje
-          </Button>
-        </form>
-      </Reveal>
+              {savingBilling ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              Uložiť fakturačné údaje
+            </Button>
+          </CardContent>
+        </Card>
+      </form>
 
       <AvatarCropperDialog
         open={cropperOpen}

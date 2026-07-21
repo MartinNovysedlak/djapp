@@ -86,7 +86,7 @@ async function requireDj(): Promise<RequireDjResult> {
     .maybeSingle();
 
   if (profile?.role === "client") {
-    return { ok: false, error: "Len DJ účty môžu spravovať faktúry." };
+    return { ok: false, error: "Len umelecké účty môžu spravovať faktúry." };
   }
 
   return { ok: true, supabase, userId: authData.user.id };
@@ -333,7 +333,7 @@ export async function getInvoiceGaps(
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .select(
-      "id, dj_id, client_name, client_email, client_phone, event_type, event_date, end_date, event_location"
+      "id, dj_id, client_name, client_email, client_phone, event_type, event_date, end_date, event_location, price, dj_offer_price, base_price"
     )
     .eq("id", bookingId)
     .eq("dj_id", userId)
@@ -1009,7 +1009,7 @@ export async function sendGeneratedInvoiceToClient(
       .filter(Boolean)
       .join(" ")
       .trim() ||
-    "DJ";
+    "Umelec";
 
   if (clientEmail) {
     const site = (
@@ -1383,7 +1383,7 @@ export async function submitClientInvoiceFill(
   const { data: booking, error: bookingError } = await admin
     .from("bookings")
     .select(
-      "id, client_name, client_email, client_phone, event_type, event_date, end_date, event_location"
+      "id, client_name, client_email, client_phone, event_type, event_date, end_date, event_location, price, dj_offer_price, base_price"
     )
     .eq("id", invoice.booking_id)
     .maybeSingle();
@@ -1479,7 +1479,7 @@ export async function submitClientInvoiceFill(
             .filter(Boolean)
             .join(" ")
             .trim() ||
-          "DJ";
+          "Umelec";
         await sendContractFilledEmail({
           djEmail,
           djName,

@@ -42,6 +42,8 @@ export type SignUpDetails = {
   phone: string;
   /** When true, the DJ's real first/last name may appear publicly. */
   showRealName?: boolean;
+  /** Artist subtype — only for role === "dj". */
+  artistKind?: "dj" | "band" | "dj_band";
 };
 
 export type SignUpResult = AuthResult & {
@@ -67,6 +69,8 @@ export async function signUpWithEmail(
         last_name: details.lastName,
         phone: details.phone,
         show_real_name: details.showRealName ?? false,
+        artist_kind:
+          details.role === "dj" ? details.artistKind ?? "dj" : undefined,
       },
     },
   });

@@ -44,7 +44,7 @@ export function LiveGuestForm({ booking }: LiveGuestFormProps) {
     setArtist("");
     setGuestName("");
     setUrl("");
-    showToast("Tvoja požiadavka letí k DJ-ovi!", "success");
+    showToast("Tvoja požiadavka letí k umelcovi!", "success");
     window.setTimeout(() => setSent(false), 3200);
   }
 
@@ -70,7 +70,7 @@ export function LiveGuestForm({ booking }: LiveGuestFormProps) {
           <p className="mt-2 text-sm text-zinc-400">
             {booking.djName
               ? `Pošli tip pre ${booking.djName}`
-              : "Pošli tip priamo DJ-ovi"}
+              : "Pošli tip priamo umelcovi"}
             {booking.eventType ? ` · ${booking.eventType}` : ""}
           </p>
         </div>
@@ -85,7 +85,7 @@ export function LiveGuestForm({ booking }: LiveGuestFormProps) {
             <div className="flex flex-col items-center gap-3 py-10 text-center animate-in fade-in zoom-in-95 duration-500">
               <CheckCircle2 className="size-12 text-emerald-400" />
               <p className="text-lg font-semibold text-white">
-                Letí to k DJ-ovi!
+                Letí to k umelcovi!
               </p>
               <p className="text-sm text-zinc-400">
                 Môžeš poslať ďalšiu, keď budeš chcieť.
@@ -173,7 +173,7 @@ export function LiveGuestForm({ booking }: LiveGuestFormProps) {
                 ) : (
                   <Send className="size-4" />
                 )}
-                Poslať DJ-ovi
+                Poslať umelcovi
               </Button>
             </form>
           )}

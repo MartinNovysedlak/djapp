@@ -77,7 +77,7 @@ async function requireDj(): Promise<RequireDjResult> {
     .maybeSingle();
 
   if (profile?.role === "client") {
-    return { ok: false, error: "Len DJ účty môžu spravovať zmluvy." };
+    return { ok: false, error: "Len umelecké účty môžu spravovať zmluvy." };
   }
 
   return { ok: true, supabase, userId: authData.user.id };
@@ -333,7 +333,7 @@ export async function getContractGaps(
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .select(
-      "id, dj_id, client_name, client_email, client_phone, event_type, event_date, end_date, start_time, end_time, event_location, message, price"
+      "id, dj_id, client_name, client_email, client_phone, event_type, event_date, end_date, start_time, end_time, event_location, message, price, dj_offer_price, base_price"
     )
     .eq("id", bookingId)
     .eq("dj_id", userId)
@@ -755,7 +755,7 @@ export async function sendGeneratedContractToClient(
       .filter(Boolean)
       .join(" ")
       .trim() ||
-    "DJ";
+    "Umelec";
 
   if (clientEmail) {
     const site = (
@@ -1026,7 +1026,7 @@ export async function submitClientContractFill(
   const { data: booking, error: bookingError } = await admin
     .from("bookings")
     .select(
-      "id, client_name, client_email, client_phone, event_type, event_date, end_date, start_time, end_time, event_location, message, price"
+      "id, client_name, client_email, client_phone, event_type, event_date, end_date, start_time, end_time, event_location, message, price, dj_offer_price, base_price"
     )
     .eq("id", contract.booking_id)
     .maybeSingle();
@@ -1111,7 +1111,7 @@ export async function submitClientContractFill(
             .filter(Boolean)
             .join(" ")
             .trim() ||
-          "DJ";
+          "Umelec";
         await sendContractFilledEmail({
           djEmail,
           djName,

@@ -1160,7 +1160,7 @@ export default function EditContractTemplatePage() {
                     <Label className="text-xs text-zinc-500">
                       {isClient
                         ? "Názov poľa pre zákazníka"
-                        : "Názov poľa pre DJ-a pri generovaní"}
+                        : "Názov poľa pre umelca pri generovaní"}
                     </Label>
                     <Input
                       value={placeholder.label ?? ""}

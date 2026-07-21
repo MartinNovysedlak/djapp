@@ -166,7 +166,7 @@ export default function ClientReviewsPage() {
       <Reveal>
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-white">
-            Ohodnotiť DJ-ov
+            Ohodnotiť umelcov
           </h1>
           <p className="mt-1.5 text-sm text-zinc-500">
             Po prijatej a skončenej akcii môžeš napísať recenziu priamo tu.
@@ -214,7 +214,7 @@ export default function ClientReviewsPage() {
                 className="rounded-2xl border border-white/8 bg-card/50 px-4 py-3 text-sm text-zinc-500"
               >
                 <span className="font-medium text-zinc-300">
-                  {djs[b.dj_id]?.full_name || "DJ"}
+                  {djs[b.dj_id]?.full_name || "Umelec"}
                 </span>
                 {" · "}
                 {formatDateRange(b.event_date, b.end_date)}
@@ -242,7 +242,7 @@ export default function ClientReviewsPage() {
                 <Star className="size-4 fill-emerald-300 text-emerald-300" />
                 <div>
                   <p className="text-sm font-medium text-white">
-                    {djs[b.dj_id]?.full_name || "DJ"}
+                    {djs[b.dj_id]?.full_name || "Umelec"}
                   </p>
                   <p className="text-xs text-zinc-500">
                     {formatDateRange(b.event_date, b.end_date)}
@@ -266,7 +266,7 @@ export default function ClientReviewsPage() {
                   Zatiaľ nič na hodnotenie
                 </h2>
                 <p className="mt-2.5 text-sm leading-relaxed text-zinc-400">
-                  Keď DJ prijme tvoju rezerváciu a akcia sa skončí, tu sa
+                  Keď umelec potvrdí tvoju rezerváciu a akcia sa skončí, tu sa
                   objaví formulár na napísanie recenzie.
                 </p>
               </div>
@@ -275,7 +275,7 @@ export default function ClientReviewsPage() {
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-sm font-semibold text-white transition-all hover:brightness-110"
               >
                 <Users className="size-4" />
-                Nájsť DJ-a
+                Nájsť umelca
               </Link>
             </div>
           </div>
@@ -304,7 +304,7 @@ function ReviewComposer({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const djName = dj?.full_name || "DJ";
+  const djName = dj?.full_name || "Umelec";
   const displayRating = hoverRating || rating;
 
   const handleSubmit = async () => {
@@ -402,7 +402,7 @@ function ReviewComposer({
           <Textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Ako to prebehlo? Odporučil by si tohto DJ-a ďalej?"
+            placeholder="Ako to prebehlo? Odporučil by si tohto umelca ďalej?"
             rows={3}
             className="rounded-xl border-white/10 bg-black/30"
           />

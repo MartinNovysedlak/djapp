@@ -22,7 +22,10 @@ export type SubmitBookingInput = {
   endTime: string; // HH:MM
   eventType: string;
   eventLocation: string;
-  message?: string;
+  /** What the client wants / how they imagine the event */
+  message: string;
+  /** Approximate budget in EUR */
+  clientBudget: number;
 };
 
 export type SubmitBookingResult = {
@@ -133,8 +136,8 @@ export async function hasAcceptedConflict(
       return {
         conflict: true,
         label: isBlockout
-          ? `DJ je v tomto čase nedostupný (${labelName}, ${startLabel}–${endLabel}). Vyber iný termín.`
-          : `DJ je v tomto čase obsadený (${startLabel}–${endLabel}). Vyber iný termín.`,
+          ? `Umelec je v tomto čase nedostupný (${labelName}, ${startLabel}–${endLabel}). Vyber iný termín.`
+          : `Umelec je v tomto čase obsadený (${startLabel}–${endLabel}). Vyber iný termín.`,
       };
     }
   }
@@ -158,7 +161,7 @@ export async function hasAcceptedConflict(
     if (hit.conflict) {
       return {
         conflict: true,
-        label: `DJ je v tomto čase obsadený (osobný kalendár${
+        label: `Umelec je v tomto čase obsadený (osobný kalendár${
           hit.title ? `: ${hit.title}` : ""
         }). Vyber iný termín.`,
       };
@@ -184,7 +187,8 @@ export async function submitBooking(
   const endTime = normalizeTime(input.endTime, "");
   const eventType = input.eventType?.trim();
   const eventLocation = input.eventLocation?.trim();
-  const message = input.message?.trim() || null;
+  const message = input.message?.trim() || "";
+  const clientBudget = Number(input.clientBudget);
   const djId = input.djId?.trim();
 
   if (
@@ -194,9 +198,16 @@ export async function submitBooking(
     !eventLocation ||
     !startTime ||
     !endTime ||
-    !clientPhone
+    !clientPhone ||
+    !message
   ) {
-    return { ok: false, error: "Prosím, vyplň všetky povinné údaje vrátane telefónu." };
+    return {
+      ok: false,
+      error: "Prosím, vyplň všetky povinné údaje vrátane telefónu a popisu akcie.",
+    };
+  }
+  if (!Number.isFinite(clientBudget) || clientBudget < 0) {
+    return { ok: false, error: "Zadaj približný rozpočet v EUR." };
   }
 
   try {
@@ -221,7 +232,7 @@ export async function submitBooking(
     if (clientProfile?.role === "dj") {
       return {
         ok: false,
-        error: "DJ účty nemôžu odosielať rezervácie. Prihlás sa ako zákazník.",
+        error: "Umelecké účty nemôžu odosielať rezervácie. Prihlás sa ako zákazník.",
       };
     }
 
@@ -253,7 +264,7 @@ export async function submitBooking(
       .maybeSingle();
 
     if (djError || !djProfile) {
-      return { ok: false, error: "DJ profil sa nenašiel." };
+      return { ok: false, error: "Profil umelca sa nenašiel." };
     }
 
     const { error: insertError } = await ssr.from("bookings").insert({
@@ -269,6 +280,7 @@ export async function submitBooking(
       event_type: eventType,
       event_location: eventLocation,
       message,
+      client_budget: clientBudget,
       status: "pending",
       type: "booking",
     });

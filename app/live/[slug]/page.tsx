@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: PageProps) {
   }
   return {
     title: `Pesnička na želanie${result.booking.djName ? ` · ${result.booking.djName}` : ""}`,
-    description: "Pošli DJ-ovi skladbu na želanie priamo z mobilu.",
+    description: "Pošli umelcovi skladbu na želanie priamo z mobilu.",
   };
 }
 
