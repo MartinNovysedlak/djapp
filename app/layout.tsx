@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/lib/toast-context";
@@ -63,6 +64,7 @@ export default function RootLayout({
           <Navbar />
           {children}
         </ToastProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
