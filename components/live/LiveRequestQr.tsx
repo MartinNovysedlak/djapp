@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ensureLiveSlug } from "@/app/actions/live-requests";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useToast } from "@/lib/toast-context";
+import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 type LiveRequestQrProps = {
@@ -15,6 +16,10 @@ type LiveRequestQrProps = {
   className?: string;
   defaultOpen?: boolean;
 };
+
+function publicLiveUrl(slug: string) {
+  return `${BRAND.url.replace(/\/$/, "")}/live/${slug}`;
+}
 
 export function LiveRequestQr({
   bookingId,
@@ -42,7 +47,7 @@ export function LiveRequestQr({
         showToast(result.error, "error");
         return;
       }
-      setUrl(result.url);
+      setUrl(publicLiveUrl(result.slug));
       setSlug(result.slug);
     })();
     return () => {

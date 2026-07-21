@@ -2,7 +2,7 @@
 
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/utils/supabase/server";
-import { getSiteUrl } from "@/lib/email/send-app-email";
+import { BRAND } from "@/lib/brand";
 import { normalizeSongInput } from "@/lib/songs/normalize";
 import {
   isLiveRequestStatus,
@@ -13,6 +13,11 @@ import {
 
 const LIVE_COLS =
   "id, booking_id, song_title, artist, guest_name, status, source_url, normalized_title, created_at, updated_at";
+
+/** Guest-facing live URL — always production domain (QR must work on phones). */
+function liveGuestUrl(slug: string) {
+  return `${BRAND.url.replace(/\/$/, "")}/live/${slug}`;
+}
 
 function adminClient() {
   return createServiceClient(
@@ -78,7 +83,7 @@ export async function ensureLiveSlug(bookingId: string): Promise<
     return {
       ok: true,
       slug: booking.live_slug,
-      url: `${getSiteUrl()}/live/${booking.live_slug}`,
+      url: liveGuestUrl(booking.live_slug),
     };
   }
 
@@ -97,7 +102,7 @@ export async function ensureLiveSlug(bookingId: string): Promise<
       return {
         ok: true,
         slug: data.live_slug,
-        url: `${getSiteUrl()}/live/${data.live_slug}`,
+        url: liveGuestUrl(data.live_slug),
       };
     }
 
@@ -111,7 +116,7 @@ export async function ensureLiveSlug(bookingId: string): Promise<
       return {
         ok: true,
         slug: existing.live_slug,
-        url: `${getSiteUrl()}/live/${existing.live_slug}`,
+        url: liveGuestUrl(existing.live_slug),
       };
     }
 
