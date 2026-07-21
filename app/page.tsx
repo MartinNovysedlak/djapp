@@ -128,13 +128,6 @@ export default function Home() {
                 <Users className="size-4" />
                 Hľadám umelca
               </Link>
-              <Link
-                href="/djs?compare=1"
-                className="inline-flex h-12 items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-8 text-sm font-medium text-violet-200 backdrop-blur-md transition-all duration-300 hover:border-violet-400/50 hover:bg-violet-500/20 active:scale-[0.98]"
-              >
-                Dostaň ponuky od 4 umelcov
-                <ArrowRight className="size-4" />
-              </Link>
             </div>
           </Reveal>
 
