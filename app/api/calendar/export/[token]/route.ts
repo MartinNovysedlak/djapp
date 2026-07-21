@@ -65,7 +65,7 @@ export async function GET(
       (bookings ?? []) as ExportableBooking[],
       {
         djName: profile.full_name,
-        calendarName: `${profile.full_name || "DJ"} – DJ App`,
+        calendarName: `${profile.full_name || "DJ"} – BookTheVibe`,
       }
     );
 

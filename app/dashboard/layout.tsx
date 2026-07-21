@@ -136,7 +136,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <Disc3 className="size-5 text-violet-300" strokeWidth={1.5} />
           </div>
           <span className="text-sm font-semibold tracking-tight text-white">
-            DJ App
+            BookTheVibe
           </span>
         </div>
 

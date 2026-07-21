@@ -371,7 +371,7 @@ export default function DJsPage() {
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-white/5 px-6 py-8 text-center text-xs text-zinc-600">
-        DJ App &copy; {new Date().getFullYear()} — Katalóg DJ-ov
+        BookTheVibe &copy; {new Date().getFullYear()} — Katalóg DJ-ov
       </footer>
     </div>
   );

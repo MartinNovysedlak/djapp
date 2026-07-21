@@ -18,7 +18,7 @@ function resolveFromAddress(): string {
   return (
     process.env.EMAIL_FROM?.trim() ||
     process.env.RESEND_FROM_EMAIL?.trim() ||
-    "DJ App <onboarding@resend.dev>"
+    "BookTheVibe <onboarding@resend.dev>"
   );
 }
 

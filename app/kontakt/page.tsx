@@ -33,7 +33,7 @@ export default function KontaktPage() {
               </span>
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-zinc-500 md:text-base">
-              DJ App nie je anonymný web — je to platforma s jasnou víziou:
+              BookTheVibe nie je anonymný web — je to platforma s jasnou víziou:
               menej chaosu pre DJ-ov, viac istoty pre klientov.
             </p>
           </div>
@@ -151,7 +151,7 @@ export default function KontaktPage() {
       </main>
 
       <footer className="relative z-10 border-t border-white/5 px-6 py-8 text-center text-xs text-zinc-600">
-        DJ App &copy; {new Date().getFullYear()} — Kontakt
+        BookTheVibe &copy; {new Date().getFullYear()} — Kontakt
       </footer>
     </div>
   );

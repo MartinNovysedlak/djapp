@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getDjStageName } from "@/lib/dj-display";
 import DjProfileClient from "./DjProfileClient";
 
-const PLATFORM_NAME = "DJ App";
+const PLATFORM_NAME = "BookTheVibe";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

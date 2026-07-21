@@ -149,10 +149,10 @@ function RegisterForm() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Vytvor si účet
+              BookTheVibe
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pripoj sa k platforme za pár sekúnd.
+              Vytvor si účet za pár sekúnd.
             </p>
           </div>
         </div>

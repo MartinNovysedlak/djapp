@@ -85,10 +85,10 @@ function LoginForm() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              DJ App
+              BookTheVibe
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mix smarter. Perform better.
+              Rezervuj vibe. Spravuj biznis.
             </p>
           </div>
         </div>

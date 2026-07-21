@@ -3,16 +3,48 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/lib/toast-context";
+import { BRAND, SEO_DEFAULT } from "@/lib/brand";
 
 const outfit = Outfit({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || BRAND.url;
+
 export const metadata: Metadata = {
-  title: "DJ App — Mix smarter. Perform better.",
-  description:
-    "Profesionálna SaaS aplikácia pre DJ-ov. Spravuj svoj kalendár, aparatúru a rezervácie na jednom mieste.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: SEO_DEFAULT.title,
+    template: SEO_DEFAULT.titleTemplate,
+  },
+  description: SEO_DEFAULT.description,
+  keywords: [...SEO_DEFAULT.keywords],
+  applicationName: BRAND.name,
+  authors: [{ name: BRAND.name }],
+  creator: BRAND.name,
+  publisher: BRAND.name,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: BRAND.locale,
+    url: siteUrl,
+    siteName: BRAND.name,
+    title: SEO_DEFAULT.title,
+    description: SEO_DEFAULT.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SEO_DEFAULT.title,
+    description: SEO_DEFAULT.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

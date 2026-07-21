@@ -203,7 +203,7 @@ export function TimelinePdfDocument({ data }: { data: TimelinePdfData }) {
   return (
     <Document
       title={`Program – ${data.clientName}`}
-      author="DJ App"
+      author="BookTheVibe"
       subject="Harmonogram akcie"
     >
       <Page size="A4" style={styles.page}>

@@ -24,7 +24,7 @@ function shell(opts: {
     : "";
   const footer =
     opts.footer ||
-    "DJ App — mix smarter. Tento e-mail bol odoslaný automaticky.";
+    "BookTheVibe — tento e-mail bol odoslaný automaticky.";
 
   return `<!DOCTYPE html>
 <html lang="sk">
@@ -32,7 +32,7 @@ function shell(opts: {
 <body style="margin:0;padding:0;background:#050505;">
   <div style="font-family:Outfit,Segoe UI,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:28px 16px;">
     <div style="background:#0A0A0A;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:28px 24px;color:#f4f4f5;">
-      <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#a78bfa;margin-bottom:14px;font-weight:600;">DJ App</div>
+      <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#a78bfa;margin-bottom:14px;font-weight:600;">BookTheVibe</div>
       <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px;color:${titleColor};">${opts.title}</h1>
       ${opts.bodyHtml}
       ${cta}
@@ -214,7 +214,7 @@ export function contactAdminEmailHtml(input: {
     titleColor: "#c4b5fd",
     bodyHtml: `
       <p style="color:#a1a1aa;margin:0 0 8px;font-size:15px;line-height:1.55;">
-        Niekto ťa kontaktoval cez DJ App. Odpovedz priamo na tento e-mail.
+        Niekto ťa kontaktoval cez BookTheVibe. Odpovedz priamo na tento e-mail.
       </p>
       ${detailRows([
         { label: "Meno", value: input.name },
@@ -267,6 +267,6 @@ export function googleReviewRequestEmailHtml(input: {
       large: true,
     },
     footer:
-      "DJ App — mix smarter. Tento e-mail bol odoslaný automaticky po ukončení akcie.",
+      "BookTheVibe — tento e-mail bol odoslaný automaticky po ukončení akcie.",
   });
 }

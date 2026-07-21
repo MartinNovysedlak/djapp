@@ -1008,7 +1008,7 @@ export default function DjProfileClient() {
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-white/5 px-6 py-8 text-center text-xs text-zinc-600">
-        DJ App &copy; {new Date().getFullYear()} — Profil DJ-a
+        BookTheVibe &copy; {new Date().getFullYear()} — Profil DJ-a
       </footer>
     </div>
   );

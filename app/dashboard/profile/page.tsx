@@ -1020,7 +1020,7 @@ export default function ProfilePage() {
                 <p className="text-xs text-muted-foreground/60">
                   {profile?.plan_type === "pro"
                     ? "Všetky funkcie odomknuté."
-                    : "Pre kalendár, aparatúru a rezervácie prejdi na Pro."}
+                    : "Pre kalendár, rezervácie a dokumenty prejdi na Pro."}
                 </p>
               </div>
               {profile?.plan_type !== "pro" && (

@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { createClient } from "@/utils/supabase/server";
 import { getDjStageName } from "@/lib/dj-display";
 
-export const alt = "DJ App — profil DJ-a";
+export const alt = "BookTheVibe — profil DJ-a";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -196,7 +196,7 @@ export default async function Image({ params }: ImageProps) {
               >
                 ♫
               </span>
-              DJ App
+              BookTheVibe
             </div>
 
             <div
