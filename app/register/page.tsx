@@ -427,16 +427,14 @@ function RegisterForm() {
                   <Loader2 className="size-4 animate-spin" />
                   Vytváram účet…
                 </>
+              ) : role === "client" ? (
+                "Vytvoriť účet ako zákazník"
+              ) : artistKind === "band" ? (
+                "Vytvoriť účet ako kapela"
+              ) : artistKind === "dj_band" ? (
+                "Vytvoriť účet ako DJ + Kapela"
               ) : (
-                `Vytvoriť účet ako ${
-                  role === "client"
-                    ? "zákazník"
-                    : artistKind === "band"
-                      ? "kapela"
-                      : artistKind === "dj_band"
-                        ? "DJ + Kapela"
-                        : "DJ"
-                }`}
+                "Vytvoriť účet ako DJ"
               )}
             </Button>
           </form>
