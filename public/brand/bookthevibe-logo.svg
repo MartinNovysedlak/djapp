@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="300 210 500 290" fill="none" role="img" aria-label="BookTheVibe">
+  <defs>
+    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="30%" stop-color="#FFFFFF"/>
+      <stop offset="30.1%" stop-color="#00E5FF"/>
+      <stop offset="45%" stop-color="#3498DB"/>
+      <stop offset="75%" stop-color="#9B59B6"/>
+      <stop offset="100%" stop-color="#8623A8"/>
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M 370 340
+       L 420 385
+       C 460 345, 480 285, 510 285
+       C 540 285, 530 325, 555 325
+       C 580 325, 565 240, 595 240
+       C 625 240, 615 305, 640 305
+       C 665 305, 655 270, 680 270
+       C 705 270, 710 290, 730 290"
+    fill="none"
+    stroke="url(#waveGradient)"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <text
+    x="550"
+    y="470"
+    font-family="Outfit, Montserrat, Poppins, Arial, sans-serif"
+    font-size="76"
+    text-anchor="middle"
+    letter-spacing="0"
+  >
+    <tspan fill="#FFFFFF" font-weight="700">Book</tspan><tspan fill="#8C228E" font-weight="300">The</tspan><tspan fill="#8C228E" font-weight="700">Vibe</tspan>
+  </text>
+</svg>

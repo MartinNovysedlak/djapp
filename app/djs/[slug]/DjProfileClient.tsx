@@ -28,6 +28,7 @@ import { createClient } from "@/utils/supabase/client";
 import BookingDialog from "@/components/BookingDialog";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { Reveal, Aurora, Equalizer } from "@/components/motion";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getVideoEmbedUrl, isDirectVideoFile, isValidUrl } from "@/lib/video";
 import { getDjRealName, getDjStageName } from "@/lib/dj-display";
 import { isValidGoogleMapsUrl } from "@/lib/google-maps";
@@ -1006,10 +1007,7 @@ export default function DjProfileClient() {
         </Reveal>
       </main>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 border-t border-white/5 px-6 py-8 text-center text-xs text-zinc-600">
-        BookTheVibe &copy; {new Date().getFullYear()} — Profil DJ-a
-      </footer>
+      <SiteFooter caption="Profil DJ-a" />
     </div>
   );
 }

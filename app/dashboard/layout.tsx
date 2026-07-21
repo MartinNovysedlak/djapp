@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Disc3,
   User,
   Calendar,
   CalendarCheck,
@@ -23,6 +22,7 @@ import {
   useDashboardUser,
 } from "@/components/DashboardUserContext";
 import { clearDashboardAuthCache } from "@/lib/nav-cache";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function DashboardLayout({
   children,
@@ -131,13 +131,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       ].join(" ")}
     >
       <div className="glass flex h-full flex-col rounded-3xl shadow-[0_24px_70px_-30px_oklch(0_0_0/0.8)]">
-        <div className="flex h-16 items-center gap-2.5 border-b border-white/5 px-5">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 shadow-[0_0_24px_-6px_oklch(0.6_0.26_295/0.5)]">
-            <Disc3 className="size-5 text-violet-300" strokeWidth={1.5} />
-          </div>
-          <span className="text-sm font-semibold tracking-tight text-white">
-            BookTheVibe
-          </span>
+        <div className="flex h-[4.5rem] items-center border-b border-white/5 px-3">
+          <Link href="/" className="inline-flex min-w-0 items-center">
+            <BrandLogo size="md" />
+          </Link>
         </div>
 
         <nav className="flex-1 space-y-1.5 px-3 py-5">

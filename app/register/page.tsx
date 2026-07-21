@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Disc, Disc3, Loader2, Lock, Mail, Phone, Sparkles, User, Users } from "lucide-react";
+import { CheckCircle2, Disc, Loader2, Lock, Mail, Phone, Sparkles, User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { signUpWithEmail } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type Role = "client" | "dj";
 
@@ -144,17 +145,10 @@ function RegisterForm() {
       <div className="relative z-10 w-full max-w-md">
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-[0_0_40px_-8px_rgba(139,92,246,0.5)] backdrop-blur-sm">
-            <Disc3 className="size-7 text-primary" strokeWidth={1.5} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              BookTheVibe
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Vytvor si účet za pár sekúnd.
-            </p>
-          </div>
+          <BrandLogo size="lg" />
+          <p className="text-sm text-muted-foreground">
+            Vytvor si účet za pár sekúnd.
+          </p>
         </div>
 
         <div className="glass rounded-3xl p-6 md:p-7">

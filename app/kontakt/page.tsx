@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Reveal, Aurora } from "@/components/motion";
 import { ContactAdminForm } from "@/components/ContactAdminForm";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const CONTACT_EMAIL = "bookthevibeonline@gmail.com";
 
@@ -150,9 +151,7 @@ export default function KontaktPage() {
         </div>
       </main>
 
-      <footer className="relative z-10 border-t border-white/5 px-6 py-8 text-center text-xs text-zinc-600">
-        BookTheVibe &copy; {new Date().getFullYear()} — Kontakt
-      </footer>
+      <SiteFooter caption="Kontakt" />
     </div>
   );
 }

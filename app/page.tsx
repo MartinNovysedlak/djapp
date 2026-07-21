@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/accordion";
 import { Reveal, Equalizer, Aurora } from "@/components/motion";
 import { BRAND, SEO_DEFAULT } from "@/lib/brand";
+import { SiteFooter } from "@/components/SiteFooter";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export const metadata: Metadata = {
   title: { absolute: SEO_DEFAULT.title },
@@ -83,13 +85,11 @@ export default function Home() {
         {/* HERO — brand first */}
         <section className="flex flex-col items-center pt-16 text-center md:pt-24">
           <Reveal>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-violet-300/90">
-              {BRAND.name}
-            </p>
+            <BrandLogo size="hero" className="mx-auto" />
           </Reveal>
 
           <Reveal delay={60}>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-zinc-300 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md">
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-zinc-300 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md">
               <Equalizer className="h-4" />
               Platforma pre DJ-ov a klientov
               <Sparkles className="size-3.5 text-violet-300" />
@@ -98,11 +98,9 @@ export default function Home() {
 
           <Reveal delay={120}>
             <h1 className="mt-7 max-w-4xl text-balance text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl lg:text-7xl">
-              <span className="text-gradient">{BRAND.name}</span>
+              Rezervuj vibe.
               <br />
-              <span className="text-white/95">Rezervuj vibe.</span>
-              <br />
-              <span className="text-zinc-300">Spravuj biznis.</span>
+              <span className="text-gradient">Spravuj biznis.</span>
             </h1>
           </Reveal>
 
@@ -685,32 +683,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/5 px-6 py-10 text-center text-xs text-zinc-600">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
-          <div className="flex items-center gap-2">
-            <Disc3 className="size-4 text-violet-400" strokeWidth={1.5} />
-            <span className="font-medium text-zinc-400">{BRAND.name}</span>
-          </div>
-          <div className="flex gap-6">
-            <Link
-              href="/kontakt"
-              className="transition-colors duration-300 hover:text-zinc-300"
-            >
-              Kontakt
-            </Link>
-            <Link
-              href="/djs"
-              className="transition-colors duration-300 hover:text-zinc-300"
-            >
-              Katalóg
-            </Link>
-          </div>
-          <span>
-            &copy; {new Date().getFullYear()} {BRAND.name} — Všetky práva
-            vyhradené.
-          </span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

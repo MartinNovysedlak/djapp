@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Disc3, Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInWithEmail, getOwnRole } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const OAUTH_ERROR_MESSAGE =
   "Prihlásenie cez Google sa nepodarilo. Skús to znova.";
@@ -80,17 +81,10 @@ function LoginForm() {
       <div className="relative z-10 w-full max-w-md">
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-[0_0_40px_-8px_rgba(139,92,246,0.5)] backdrop-blur-sm">
-            <Disc3 className="size-7 text-primary" strokeWidth={1.5} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              BookTheVibe
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Rezervuj vibe. Spravuj biznis.
-            </p>
-          </div>
+          <BrandLogo size="lg" />
+          <p className="text-sm text-muted-foreground">
+            Rezervuj vibe. Spravuj biznis.
+          </p>
         </div>
 
         <Card>

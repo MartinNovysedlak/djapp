@@ -16,6 +16,7 @@ import {
 import { Reveal, Aurora, Equalizer } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import { getDjRealName, getDjStageName } from "@/lib/dj-display";
+import { SiteFooter } from "@/components/SiteFooter";
 
 type DJProfile = {
   id: string;
@@ -369,10 +370,7 @@ export default function DJsPage() {
         )}
       </main>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 border-t border-white/5 px-6 py-8 text-center text-xs text-zinc-600">
-        BookTheVibe &copy; {new Date().getFullYear()} — Katalóg DJ-ov
-      </footer>
+      <SiteFooter caption="Katalóg DJ-ov" />
     </div>
   );
 }

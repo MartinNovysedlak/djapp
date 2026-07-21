@@ -9,6 +9,8 @@ export const BRAND = {
   url: "https://bookthevibe.com",
   email: "bookthevibeonline@gmail.com",
   locale: "sk_SK",
+  logoPath: "/brand/bookthevibe-logo.svg",
+  logoPngPath: "/brand/bookthevibe-logo.png",
 } as const;
 
 export const SEO_DEFAULT = {

@@ -1,5 +1,7 @@
 /** Shared dark premium HTML shell for transactional emails. */
 
+import { BRAND } from "@/lib/brand";
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -24,7 +26,8 @@ function shell(opts: {
     : "";
   const footer =
     opts.footer ||
-    "BookTheVibe — tento e-mail bol odoslaný automaticky.";
+    `${BRAND.name} — tento e-mail bol odoslaný automaticky.`;
+  const logoSrc = `${BRAND.url}${BRAND.logoPngPath}`;
 
   return `<!DOCTYPE html>
 <html lang="sk">
@@ -32,7 +35,9 @@ function shell(opts: {
 <body style="margin:0;padding:0;background:#050505;">
   <div style="font-family:Outfit,Segoe UI,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:28px 16px;">
     <div style="background:#0A0A0A;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:28px 24px;color:#f4f4f5;">
-      <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#a78bfa;margin-bottom:14px;font-weight:600;">BookTheVibe</div>
+      <div style="margin-bottom:16px;">
+        <img src="${escapeHtml(logoSrc)}" alt="${escapeHtml(BRAND.name)}" width="200" height="116" style="display:block;border:0;outline:none;height:auto;max-width:200px;" />
+      </div>
       <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px;color:${titleColor};">${opts.title}</h1>
       ${opts.bodyHtml}
       ${cta}

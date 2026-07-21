@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <defs>
+    <linearGradient id="check" x1="40" y1="90" x2="145" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="45%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#8623A8"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="#0A0A0A"/>
+  <path
+    d="M48 91 L78 121 L132 58"
+    stroke="url(#check)"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

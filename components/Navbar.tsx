@@ -2,9 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Disc3, Home, Users, User, ArrowRight, LogOut, Mail } from "lucide-react";
+import { Home, Users, User, ArrowRight, LogOut, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type AuthUser = { id: string; email?: string };
 
@@ -108,13 +109,8 @@ export default function Navbar() {
               : "border-transparent bg-transparent"
           }`}
         >
-          <Link href="/" className="group flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 shadow-[0_0_24px_-6px_oklch(0.6_0.26_295/0.5)] transition-transform duration-500 group-hover:rotate-180">
-              <Disc3 className="size-5 text-violet-300" strokeWidth={1.5} />
-            </div>
-            <span className="text-base font-semibold tracking-tight text-white">
-              BookTheVibe
-            </span>
+          <Link href="/" className="group flex items-center">
+            <BrandLogo size="md" className="transition-opacity group-hover:opacity-90" />
           </Link>
 
           <div className="hidden items-center gap-1 sm:flex">
