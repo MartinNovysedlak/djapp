@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 /**
  * Vercel Cron keep-alive: tiny Supabase SELECT so a paused free-tier DB
  * wakes up and the inactivity timer resets. Read-only, no auth required.
- * Scheduled in vercel.json → every 6 hours (`0 */6 * * *`).
+ * Scheduled in vercel.json → once daily (`0 12 * * *`, Hobby plan limit).
  */
 export async function GET() {
   try {
