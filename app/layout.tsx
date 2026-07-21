@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/lib/toast-context";
+import { ClearServiceWorkers } from "@/components/ClearServiceWorkers";
 import { BRAND, SEO_DEFAULT } from "@/lib/brand";
 
 const outfit = Outfit({
@@ -13,6 +14,11 @@ const outfit = Outfit({
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || BRAND.url;
+
+export const viewport: Viewport = {
+  themeColor: "#0A0A0A",
+  colorScheme: "dark",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -47,8 +53,11 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
 };
 
@@ -61,6 +70,7 @@ export default function RootLayout({
     <html lang="sk" className="dark">
       <body className={`${outfit.variable} font-sans antialiased`}>
         <ToastProvider>
+          <ClearServiceWorkers />
           <Navbar />
           {children}
         </ToastProvider>

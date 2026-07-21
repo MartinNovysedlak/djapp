@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   FileText,
   FileSignature,
+  Lock,
   LogOut,
   Menu,
   Megaphone,
@@ -22,10 +23,19 @@ import {
   DashboardUserProvider,
   useDashboardUser,
 } from "@/components/DashboardUserContext";
+import { NewMessageToaster } from "@/components/chat/NewMessageToaster";
 import { clearDashboardAuthCache } from "@/lib/nav-cache";
 import { BrandLogo } from "@/components/BrandLogo";
 import { countUnreadBookingMessages } from "@/app/actions/booking-messages";
-import { NewMessageToaster } from "@/components/chat/NewMessageToaster";
+import { PremiumUpgradeGate } from "@/components/PremiumUpgradeGate";
+import {
+  hasPremiumAccess,
+  isPremiumDashboardPath,
+  getTrialDaysLeft,
+  isTrialActive,
+  isPaidPremiumActive,
+} from "@/lib/plans";
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -44,10 +54,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const { user, loading } = useDashboardUser();
+  const { user, profile, loading } = useDashboardUser();
+  const premium = hasPremiumAccess(profile);
+  const trialDays = getTrialDaysLeft(profile);
+  const onTrial = isTrialActive(profile) && !isPaidPremiumActive(profile);
 
   useEffect(() => {
     if (!user) {
+      setUnreadMessages(0);
+      return;
+    }
+    if (!premium) {
       setUnreadMessages(0);
       return;
     }
@@ -59,62 +76,77 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     refresh();
     const id = window.setInterval(refresh, 10000);
     return () => window.clearInterval(id);
-  }, [user, pathname]);
+  }, [user, pathname, premium]);
 
   const navItems = [
     {
       label: "Môj profil",
       href: "/dashboard/profile",
       icon: <User className="size-4" />,
+      premium: false,
     },
     {
       label: "Rezervácie",
       href: "/dashboard/bookings",
       icon: <CalendarCheck className="size-4" />,
+      premium: true,
     },
     {
       label: "Správy",
       href: "/dashboard/messages",
       icon: <MessageCircle className="size-4" />,
+      premium: true,
     },
     {
       label: "Analytika",
       href: "/dashboard/analytics",
       icon: <TrendingUp className="size-4" />,
+      premium: true,
     },
     {
       label: "Kalendár",
       href: "/dashboard/calendar",
       icon: <Calendar className="size-4" />,
+      premium: true,
     },
     {
       label: "Marketing",
       href: "/dashboard/settings/marketing",
       icon: <Megaphone className="size-4" />,
+      premium: true,
     },
     {
       label: "Špeciálna ponuka",
       href: "/dashboard/extras",
       icon: <Sparkles className="size-4" />,
+      premium: true,
     },
     {
       label: "Šablóny",
       href: "/dashboard/contracts",
       icon: <FileText className="size-4" />,
+      premium: true,
     },
     {
       label: "PDF zmluvy",
       href: "/dashboard/contracts/generate",
       icon: <FileSignature className="size-4" />,
+      premium: true,
     },
     {
       label: "PDF faktúry",
       href: "/dashboard/invoices/generate",
       icon: <Receipt className="size-4" />,
+      premium: true,
     },
   ];
 
   const isLiveBooth = Boolean(pathname?.includes("/live"));
+  const blocked =
+    !loading &&
+    !!user &&
+    !premium &&
+    isPremiumDashboardPath(pathname ?? "");
 
   const handleSignOut = async () => {
     clearDashboardAuthCache();
@@ -149,19 +181,20 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const sidebar = (
     <aside
       className={[
-        "fixed bottom-0 left-0 top-[76px] z-40 flex w-68 flex-col p-4",
-        "transition-transform duration-300 ease-out md:relative md:top-0 md:translate-x-0",
+        "btv-app-sidebar fixed bottom-0 left-0 top-[76px] z-40 flex w-[17rem] shrink-0 flex-col p-4",
+        "transition-transform duration-300 ease-out",
+        "md:sticky md:top-0 md:h-svh md:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full",
       ].join(" ")}
     >
-      <div className="glass flex h-full flex-col rounded-3xl shadow-[0_24px_70px_-30px_oklch(0_0_0/0.8)]">
-        <div className="flex h-[4.5rem] items-center border-b border-white/5 px-3">
-          <Link href="/" className="inline-flex min-w-0 items-center">
+      <div className="glass flex h-full w-full flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_-30px_oklch(0_0_0/0.8)]">
+        <div className="flex h-[4.5rem] shrink-0 items-center border-b border-white/5 px-3">
+          <Link href="/dashboard/bookings" className="inline-flex min-w-0 items-center">
             <BrandLogo size="md" />
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1.5 px-3 py-5">
+        <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
           {navItems.map((item) => {
             // Chat under /bookings/:id/chat belongs to Správy, not Rezervácie.
             const isChatRoute =
@@ -184,27 +217,31 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 prefetch
                 onClick={() => setSidebarOpen(false)}
-                className={[
+                className={cn(
                   "group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm transition-all duration-200",
                   isActive
                     ? "bg-gradient-to-r from-violet-500/20 to-fuchsia-500/10 font-medium text-white shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_8px_24px_-12px_oklch(0.6_0.26_295/0.5)]"
-                    : "text-zinc-400 hover:bg-white/5 hover:text-white",
-                ].join(" ")}
+                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                )}
               >
                 <span
-                  className={`shrink-0 transition-all duration-200 ${
+                  className={cn(
+                    "shrink-0 transition-all duration-200",
                     isActive
                       ? "text-violet-300"
                       : "group-hover:scale-110 group-hover:text-violet-300"
-                  }`}
+                  )}
                 >
                   {item.icon}
                 </span>
-                <span className="flex-1">{item.label}</span>
-                {(item.href === "/dashboard/messages") &&
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.premium && !premium ? (
+                  <Lock className="size-3.5 shrink-0 text-zinc-600" />
+                ) : null}
+                {item.href === "/dashboard/messages" &&
                 unreadMessages > 0 &&
                 !isActive ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                  <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
                     {unreadMessages > 9 ? "9+" : unreadMessages}
                   </span>
                 ) : null}
@@ -213,9 +250,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="border-t border-white/5 px-4 py-4">
+        <div className="shrink-0 border-t border-white/5 px-4 py-4">
           <div className="mb-2 flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-[11px] font-bold text-white">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-[11px] font-bold text-white">
               {(user?.email ?? "?").charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1 truncate text-xs text-zinc-500">
@@ -250,7 +287,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {sidebar}
 
-      <main className="relative flex-1 overflow-auto">
+      <main className="relative min-w-0 flex-1">
         <div className="flex items-center gap-3 px-4 py-3 md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -261,6 +298,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-medium text-white">Menu</span>
         </div>
         <div className="p-4 md:p-8 lg:p-10">
+          {onTrial && trialDays !== null ? (
+            <div className="mb-6 rounded-2xl border border-violet-500/25 bg-violet-500/10 px-4 py-3 text-sm text-violet-200">
+              Premium trial: zostáva {trialDays}{" "}
+              {trialDays === 1 ? "deň" : "dní"}. Potom potrebuješ Premium predplatné.
+            </div>
+          ) : null}
           {loading && !user ? (
             <div className="mx-auto max-w-4xl space-y-4 animate-pulse">
               <div className="h-8 w-48 rounded-xl bg-white/5" />
@@ -268,6 +311,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               <div className="mt-6 h-40 rounded-3xl bg-white/[0.03]" />
               <div className="h-40 rounded-3xl bg-white/[0.03]" />
             </div>
+          ) : blocked ? (
+            <PremiumUpgradeGate profile={profile} />
           ) : (
             children
           )}

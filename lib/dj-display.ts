@@ -1,3 +1,5 @@
+import { hasPremiumAccess } from "@/lib/plans";
+
 /**
  * Public identity helpers for artist profiles (DJ / Kapela / mix).
  * `full_name` is the stage / artist name; real first/last are private unless
@@ -33,19 +35,28 @@ export function getArtistKindLabel(kind: ArtistKind | string | null | undefined)
   }
 }
 
-/** Catalog / plan badge suffix. */
+/** Catalog / plan badge. */
 export function getArtistPlanBadge(
   planType: string | null | undefined,
-  kind: ArtistKind | string | null | undefined
+  kind: ArtistKind | string | null | undefined,
+  opts?: {
+    trial_ends_at?: string | null;
+    premium_until?: string | null;
+  }
 ): string {
-  const pro = planType === "pro";
+  const premium = hasPremiumAccess({
+    plan_type: planType,
+    trial_ends_at: opts?.trial_ends_at,
+    premium_until: opts?.premium_until,
+  });
+
   switch (normalizeArtistKind(kind)) {
     case "band":
-      return pro ? "PRO Kapela" : "FREE Kapela";
+      return premium ? "PREMIUM Kapela" : "FREE Kapela";
     case "dj_band":
-      return pro ? "PRO" : "FREE";
+      return premium ? "PREMIUM" : "FREE";
     default:
-      return pro ? "PRO DJ" : "FREE DJ";
+      return premium ? "PREMIUM DJ" : "FREE DJ";
   }
 }
 

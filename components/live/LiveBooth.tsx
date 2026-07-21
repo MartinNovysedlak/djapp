@@ -21,10 +21,12 @@ import type { LiveRequest, LiveRequestStatus } from "@/lib/live/types";
 import { useToast } from "@/lib/toast-context";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { bookingsReturnHref, type BookingsTab } from "@/lib/bookings-nav";
 
 type LiveBoothProps = {
   bookingId: string;
   eventLabel?: string | null;
+  returnTab?: BookingsTab;
 };
 
 function statusRank(status: LiveRequestStatus) {
@@ -42,7 +44,11 @@ function statusRank(status: LiveRequestStatus) {
   }
 }
 
-export function LiveBooth({ bookingId, eventLabel }: LiveBoothProps) {
+export function LiveBooth({
+  bookingId,
+  eventLabel,
+  returnTab = "confirmed",
+}: LiveBoothProps) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<LiveRequest[]>([]);
@@ -156,7 +162,7 @@ export function LiveBooth({ bookingId, eventLabel }: LiveBoothProps) {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-black/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-6">
           <Link
-            href="/dashboard/bookings"
+            href={bookingsReturnHref({ bookingId, tab: returnTab })}
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
               "gap-1.5 rounded-full"

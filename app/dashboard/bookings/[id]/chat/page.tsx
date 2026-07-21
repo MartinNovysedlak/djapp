@@ -5,6 +5,7 @@ import { BookingChat } from "@/components/chat/BookingChat";
 import { getBookingChatMeta } from "@/app/actions/booking-messages";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { bookingsReturnHref } from "@/lib/bookings-nav";
 
 export default async function DjBookingChatPage({
   params,
@@ -18,11 +19,18 @@ export default async function DjBookingChatPage({
     notFound();
   }
 
+  const backTab =
+    meta.status === "pending"
+      ? "new"
+      : meta.status === "accepted"
+        ? "confirmed"
+        : "history";
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 md:px-6">
       <div className="flex items-start gap-3">
         <Link
-          href="/dashboard/bookings"
+          href={bookingsReturnHref({ bookingId: id, tab: backTab })}
           className={cn(
             buttonVariants({ variant: "ghost", size: "icon" }),
             "mt-0.5 shrink-0 rounded-full"

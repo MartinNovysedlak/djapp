@@ -27,6 +27,7 @@ import {
 import { Reveal, Aurora, Equalizer } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import { getDjRealName, getDjStageName, getArtistKindLabel, getArtistPlanBadge, normalizeArtistKind, type ArtistKind } from "@/lib/dj-display";
+import { hasPremiumAccess } from "@/lib/plans";
 import { SiteFooter } from "@/components/SiteFooter";
 
 type DJProfile = {
@@ -37,6 +38,8 @@ type DJProfile = {
   public_slug: string | null;
   location: string | null;
   plan_type: string;
+  trial_ends_at?: string | null;
+  premium_until?: string | null;
   created_at: string;
   real_first_name: string | null;
   real_last_name: string | null;
@@ -178,12 +181,15 @@ function DJCard({
           </div>
           <span
             className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
-              dj.plan_type === "pro"
+              hasPremiumAccess(dj)
                 ? "border-violet-500/25 bg-violet-500/10 text-violet-300"
                 : "border-white/10 bg-white/[0.04] text-zinc-500"
             }`}
           >
-            {getArtistPlanBadge(dj.plan_type, dj.artist_kind)}
+            {getArtistPlanBadge(dj.plan_type, dj.artist_kind, {
+              trial_ends_at: dj.trial_ends_at,
+              premium_until: dj.premium_until,
+            })}
           </span>
         </div>
 
@@ -271,7 +277,7 @@ function DJsCatalogue() {
         supabase
           .from("profiles")
           .select(
-            "id, full_name, bio, avatar_url, public_slug, location, plan_type, created_at, real_first_name, real_last_name, show_real_name, artist_kind"
+            "id, full_name, bio, avatar_url, public_slug, location, plan_type, trial_ends_at, premium_until, created_at, real_first_name, real_last_name, show_real_name, artist_kind"
           )
           .eq("role", "dj")
           .not("full_name", "is", null)

@@ -51,6 +51,16 @@ import {
   isValidGoogleMapsUrl,
 } from "@/lib/google-maps";
 import { updateDjProfile } from "@/app/actions/profile";
+import {
+  formatPremiumPrice,
+  getPlanDisplayName,
+  getTrialDaysLeft,
+  hasPremiumAccess,
+  isTrialActive,
+  PREMIUM_PRICE_LABEL,
+  TRIAL_DAYS,
+} from "@/lib/plans";
+import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
 import { cn } from "@/lib/utils";
 import {
   ARTIST_KIND_OPTIONS,
@@ -1060,29 +1070,43 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-foreground capitalize">
-                  {profile?.plan_type ?? "free"}
+                <p className="text-sm font-medium text-foreground">
+                  {getPlanDisplayName(profile)}
                 </p>
                 <p className="text-xs text-muted-foreground/60">
-                  {profile?.plan_type === "pro"
-                    ? "Všetky funkcie odomknuté."
-                    : "Pre kalendár, rezervácie a dokumenty prejdi na Pro."}
+                  {hasPremiumAccess(profile)
+                    ? isTrialActive(profile)
+                      ? `Trial: zostáva ${getTrialDaysLeft(profile)} dní. Potom ${formatPremiumPrice()}.`
+                      : "Všetky Premium funkcie odomknuté."
+                    : `Free: profil a katalóg. Premium funkcie za ${formatPremiumPrice()} (prvých ${TRIAL_DAYS} dní zadarmo pri registrácii).`}
                 </p>
               </div>
-              {profile?.plan_type !== "pro" && (
+              {!hasPremiumAccess(profile) && (
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-full border-amber-500/30 bg-amber-500/10 text-amber-400 transition-all duration-300 hover:-translate-y-0.5 hover:bg-amber-500/20"
+                  className="shrink-0 rounded-full border-amber-500/30 bg-amber-500/10 text-amber-400 transition-all duration-300 hover:-translate-y-0.5 hover:bg-amber-500/20"
+                  onClick={() => {
+                    showToast(
+                      `Platba Premium (${PREMIUM_PRICE_LABEL}/mes.) pribudne čoskoro. Zatiaľ ťa môžeme aktivovať manuálne.`,
+                      "info"
+                    );
+                  }}
                 >
-                  Stať sa PRO
+                  Premium {PREMIUM_PRICE_LABEL}
                 </Button>
               )}
             </div>
           </CardContent>
         </Card>
+        </Reveal>
+
+        <Reveal delay={300}>
+          <div className="pt-2">
+            <DeleteAccountSection variant="dj" />
+          </div>
         </Reveal>
 
         {/* Sticky save bar — always visible while scrolling the form */}

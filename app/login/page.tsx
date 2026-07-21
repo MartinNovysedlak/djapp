@@ -39,6 +39,24 @@ function LoginForm() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const role = await getOwnRole();
+      if (cancelled || !role) return;
+      if (role === "client" && redirectParam) {
+        router.replace(redirectParam);
+        return;
+      }
+      router.replace(
+        role === "client" ? "/client-dashboard" : "/dashboard/bookings"
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router, redirectParam]);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setErrorMessage(null);
@@ -55,7 +73,7 @@ function LoginForm() {
       router.push(redirectParam);
       return;
     }
-    router.push(role === "client" ? "/client-dashboard" : "/dashboard/profile");
+    router.push(role === "client" ? "/client-dashboard" : "/dashboard/bookings");
   }
 
   return (

@@ -132,6 +132,9 @@ export async function createDjOwnEvent(input: {
   startTime: string;
   endTime: string;
   eventLocation?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  price?: number;
 }): Promise<CalendarEntryResult> {
   const auth = await requireDj();
   if (!auth.ok) return { ok: false, error: auth.error };
@@ -143,6 +146,12 @@ export async function createDjOwnEvent(input: {
   const startTime = normalizeTime(input.startTime, "");
   const endTime = normalizeTime(input.endTime, "");
   const eventLocation = input.eventLocation?.trim() || null;
+  const clientEmail = input.clientEmail?.trim().toLowerCase() || null;
+  const clientPhone = input.clientPhone?.trim() || null;
+  const price =
+    input.price != null && Number.isFinite(input.price) && input.price >= 0
+      ? Number(input.price)
+      : null;
 
   if (!title || !eventType || !eventDate || !startTime || !endTime) {
     return { ok: false, error: "Vyplň názov, typ akcie, dátum a čas." };
@@ -176,7 +185,8 @@ export async function createDjOwnEvent(input: {
       dj_id: auth.djId,
       client_id: null,
       client_name: title,
-      client_email: null,
+      client_email: clientEmail,
+      client_phone: clientPhone,
       event_date: eventDate,
       end_date: eventEndDate,
       start_time: startTime,
@@ -187,6 +197,7 @@ export async function createDjOwnEvent(input: {
       status: "accepted",
       message: null,
       event_location: eventLocation,
+      price,
     })
     .select("id")
     .single();

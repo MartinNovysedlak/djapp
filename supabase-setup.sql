@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   location TEXT,
   social_links JSONB DEFAULT '{}',
   plan_type TEXT NOT NULL DEFAULT 'free',
+  trial_ends_at TIMESTAMPTZ,
+  premium_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

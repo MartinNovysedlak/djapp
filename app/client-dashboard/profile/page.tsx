@@ -29,6 +29,7 @@ import {
   updateClientProfile,
   type SaveClientBillingInput,
 } from "@/app/actions/client-profile";
+import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
 
 const EMPTY_BILLING: SaveClientBillingInput = {
   personType: "individual",
@@ -482,6 +483,10 @@ export default function ClientProfilePage() {
           </CardContent>
         </Card>
       </form>
+
+      <div className="mt-8">
+        <DeleteAccountSection variant="client" />
+      </div>
 
       <AvatarCropperDialog
         open={cropperOpen}

@@ -143,6 +143,7 @@
   }
   html {
     @apply font-sans scroll-smooth;
+    scrollbar-gutter: stable;
   }
 
   ::selection {
@@ -163,6 +164,11 @@
   ::-webkit-scrollbar-thumb:hover {
     background: oklch(1 0 0 / 22%);
   }
+}
+
+/* Dashboard web: keep top nav, hide mobile marketing bottom bar */
+.btv-marketing-nav[data-shell="dashboard"] .btv-mobile-bottom-nav {
+  display: none !important;
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────────────────── */

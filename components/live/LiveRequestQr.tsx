@@ -8,6 +8,7 @@ import { ensureLiveSlug } from "@/app/actions/live-requests";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useToast } from "@/lib/toast-context";
 import { BRAND } from "@/lib/brand";
+import { liveBoothHref, type BookingsTab } from "@/lib/bookings-nav";
 import { cn } from "@/lib/utils";
 
 type LiveRequestQrProps = {
@@ -15,6 +16,8 @@ type LiveRequestQrProps = {
   mode: "client" | "dj";
   className?: string;
   defaultOpen?: boolean;
+  /** Current bookings tab — used so Live "Späť" returns to the same place. */
+  returnTab?: BookingsTab;
 };
 
 function publicLiveUrl(slug: string) {
@@ -26,6 +29,7 @@ export function LiveRequestQr({
   mode,
   className,
   defaultOpen = false,
+  returnTab,
 }: LiveRequestQrProps) {
   const { showToast } = useToast();
   const [open, setOpen] = useState(defaultOpen);
@@ -158,7 +162,7 @@ export function LiveRequestQr({
                     </Button>
                     {mode === "dj" ? (
                       <Link
-                        href={`/dashboard/bookings/${bookingId}/live`}
+                        href={liveBoothHref(bookingId, returnTab)}
                         className={cn(
                           buttonVariants({ size: "sm" }),
                           "gap-1.5 rounded-full"

@@ -31,6 +31,7 @@ import { Reveal, Aurora, Equalizer } from "@/components/motion";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getVideoEmbedUrl, isDirectVideoFile, isValidUrl } from "@/lib/video";
 import { getDjRealName, getDjStageName, getArtistKindLabel, getArtistPlanBadge, normalizeArtistKind, type ArtistKind } from "@/lib/dj-display";
+import { hasPremiumAccess } from "@/lib/plans";
 import { isValidGoogleMapsUrl } from "@/lib/google-maps";
 import { setReviewVote } from "@/app/actions/review-votes";
 import { useToast } from "@/lib/toast-context";
@@ -79,6 +80,8 @@ type DJProfile = {
   google_maps_url: string | null;
   social_links: Record<string, string> | null;
   plan_type: string;
+  trial_ends_at?: string | null;
+  premium_until?: string | null;
   created_at: string;
   gallery_urls: string[] | null;
   video_urls: string[] | null;
@@ -488,12 +491,15 @@ export default function DjProfileClient() {
                     </h1>
                     <span
                       className={`rounded-full border px-3 py-1 text-[10px] font-semibold ${
-                        dj.plan_type === "pro"
+                        hasPremiumAccess(dj)
                           ? "border-violet-500/25 bg-violet-500/10 text-violet-300"
                           : "border-white/10 bg-white/[0.04] text-zinc-500"
                       }`}
                     >
-                      {getArtistPlanBadge(dj.plan_type, dj.artist_kind)}
+                      {getArtistPlanBadge(dj.plan_type, dj.artist_kind, {
+                        trial_ends_at: dj.trial_ends_at,
+                        premium_until: dj.premium_until,
+                      })}
                     </span>
                     {ratingCount > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">

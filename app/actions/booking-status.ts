@@ -572,3 +572,55 @@ export async function updateBookingInvoiceDeliveryStatus(
     return { ok: false, error: message };
   }
 }
+
+/**
+ * DJ permanently deletes any of their bookings (platform or self-added).
+ * Blockouts stay managed from the calendar.
+ */
+export async function deleteDjBooking(
+  bookingId: string
+): Promise<BookingStatusResult> {
+  const id = bookingId?.trim();
+  if (!id) return { ok: false, error: "Chýba ID rezervácie." };
+
+  try {
+    const supabase = await createSSRClient();
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      return { ok: false, error: "Musíš byť prihlásený." };
+    }
+
+    const { data: row, error: fetchError } = await supabase
+      .from("bookings")
+      .select("id, dj_id, type")
+      .eq("id", id)
+      .eq("dj_id", authData.user.id)
+      .maybeSingle();
+
+    if (fetchError || !row) {
+      return {
+        ok: false,
+        error: "Rezervácia sa nenašla, alebo nemáš oprávnenie ju zmazať.",
+      };
+    }
+
+    if (row.type === "blockout") {
+      return { ok: false, error: "Blokáciu zmaž v kalendári." };
+    }
+
+    const { error } = await supabase.from("bookings").delete().eq("id", id);
+    if (error) {
+      console.error("[deleteDjBooking]", error);
+      return {
+        ok: false,
+        error: error.message || "Rezerváciu sa nepodarilo zmazať.",
+      };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Neznáma chyba.";
+    console.error("[deleteDjBooking]", err);
+    return { ok: false, error: message };
+  }
+}

@@ -29,6 +29,10 @@ import { Reveal, Equalizer, Aurora } from "@/components/motion";
 import { BRAND, SEO_DEFAULT } from "@/lib/brand";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BrandLogo } from "@/components/BrandLogo";
+import {
+  PREMIUM_PRICE_LABEL,
+  TRIAL_DAYS,
+} from "@/lib/plans";
 
 export const metadata: Metadata = {
   title: { absolute: SEO_DEFAULT.title },
@@ -56,7 +60,7 @@ const faqItems = [
   },
   {
     q: "Je BookTheVibe zadarmo?",
-    a: "Áno — free účet ti dá verejný profil a miesto v katalógu. Pokročilé nástroje (kalendár, rezervácie, dokumenty a ďalšie) sú súčasťou Pro plánu v tej istej webovej appke.",
+    a: `Áno — Free plán ti dá verejný profil a miesto v katalógu. Premium funkcie (kalendár, rezervácie, dokumenty a ďalšie) stoja ${PREMIUM_PRICE_LABEL} / mesiac. Pri registrácii máš prvých ${TRIAL_DAYS} dní Premium zadarmo.`,
   },
   {
     q: "Ako sa dostanem do katalógu umelcov?",
@@ -133,7 +137,7 @@ export default function Home() {
 
           <Reveal delay={480}>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-zinc-500">
-              {["Webová appka", "Žiadna karta na štart", "Free profil"].map(
+              {["Webová appka", "14 dní Premium zadarmo", "Free profil"].map(
                 (item) => (
                   <span key={item} className="flex items-center gap-1.5">
                     <Check className="size-3.5 text-emerald-400" />
@@ -512,17 +516,18 @@ export default function Home() {
           </Reveal>
         </section>
 
-        {/* PRICING — truthful web freemium */}
+        {/* PRICING — Free + Premium */}
         <section className="mt-32 md:mt-44">
           <Reveal className="mb-14 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-400">
               Plány
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-white md:text-4xl">
-              Začni zadarmo. Rast podľa potreby.
+              Začni Free. Keď rastieš, choď Premium.
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-zinc-500">
-              Všetko beží vo webovej appke — žiadne sťahovanie desktopu.
+            <p className="mx-auto mt-3 max-w-lg text-sm text-zinc-500">
+              Free ťa dostane do katalógu a pred klientov. Premium ti dá celý
+              biznis nástroj — a prvých {TRIAL_DAYS} dní ho máš zadarmo.
             </p>
           </Reveal>
 
@@ -535,18 +540,23 @@ export default function Home() {
                   </div>
                   <h3 className="text-lg font-semibold text-white">Free</h3>
                 </div>
-                <div className="mb-7">
+                <div className="mb-2">
                   <span className="text-4xl font-bold tracking-tight text-white">
                     €0
                   </span>
                   <span className="ml-1.5 text-sm text-zinc-500">/ navždy</span>
                 </div>
+                <p className="mb-7 text-sm leading-relaxed text-zinc-400">
+                  Ideálne na štart — buď viditeľný a nech ťa klienti nájdu.
+                </p>
                 <ul className="mb-8 flex-1 space-y-3.5">
                   {[
-                    "Verejný profil s fotkou a bio",
-                    "Miesto v katalógu umelcov",
-                    "Sociálne a hudobné odkazy",
-                    "Základná vizitka pre klientov",
+                    "Verejný profil s fotkou, bio a lokalitou",
+                    "Miesto v katalógu — klienti ťa nájdu sami",
+                    "Odkazy na Instagram, Spotify a web",
+                    "Galéria a videá na vizitke",
+                    "Jednoduchá verejná stránka, ktorú môžeš zdieľať",
+                    "Bez karty, bez viazanosti",
                   ].map((item) => (
                     <li
                       key={item}
@@ -561,7 +571,7 @@ export default function Home() {
                   href="/register?role=dj"
                   className="flex h-11 w-full items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-medium text-white transition-all duration-300 hover:border-white/25 hover:bg-white/10"
                 >
-                  Vytvoriť free účet
+                  Začať Free — zadarmo
                 </Link>
               </div>
             </Reveal>
@@ -571,20 +581,25 @@ export default function Home() {
                 <div className="absolute right-6 top-6">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1 text-[10px] font-semibold text-white shadow-[0_8px_24px_-8px_oklch(0.6_0.26_295)]">
                     <Sparkles className="size-3" />
-                    Odporúčame
+                    {TRIAL_DAYS} dní free
                   </span>
                 </div>
                 <div className="relative mb-5 flex items-center gap-2.5">
                   <div className="flex size-10 items-center justify-center rounded-xl bg-violet-500/15">
                     <Receipt className="size-5 text-violet-300" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">Pro</h3>
+                  <h3 className="text-lg font-semibold text-white">Premium</h3>
                 </div>
-                <div className="relative mb-7">
+                <div className="relative mb-2">
                   <span className="text-4xl font-bold tracking-tight text-white">
-                    Plný dashboard
+                    {PREMIUM_PRICE_LABEL}
                   </span>
+                  <span className="ml-1.5 text-sm text-zinc-400">/ mesiac</span>
                 </div>
+                <p className="relative mb-7 text-sm leading-relaxed text-zinc-400">
+                  Celý biznis v jednom dashboarde. Prvých {TRIAL_DAYS} dní
+                  úplne zadarmo.
+                </p>
                 <ul className="relative mb-8 flex-1 space-y-3.5">
                   {[
                     "Rezervácie a dopyty od klientov",
@@ -607,7 +622,7 @@ export default function Home() {
                   href="/register?role=dj"
                   className="relative flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-sm font-semibold text-white shadow-[0_12px_36px_-10px_oklch(0.6_0.26_295/0.9)] transition-all duration-300 hover:brightness-110 active:scale-[0.98]"
                 >
-                  Začať s BookTheVibe
+                  Vyskúšať {TRIAL_DAYS} dní zadarmo
                   <ArrowRight className="size-4" />
                 </Link>
               </div>

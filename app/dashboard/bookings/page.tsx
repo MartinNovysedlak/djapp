@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Ban,
   CalendarDays,
@@ -15,8 +16,11 @@ import {
   MessageCircle,
   FileText,
   Pencil,
+  Phone,
+  Plus,
   Receipt,
   Share2,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
@@ -50,11 +54,13 @@ import { BookingExtras } from "@/components/extras/BookingExtras";
 import { LiveRequestQr } from "@/components/live/LiveRequestQr";
 import {
   rejectBooking,
+  deleteDjBooking,
   updateBookingDetails,
   updateBookingPdfDeliveryStatus,
   updateBookingInvoiceDeliveryStatus,
   type PdfDeliveryStatus,
 } from "@/app/actions/booking-status";
+import { createDjOwnEvent } from "@/app/actions/calendar-entries";
 import {
   getBookingContractSummaries,
   getGeneratedContractDownloadUrl,
@@ -73,6 +79,13 @@ import { EVENT_TYPES, formatEventTypeLabel } from "@/lib/event-types";
 import { useDjBookings, type CachedBooking } from "@/hooks/useDjBookings";
 import { DjOfferForm } from "@/components/bulk/BulkOfferForm";
 import { BookingChat } from "@/components/chat/BookingChat";
+import {
+  BOOKINGS_OPEN_PARAM,
+  BOOKINGS_TAB_PARAM,
+  isBookingsTab,
+  writeBookingsQuery,
+  type BookingsTab,
+} from "@/lib/bookings-nav";
 
 type BookingStatus = "pending" | "accepted" | "rejected";
 
@@ -397,6 +410,24 @@ function invoicePdfAvailable(summary: BookingInvoiceSummary | undefined) {
 }
 
 export default function BookingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-4xl space-y-4 animate-pulse">
+          <div className="h-8 w-48 rounded-xl bg-white/5" />
+          <div className="h-4 w-72 rounded-lg bg-white/[0.04]" />
+          <div className="mt-6 h-40 rounded-3xl bg-white/[0.03]" />
+          <div className="h-40 rounded-3xl bg-white/[0.03]" />
+        </div>
+      }
+    >
+      <BookingsPageInner />
+    </Suspense>
+  );
+}
+
+function BookingsPageInner() {
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const { user, profile, loading: userLoading } = useDashboardUser();
   const {
@@ -407,8 +438,15 @@ export default function BookingsPage() {
   } = useDjBookings(user?.id);
   const [rejectTarget, setRejectTarget] = useState<Booking | null>(null);
   const [editTarget, setEditTarget] = useState<Booking | null>(null);
-  const [tab, setTab] = useState("new");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const urlTabRaw = searchParams.get(BOOKINGS_TAB_PARAM);
+  const urlOpen = searchParams.get(BOOKINGS_OPEN_PARAM);
+  const [tab, setTab] = useState<BookingsTab>(() =>
+    isBookingsTab(urlTabRaw) ? urlTabRaw : "new"
+  );
+  const [expandedId, setExpandedId] = useState<string | null>(() => urlOpen);
   const [contractByBooking, setContractByBooking] = useState<
     Record<string, BookingContractSummary>
   >({});
@@ -437,6 +475,51 @@ export default function BookingsPage() {
         ),
     [allBookings]
   );
+
+  const tabForBooking = useCallback((b: Booking): BookingsTab => {
+    if (b.status === "pending") return "new";
+    if (b.status === "accepted" && !isPastEvent(b)) return "confirmed";
+    return "history";
+  }, []);
+
+  const setTabAndUrl = useCallback((next: BookingsTab, clearOpen = true) => {
+    setTab(next);
+    if (clearOpen) setExpandedId(null);
+  }, []);
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  // Apply deep-link when returning from Live/chat (Link navigation updates searchParams).
+  useEffect(() => {
+    if (!urlOpen) return;
+    setTab(isBookingsTab(urlTabRaw) ? urlTabRaw : "new");
+    setExpandedId(urlOpen);
+  }, [urlOpen, urlTabRaw]);
+
+  // Keep URL in sync after state commits (never inside setState updaters).
+  useEffect(() => {
+    writeBookingsQuery(tab, expandedId);
+  }, [tab, expandedId]);
+
+  // When returning via ?open=, land on the correct tab and scroll to the card.
+  useEffect(() => {
+    if (!expandedId || bookingsLoading || bookings.length === 0) return;
+    const b = bookings.find((row) => row.id === expandedId);
+    if (!b) return;
+    const needed = tabForBooking(b);
+    if (tab !== needed) {
+      setTab(needed);
+      return;
+    }
+    const el = document.getElementById(`booking-${expandedId}`);
+    if (el) {
+      window.setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+    }
+  }, [expandedId, bookings, bookingsLoading, tab, tabForBooking]);
 
   const refreshContracts = useCallback(async () => {
     const ids = bookings.map((b) => b.id);
@@ -546,7 +629,7 @@ export default function BookingsPage() {
       return;
     }
     showToast("Rezervácia odmietnutá.", "success");
-    setTab("history");
+    setTabAndUrl("history", true);
   };
 
   const handleChangeContractStatus = async (
@@ -729,6 +812,45 @@ export default function BookingsPage() {
     return result;
   };
 
+  const handleDeleteBooking = async () => {
+    if (!deleteTarget || deleteBusy) return;
+    setDeleteBusy(true);
+    const result = await deleteDjBooking(deleteTarget.id);
+    setDeleteBusy(false);
+    if (!result.ok) {
+      showToast(result.error ?? "Mazanie zlyhalo.", "error");
+      return;
+    }
+    setDeleteTarget(null);
+    setExpandedId(null);
+    showToast("Rezervácia bola zmazaná.", "success");
+    void refreshBookings();
+  };
+
+  const handleAddManualBooking = async (values: {
+    title: string;
+    eventType: string;
+    eventDate: string;
+    eventEndDate: string;
+    startTime: string;
+    endTime: string;
+    eventLocation?: string;
+    clientEmail?: string;
+    clientPhone?: string;
+    price?: number;
+  }) => {
+    const result = await createDjOwnEvent(values);
+    if (!result.ok) {
+      showToast(result.error ?? "Uloženie zlyhalo.", "error");
+      return result;
+    }
+    setAddOpen(false);
+    setTabAndUrl("confirmed", true);
+    showToast("Rezervácia pridaná.", "success");
+    void refreshBookings();
+    return result;
+  };
+
   if (userLoading || (bookingsLoading && bookings.length === 0)) {
     return (
       <div className="mx-auto max-w-4xl space-y-4 animate-pulse">
@@ -751,16 +873,27 @@ export default function BookingsPage() {
               Nové dopyty, potvrdené akcie a história na jednom mieste.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleShareProfile}
-            className="gap-1.5 self-start rounded-full"
-          >
-            <Share2 className="size-3.5" />
-            Zdieľať profil
-          </Button>
+          <div className="flex flex-wrap gap-2 self-start">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setAddOpen(true)}
+              className="gap-1.5 rounded-full"
+            >
+              <Plus className="size-3.5" />
+              Pridať rezerváciu
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleShareProfile}
+              className="gap-1.5 rounded-full"
+            >
+              <Share2 className="size-3.5" />
+              Zdieľať profil
+            </Button>
+          </div>
         </div>
       </Reveal>
 
@@ -768,8 +901,7 @@ export default function BookingsPage() {
         <Tabs
           value={tab}
           onValueChange={(v) => {
-            setTab(v ?? "new");
-            setExpandedId(null);
+            if (isBookingsTab(v)) setTabAndUrl(v, true);
           }}
         >
           <TabsList className="mb-6 h-auto w-full flex-wrap gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1.5 sm:w-auto">
@@ -816,9 +948,8 @@ export default function BookingsPage() {
                     key={b.id}
                     booking={b}
                     expanded={expandedId === b.id}
-                    onToggle={() =>
-                      setExpandedId((id) => (id === b.id ? null : b.id))
-                    }
+                    onToggle={() => toggleExpanded(b.id)}
+                    returnTab={tab}
                     contract={contractByBooking[b.id]}
                     invoice={invoiceByBooking[b.id]}
                     statusBusy={statusBusyBookingId === b.id}
@@ -827,6 +958,7 @@ export default function BookingsPage() {
                     onReject={() => setRejectTarget(b)}
                     onOfferDone={() => void refreshBookings()}
                     onEdit={() => setEditTarget(b)}
+                    onDelete={() => setDeleteTarget(b)}
                     onOpenPdf={() => handleOpenPdf(b)}
                     onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
                     onChangeContractStatus={(workflow) =>
@@ -860,15 +992,15 @@ export default function BookingsPage() {
                     key={b.id}
                     booking={b}
                     expanded={expandedId === b.id}
-                    onToggle={() =>
-                      setExpandedId((id) => (id === b.id ? null : b.id))
-                    }
+                    onToggle={() => toggleExpanded(b.id)}
+                    returnTab={tab}
                     contract={contractByBooking[b.id]}
                     invoice={invoiceByBooking[b.id]}
                     statusBusy={statusBusyBookingId === b.id}
                     downloading={downloadingBookingId === b.id}
                     downloadingInvoice={downloadingInvoiceBookingId === b.id}
                     onEdit={() => setEditTarget(b)}
+                    onDelete={() => setDeleteTarget(b)}
                     onOpenPdf={() => handleOpenPdf(b)}
                     onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
                     onChangeContractStatus={(workflow) =>
@@ -902,15 +1034,15 @@ export default function BookingsPage() {
                     key={b.id}
                     booking={b}
                     expanded={expandedId === b.id}
-                    onToggle={() =>
-                      setExpandedId((id) => (id === b.id ? null : b.id))
-                    }
+                    onToggle={() => toggleExpanded(b.id)}
+                    returnTab={tab}
                     contract={contractByBooking[b.id]}
                     invoice={invoiceByBooking[b.id]}
                     statusBusy={statusBusyBookingId === b.id}
                     downloading={downloadingBookingId === b.id}
                     downloadingInvoice={downloadingInvoiceBookingId === b.id}
                     onEdit={() => setEditTarget(b)}
+                    onDelete={() => setDeleteTarget(b)}
                     onOpenPdf={() => handleOpenPdf(b)}
                     onOpenInvoicePdf={() => handleOpenInvoicePdf(b)}
                     onChangeContractStatus={(workflow) =>
@@ -947,6 +1079,21 @@ export default function BookingsPage() {
           if (!open) setEditTarget(null);
         }}
         onSave={handleSaveEdit}
+      />
+
+      <DeleteBookingDialog
+        booking={deleteTarget}
+        busy={deleteBusy}
+        onOpenChange={(open) => {
+          if (!open && !deleteBusy) setDeleteTarget(null);
+        }}
+        onConfirm={() => void handleDeleteBooking()}
+      />
+
+      <AddManualBookingDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSubmit={handleAddManualBooking}
       />
     </div>
   );
@@ -1016,9 +1163,11 @@ function BookingCard({
   statusBusy,
   downloading,
   downloadingInvoice,
+  returnTab,
   onReject,
   onOfferDone,
   onEdit,
+  onDelete,
   onOpenPdf,
   onOpenInvoicePdf,
   onChangeContractStatus,
@@ -1034,9 +1183,11 @@ function BookingCard({
   statusBusy?: boolean;
   downloading?: boolean;
   downloadingInvoice?: boolean;
+  returnTab?: BookingsTab;
   onReject?: () => void;
   onOfferDone?: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
   onOpenPdf?: () => void;
   onOpenInvoicePdf?: () => void;
   onChangeContractStatus?: (workflow: ContractWorkflowStatus) => void;
@@ -1078,25 +1229,26 @@ function BookingCard({
 
   return (
     <article
+      id={`booking-${booking.id}`}
       className={cn(
-        "relative overflow-visible border-b border-white/8 last:border-b-0",
-        expanded && "bg-white/[0.025]",
+        "relative scroll-mt-24 overflow-visible border-b border-white/8 last:border-b-0",
+        expanded && "bg-gradient-to-b from-violet-500/[0.07] via-white/[0.02] to-transparent",
         statusOpen || invoiceStatusOpen ? "z-40" : "z-0"
       )}
     >
       {/* Compact summary row */}
-      <div className="flex items-center gap-2 px-3 py-3 md:gap-3 md:px-4 md:py-3.5">
+      <div className="flex items-center gap-2 px-3 py-3.5 md:gap-3 md:px-5">
         <button
           type="button"
           onClick={onToggle}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/15 text-sm font-bold text-violet-100">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/35 to-fuchsia-500/15 text-sm font-bold text-violet-100 shadow-[inset_0_1px_0_oklch(1_0_0/0.08)]">
             {booking.client_name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-semibold text-white md:text-[0.95rem]">
+              <p className="truncate text-[0.95rem] font-semibold tracking-tight text-white">
                 {booking.client_name}
               </p>
               <StatusBadge
@@ -1111,16 +1263,20 @@ function BookingCard({
                 </span>
               ) : null}
             </div>
-            <p className="mt-0.5 truncate text-xs text-zinc-500">
-              {formatEventTypeLabel(booking.event_type)}
+            <p className="mt-1 truncate text-xs text-zinc-500">
+              <span className="text-zinc-400">
+                {formatEventTypeLabel(booking.event_type)}
+              </span>
               <span className="text-zinc-600"> · </span>
               {formatDateRange(booking.event_date, booking.end_date)}
-              {booking.event_location ? (
+              {(booking.start_time || booking.end_time) && (
                 <>
                   <span className="text-zinc-600"> · </span>
-                  {booking.event_location}
+                  {booking.start_time ? timeInputValue(booking.start_time) : "—"}
+                  –
+                  {booking.end_time ? timeInputValue(booking.end_time) : "—"}
                 </>
-              ) : null}
+              )}
             </p>
           </div>
           <ChevronDown
@@ -1158,69 +1314,106 @@ function BookingCard({
 
       {expanded ? (
         <div className="space-y-4 border-t border-white/8 px-4 pb-5 pt-4 md:px-5">
-      {/* Meta chips */}
-      <div className="flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-200">
-          {formatEventTypeLabel(booking.event_type)}
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-200">
-          <CalendarDays className="size-3.5 text-violet-300" />
-          {formatDateRange(booking.event_date, booking.end_date)}
-        </span>
-        {(booking.start_time || booking.end_time) && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-200">
-            <Clock className="size-3.5 text-violet-300" />
-            {booking.start_time ? timeInputValue(booking.start_time) : "—"}
-            {" – "}
-            {booking.end_time ? timeInputValue(booking.end_time) : "—"}
-          </span>
-        )}
-        {booking.event_location ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
-            <MapPin className="size-3.5 text-violet-400/70" />
-            {booking.event_location}
-          </span>
-        ) : null}
-      </div>
+      {/* Detail header */}
+      <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+              <CalendarDays className="size-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                Termín
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-zinc-100">
+                {formatDateRange(booking.event_date, booking.end_date)}
+              </p>
+              {(booking.start_time || booking.end_time) && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-zinc-400">
+                  <Clock className="size-3" />
+                  {booking.start_time ? timeInputValue(booking.start_time) : "—"}
+                  {" – "}
+                  {booking.end_time ? timeInputValue(booking.end_time) : "—"}
+                </p>
+              )}
+            </div>
+          </div>
 
-      {(booking.status === "pending" || booking.status === "accepted") && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setChatOpen((v) => !v)}
-            className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors",
-              chatOpen
-                ? "border-violet-400/40 bg-violet-500/25 text-violet-100"
-                : "border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-            )}
-          >
-            <MessageCircle className="size-3.5" />
-            {chatOpen ? "Skryť chat" : "Chat"}
-          </button>
-          <p className="text-xs text-zinc-500">
-            Prijaté {formatDateTime(booking.created_at)}
-          </p>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+              <MapPin className="size-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                Miesto · typ
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-zinc-100">
+                {booking.event_location?.trim() || "Miesto neuvedené"}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                {formatEventTypeLabel(booking.event_type)}
+              </p>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* Contact */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-white/8 bg-white/[0.025] px-3.5 py-2.5 text-sm">
-        <Mail className="size-3.5 shrink-0 text-zinc-500" />
-        <a
-          href={`mailto:${booking.client_email}`}
-          className="truncate text-zinc-200 transition-colors hover:text-violet-300"
-        >
-          {booking.client_email}
-        </a>
-        {booking.client_phone ? (
-          <a
-            href={`tel:${booking.client_phone}`}
-            className="text-zinc-400 transition-colors hover:text-violet-300"
-          >
-            {booking.client_phone}
-          </a>
-        ) : null}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/8 pt-3 text-sm">
+          <span className="inline-flex min-w-0 items-center gap-2 text-zinc-300">
+            <Mail className="size-3.5 shrink-0 text-zinc-500" />
+            {booking.client_email ? (
+              <a
+                href={`mailto:${booking.client_email}`}
+                className="truncate transition-colors hover:text-violet-300"
+              >
+                {booking.client_email}
+              </a>
+            ) : (
+              <span className="text-zinc-500">Bez e-mailu</span>
+            )}
+          </span>
+          {booking.client_phone ? (
+            <a
+              href={`tel:${booking.client_phone}`}
+              className="inline-flex items-center gap-2 text-zinc-300 transition-colors hover:text-violet-300"
+            >
+              <Phone className="size-3.5 shrink-0 text-zinc-500" />
+              {booking.client_phone}
+            </a>
+          ) : null}
+          <span className="ml-auto text-[11px] text-zinc-600">
+            Prijaté {formatDateTime(booking.created_at)}
+          </span>
+        </div>
+
+        {(booking.status === "pending" || booking.status === "accepted") && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setChatOpen((v) => !v)}
+              className={cn(
+                "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors",
+                chatOpen
+                  ? "border-violet-400/40 bg-violet-500/25 text-violet-100"
+                  : "border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+              )}
+            >
+              <MessageCircle className="size-3.5" />
+              {chatOpen ? "Skryť chat" : "Chat"}
+            </button>
+            {onEdit ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                className="h-9 gap-1.5 rounded-full"
+              >
+                <Pencil className="size-3.5" />
+                Upraviť
+              </Button>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {chatOpen &&
@@ -1266,6 +1459,31 @@ function BookingCard({
         </div>
       )}
 
+      {booking.status === "rejected" && onDelete ? (
+        <div className="flex flex-wrap gap-2 border-t border-white/8 pt-4">
+          {onEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onEdit}
+              className="gap-1.5 rounded-full"
+            >
+              <Pencil className="size-3.5" />
+              Upraviť
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onDelete}
+            className="gap-1.5 rounded-full border-red-500/30 text-red-300 hover:bg-red-500/10"
+          >
+            <Trash2 className="size-3.5" />
+            Zmazať
+          </Button>
+        </div>
+      ) : null}
+
       {booking.status === "pending" ? (
         <DjOfferForm
           bookingId={booking.id}
@@ -1299,6 +1517,17 @@ function BookingCard({
               Upraviť
             </Button>
           ) : null}
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onDelete}
+              className="gap-1.5 rounded-full border-red-500/30 text-red-300 hover:bg-red-500/10"
+            >
+              <Trash2 className="size-3.5" />
+              Zmazať
+            </Button>
+          ) : null}
         </div>
       )}
 
@@ -1317,18 +1546,20 @@ function BookingCard({
             <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
               Dokumenty
             </p>
-            {onEdit ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onEdit}
-                className="h-8 gap-1.5 rounded-full"
-              >
-                <Pencil className="size-3.5" />
-                Upraviť
-              </Button>
-            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {onDelete ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onDelete}
+                  className="h-8 gap-1.5 rounded-full border-red-500/30 text-red-300 hover:bg-red-500/10"
+                >
+                  <Trash2 className="size-3.5" />
+                  Zmazať
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
@@ -1615,7 +1846,11 @@ function BookingCard({
               Príprava akcie
             </p>
           </div>
-          <LiveRequestQr bookingId={booking.id} mode="dj" />
+          <LiveRequestQr
+            bookingId={booking.id}
+            mode="dj"
+            returnTab={returnTab}
+          />
           <BookingExtras bookingId={booking.id} mode="dj" />
           <MusicPlanner bookingId={booking.id} mode="dj" />
           <EventTimeline bookingId={booking.id} mode="dj" />
@@ -1912,6 +2147,295 @@ function RejectReasonDialog({
               <XCircle className="size-4" />
             )}
             Potvrdiť odmietnutie
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteBookingDialog({
+  booking,
+  busy,
+  onOpenChange,
+  onConfirm,
+}: {
+  booking: Booking | null;
+  busy: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={!!booking} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Zmazať rezerváciu?</DialogTitle>
+          <DialogDescription>
+            „{booking?.client_name}“ (
+            {booking ? formatEventTypeLabel(booking.event_type) : ""}
+            {booking
+              ? ` · ${formatDateRange(booking.event_date, booking.end_date)}`
+              : ""}
+            ) sa natrvalo odstráni. Túto akciu nejde vrátiť späť.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+            className="rounded-full"
+          >
+            Zrušiť
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={busy}
+            onClick={onConfirm}
+            className="gap-1.5 rounded-full"
+          >
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            Áno, zmazať
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddManualBookingDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: {
+    title: string;
+    eventType: string;
+    eventDate: string;
+    eventEndDate: string;
+    startTime: string;
+    endTime: string;
+    eventLocation?: string;
+    clientEmail?: string;
+    clientPhone?: string;
+    price?: number;
+  }) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const [title, setTitle] = useState("");
+  const [eventType, setEventType] = useState<string>("svadba");
+  const [eventDate, setEventDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("18:00");
+  const [endTime, setEndTime] = useState("23:00");
+  const [eventLocation, setEventLocation] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [price, setPrice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const d = new Date().toISOString().slice(0, 10);
+    setTitle("");
+    setEventType(EVENT_TYPES[0]?.value ?? "svadba");
+    setEventDate(d);
+    setEndDate(d);
+    setStartTime("18:00");
+    setEndTime("23:00");
+    setEventLocation("");
+    setClientEmail("");
+    setClientPhone("");
+    setPrice("");
+    setSubmitting(false);
+  }, [open]);
+
+  const handleConfirm = async () => {
+    if (!title.trim() || !eventType || !eventDate) return;
+    setSubmitting(true);
+    const priceNum = price.trim()
+      ? Number(price.replace(",", "."))
+      : undefined;
+    await onSubmit({
+      title: title.trim(),
+      eventType,
+      eventDate,
+      eventEndDate: endDate || eventDate,
+      startTime,
+      endTime,
+      eventLocation: eventLocation.trim() || undefined,
+      clientEmail: clientEmail.trim() || undefined,
+      clientPhone: clientPhone.trim() || undefined,
+      price:
+        priceNum != null && Number.isFinite(priceNum) ? priceNum : undefined,
+    });
+    setSubmitting(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Pridať rezerváciu</DialogTitle>
+          <DialogDescription>
+            Manuálne pridaj akciu (napr. mimo platformy). Zobrazí sa v
+            potvrdených rezerváciách a v kalendári.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-1">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-500">Názov / klient *</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Napr. Svadba Novákovci"
+              className="h-10 rounded-xl bg-white/[0.03]"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-500">Typ akcie *</Label>
+            <Select
+              value={eventType}
+              onValueChange={(v) => v && setEventType(v)}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl">
+                <SelectValue>
+                  {(value: string | null) =>
+                    value ? formatEventTypeLabel(value) : null
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value} label={t.label}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-500">Dátum začiatku *</Label>
+              <Input
+                type="date"
+                value={eventDate}
+                onChange={(e) => {
+                  setEventDate(e.target.value);
+                  if (!endDate || endDate < e.target.value) {
+                    setEndDate(e.target.value);
+                  }
+                }}
+                className="h-10 rounded-xl bg-white/[0.03]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-500">Dátum konca</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-10 rounded-xl bg-white/[0.03]"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-500">Začiatok *</Label>
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="h-10 rounded-xl bg-white/[0.03]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-500">Koniec *</Label>
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="h-10 rounded-xl bg-white/[0.03]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-500">Miesto</Label>
+            <Input
+              value={eventLocation}
+              onChange={(e) => setEventLocation(e.target.value)}
+              placeholder="Adresa / klub"
+              className="h-10 rounded-xl bg-white/[0.03]"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-500">E-mail klienta</Label>
+              <Input
+                type="email"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                className="h-10 rounded-xl bg-white/[0.03]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-500">Telefón</Label>
+              <Input
+                value={clientPhone}
+                onChange={(e) => setClientPhone(e.target.value)}
+                className="h-10 rounded-xl bg-white/[0.03]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-500">Cena (EUR)</Label>
+            <Input
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="napr. 450"
+              className="h-10 rounded-xl bg-white/[0.03]"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={submitting}
+            onClick={() => onOpenChange(false)}
+            className="rounded-full"
+          >
+            Zrušiť
+          </Button>
+          <Button
+            type="button"
+            disabled={submitting || !title.trim() || !eventDate}
+            onClick={() => void handleConfirm()}
+            className="gap-2 rounded-full"
+          >
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
+            Pridať
           </Button>
         </DialogFooter>
       </DialogContent>
