@@ -25,6 +25,8 @@ import {
   Globe,
   Receipt,
   Megaphone,
+  Lock,
+  ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -51,6 +53,7 @@ import {
   isValidGoogleMapsUrl,
 } from "@/lib/google-maps";
 import { updateDjProfile } from "@/app/actions/profile";
+import { getMyPermanentAddress } from "@/app/actions/verification";
 import {
   formatPremiumPrice,
   getPlanDisplayName,
@@ -61,6 +64,8 @@ import {
   TRIAL_DAYS,
 } from "@/lib/plans";
 import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
+import { VerificationRequestSection } from "@/components/verification/VerificationRequestSection";
+import { BillingProfileForm } from "@/components/invoices/BillingProfileForm";
 import { cn } from "@/lib/utils";
 import {
   ARTIST_KIND_OPTIONS,
@@ -77,12 +82,14 @@ export default function ProfilePage() {
   const { showToast } = useToast();
   const { user, profile, loading, setProfile } = useDashboardUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -102,10 +109,12 @@ export default function ProfilePage() {
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
   const [slugCopied, setSlugCopied] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
+  const [permanentAddress, setPermanentAddress] = useState("");
 
   const cityOptions: ComboboxOption[] = getCitiesForCountry(country).map((c) => ({
     value: c.name,
@@ -131,6 +140,7 @@ export default function ProfilePage() {
     setCityName(parsedLocation.city);
     setPublicSlug(profile.public_slug ?? "");
     setAvatarPreview(profile.avatar_url);
+    setCoverPreview(profile.cover_url ?? null);
     setGalleryUrls(Array.isArray(profile.gallery_urls) ? profile.gallery_urls : []);
     setVideoUrls(Array.isArray(profile.video_urls) ? profile.video_urls : []);
 
@@ -141,6 +151,18 @@ export default function ProfilePage() {
     setWebsiteUrl(links.website || "");
     setGoogleMapsUrl(profile.google_maps_url || "");
   }, [profile]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await getMyPermanentAddress();
+      if (cancelled || !result.ok) return;
+      setPermanentAddress(result.permanentAddress);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   // ── Avatar upload ────────────────────────────────────────────────────────
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,6 +220,63 @@ export default function ProfilePage() {
       showToast(`Chyba pri nahrávaní: ${message}`, "error");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCoverSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      showToast("Povolené sú len obrázky (JPEG, PNG, WebP, GIF)", "error");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast("Maximálna veľkosť titulnej fotky je 8 MB", "error");
+      return;
+    }
+
+    setCoverUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/upload-cover", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Upload failed");
+
+      setCoverPreview(result.url);
+      setProfile((prev) => (prev ? { ...prev, cover_url: result.url } : prev));
+      showToast("Titulná fotka nahraná", "success");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Neznáma chyba";
+      showToast(`Chyba pri nahrávaní: ${message}`, "error");
+    } finally {
+      setCoverUploading(false);
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    if (!user) return;
+    setCoverUploading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ cover_url: null })
+        .eq("id", user.id);
+      if (error) throw error;
+      setCoverPreview(null);
+      setProfile((prev) => (prev ? { ...prev, cover_url: null } : prev));
+      showToast("Titulná fotka odstránená", "success");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Neznáma chyba";
+      showToast(`Chyba: ${message}`, "error");
+    } finally {
+      setCoverUploading(false);
     }
   };
 
@@ -356,6 +435,7 @@ export default function ProfilePage() {
       artistKind,
       bio,
       location,
+      permanentAddress,
       googleMapsUrl,
       socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : null,
       galleryUrls: galleryUrls,
@@ -383,6 +463,7 @@ export default function ProfilePage() {
               social_links: Object.keys(socialLinks).length > 0 ? socialLinks : null,
               gallery_urls: galleryUrls,
               video_urls: cleanVideoUrls,
+              updated_at: new Date().toISOString(),
             }
           : prev
       );
@@ -430,16 +511,70 @@ export default function ProfilePage() {
       </Reveal>
 
       <form onSubmit={handleSave} className="space-y-6 pb-28">
-        {/* Avatar upload card */}
-        <Reveal delay={80}>
-        <Card className="card-lift rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
-          <CardHeader>
+        {/* Cover + avatar */}
+        <Reveal delay={60}>
+        <Card
+          id="verification-avatar"
+          className="card-lift scroll-mt-28 overflow-hidden rounded-3xl border-white/8 bg-card/70 backdrop-blur-md"
+        >
+          <div className="relative h-36 bg-gradient-to-br from-violet-600/40 via-fuchsia-600/20 to-background md:h-44">
+            {coverPreview ? (
+              <Image
+                src={coverPreview}
+                alt="Titulná fotka"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+            <div className="absolute bottom-3 right-3 flex gap-2">
+              {coverPreview ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={coverUploading}
+                  onClick={() => void handleCoverRemove()}
+                  className="rounded-full border-white/20 bg-black/50 text-white backdrop-blur-md hover:bg-black/70"
+                >
+                  <X className="size-4" />
+                  Odstrániť
+                </Button>
+              ) : null}
+              <label className="inline-flex cursor-pointer">
+                <span
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-3 text-sm text-white backdrop-blur-md hover:bg-black/70",
+                    coverUploading && "pointer-events-none opacity-50"
+                  )}
+                >
+                  {coverUploading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ImageIcon className="size-4" />
+                  )}
+                  Titulná fotka
+                </span>
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  disabled={coverUploading}
+                  onChange={handleCoverSelect}
+                />
+              </label>
+            </div>
+          </div>
+          <CardHeader className="pt-4">
             <CardTitle className="flex items-center gap-2 text-base text-foreground">
               <Camera className="size-4 text-primary" />
               Profilová fotka
             </CardTitle>
             <CardDescription className="text-muted-foreground">
-              Nahraj svoju profilovú fotku (max 5 MB, JPEG/PNG/WebP/GIF)
+              Titulná fotka je banner hore na verejnom profile. Profilovka je kruhový
+              avatar (max 5 MB).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -460,35 +595,38 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Nahrávam…
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="size-4" />
-                      Nahrať fotku
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground/60">Odporúčaný pomer 1:1</p>
+                <label className="inline-flex w-fit cursor-pointer">
+                  <span
+                    className={cn(
+                      "inline-flex h-8 items-center gap-1.5 rounded-lg border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                      uploading && "pointer-events-none opacity-50"
+                    )}
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Nahrávam…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="size-4" />
+                        Nahrať profilovku
+                      </>
+                    )}
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    disabled={uploading}
+                    onChange={handleAvatarSelect}
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground/60">
+                  Odporúčaný pomer 1:1
+                </p>
               </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                className="hidden"
-                onChange={handleAvatarSelect}
-              />
             </div>
           </CardContent>
         </Card>
@@ -554,7 +692,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div id="verification-identity" className="grid scroll-mt-28 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <label htmlFor="realFirstName" className="text-sm text-muted-foreground">
                   Krstné meno
@@ -625,7 +763,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Location */}
-            <div className="space-y-2">
+            <div id="verification-location" className="space-y-2 scroll-mt-28">
               <label className="text-sm text-muted-foreground">Lokalita</label>
               <div className="grid grid-cols-[auto_1fr] gap-2 sm:grid-cols-[minmax(0,9rem)_1fr]">
                 <div className="flex h-11 items-center gap-0.5 rounded-xl border border-input bg-transparent p-1">
@@ -667,6 +805,30 @@ export default function ProfilePage() {
                 {cityName
                   ? formatLocation(cityName, country)
                   : "Vyber mesto zo zoznamu, alebo napíš konkrétnu dedinku či miesto."}
+              </p>
+            </div>
+
+            <div
+              id="verification-residence"
+              className="scroll-mt-28 space-y-2 rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+            >
+              <label
+                htmlFor="permanentAddress"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground"
+              >
+                <Lock className="size-3.5 text-zinc-500" />
+                Trvalé bydlisko
+              </label>
+              <Input
+                id="permanentAddress"
+                value={permanentAddress}
+                onChange={(e) => setPermanentAddress(e.target.value)}
+                placeholder="Ulica, číslo, mesto, PSČ"
+                autoComplete="street-address"
+              />
+              <p className="text-xs text-zinc-500">
+                Súkromné — nezobrazuje sa na verejnom profile. Slúži len na
+                overenie adminom.
               </p>
             </div>
 
@@ -730,6 +892,16 @@ export default function ProfilePage() {
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-zinc-500">
+                Vlastnú landing page nastavíš v{" "}
+                <Link
+                  href="/dashboard/page-builder"
+                  className="text-violet-300 hover:underline"
+                >
+                  Moja stránka
+                </Link>{" "}
+                (/djs/{publicSlug || "…"}).
+              </p>
               <p className="text-xs text-muted-foreground/60">
                 Odkaz nie je možné zmeniť — môžeš ho len skopírovať a zdieľať.
               </p>
@@ -740,7 +912,10 @@ export default function ProfilePage() {
 
         {/* Gallery: photos + videos */}
         <Reveal delay={190}>
-        <Card className="card-lift rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
+        <Card
+          id="verification-photos"
+          className="card-lift scroll-mt-28 rounded-3xl border-white/8 bg-card/70 backdrop-blur-md"
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-foreground">
               <Images className="size-4 text-primary" />
@@ -944,7 +1119,10 @@ export default function ProfilePage() {
 
         {/* Social links card */}
         <Reveal delay={230}>
-        <Card className="card-lift rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
+        <Card
+          id="verification-social"
+          className="card-lift scroll-mt-28 rounded-3xl border-white/8 bg-card/70 backdrop-blur-md"
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-foreground">
               <Music className="size-4 text-primary" />
@@ -1101,6 +1279,30 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+        </Reveal>
+
+        <Reveal delay={260}>
+          <Card className="rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                <Receipt className="size-4 text-primary" />
+                Fakturačné údaje
+              </CardTitle>
+              <CardDescription>
+                Tieto údaje používaš pri faktúrach. Ulož ich samostatne tlačidlom
+                nižšie.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BillingProfileForm compact />
+            </CardContent>
+          </Card>
+        </Reveal>
+
+        <Reveal delay={280}>
+          <div className="pt-2">
+            <VerificationRequestSection />
+          </div>
         </Reveal>
 
         <Reveal delay={300}>

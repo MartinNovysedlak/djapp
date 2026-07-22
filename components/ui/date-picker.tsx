@@ -50,6 +50,8 @@ type DatePickerProps = {
   value: string; // ISO yyyy-mm-dd
   onChange: (isoDate: string) => void;
   minDate?: Date;
+  /** Allow selecting dates before today (e.g. blog publish date). */
+  allowPastDates?: boolean;
   /** ISO dates that cannot be selected (full-day blockouts). */
   disabledDates?: ReadonlySet<string> | readonly string[];
   placeholder?: string;
@@ -61,6 +63,7 @@ export function DatePicker({
   value,
   onChange,
   minDate,
+  allowPastDates = false,
   disabledDates,
   placeholder = "Vyber dátum akcie",
   className,
@@ -71,7 +74,10 @@ export function DatePicker({
       ? disabledDates
       : new Set(disabledDates ?? []);
   const selected = fromISODate(value);
-  const today = startOfDay(minDate ?? new Date());
+  const today = startOfDay(new Date());
+  const floor = startOfDay(
+    minDate ?? (allowPastDates ? new Date(2000, 0, 1) : today)
+  );
 
   const [open, setOpen] = React.useState(false);
   const [viewDate, setViewDate] = React.useState(() => selected ?? today);
@@ -170,9 +176,9 @@ export function DatePicker({
                   if (!date) return <div key={i} className="size-8" />;
 
                   const iso = toISODate(date);
-                  const past = startOfDay(date) < today;
+                  const beforeFloor = startOfDay(date) < floor;
                   const fullyBlocked = blocked.has(iso);
-                  const disabled = past || fullyBlocked;
+                  const disabled = beforeFloor || fullyBlocked;
                   const isSelected = selected && isSameDay(date, selected);
                   const isToday = isSameDay(date, today);
 
@@ -193,7 +199,7 @@ export function DatePicker({
                         disabled &&
                           "cursor-not-allowed text-zinc-600 opacity-40",
                         fullyBlocked &&
-                          !past &&
+                          !beforeFloor &&
                           "line-through decoration-zinc-500",
                         !disabled &&
                           !isSelected &&

@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
   Check,
   Scale,
+  BadgeCheck,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ type DJProfile = {
   plan_type: string;
   trial_ends_at?: string | null;
   premium_until?: string | null;
+  is_verified?: boolean | null;
   created_at: string;
   real_first_name: string | null;
   real_last_name: string | null;
@@ -169,6 +171,9 @@ function DJCard({
           <div className="min-w-0">
             <h3 className="truncate font-semibold text-white transition-colors duration-300 group-hover:text-violet-200">
               {name}
+              {dj.is_verified ? (
+                <BadgeCheck className="ml-1.5 inline size-4 text-sky-400" />
+              ) : null}
               {kindLabel ? (
                 <span className="ml-1.5 text-xs font-medium text-zinc-500">
                   ({kindLabel})
@@ -277,7 +282,7 @@ function DJsCatalogue() {
         supabase
           .from("profiles")
           .select(
-            "id, full_name, bio, avatar_url, public_slug, location, plan_type, trial_ends_at, premium_until, created_at, real_first_name, real_last_name, show_real_name, artist_kind"
+            "id, full_name, bio, avatar_url, public_slug, location, plan_type, trial_ends_at, premium_until, is_verified, created_at, real_first_name, real_last_name, show_real_name, artist_kind"
           )
           .eq("role", "dj")
           .not("full_name", "is", null)

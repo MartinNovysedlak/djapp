@@ -35,7 +35,11 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   const destination =
-    profile?.role === "client" ? "/client-dashboard" : "/dashboard/profile";
+    profile?.role === "admin"
+      ? "/admin"
+      : profile?.role === "client"
+        ? "/client-dashboard"
+        : "/dashboard/profile";
 
   return NextResponse.redirect(`${origin}${destination}`);
 }

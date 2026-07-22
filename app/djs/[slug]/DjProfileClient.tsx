@@ -23,6 +23,7 @@ import {
   ThumbsUp,
   ChevronDown,
   ChevronUp,
+  BadgeCheck,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import BookingDialog from "@/components/BookingDialog";
@@ -82,6 +83,8 @@ type DJProfile = {
   plan_type: string;
   trial_ends_at?: string | null;
   premium_until?: string | null;
+  is_verified?: boolean | null;
+  cover_url?: string | null;
   created_at: string;
   gallery_urls: string[] | null;
   video_urls: string[] | null;
@@ -447,6 +450,15 @@ export default function DjProfileClient() {
             <div
               className={`relative h-36 overflow-hidden bg-gradient-to-br ${gradient} md:h-44`}
             >
+              {dj.cover_url ? (
+                <Image
+                  src={dj.cover_url}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : null}
               <div
                 aria-hidden
                 className="absolute inset-0 bg-[radial-gradient(ellipse_80%_100%_at_50%_0%,transparent_30%,oklch(0.16_0.02_285/0.9))]"
@@ -480,37 +492,51 @@ export default function DjProfileClient() {
 
                 {/* Info */}
                 <div className="flex-1 md:pb-1">
-                  <div className="flex flex-col items-center gap-2 md:flex-row">
-                    <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
+                  <div className="flex flex-col items-center gap-3 md:items-start">
+                    <h1 className="text-center text-3xl font-bold tracking-tight text-white md:text-left md:text-4xl">
                       {name}
+                      {dj.is_verified ? (
+                        <BadgeCheck
+                          className="ml-2 inline size-6 text-sky-400 align-[-0.15em] md:size-7"
+                          aria-label="Overený profil"
+                        />
+                      ) : null}
                       {kindLabel ? (
                         <span className="ml-2 text-lg font-medium text-zinc-500 md:text-xl">
                           ({kindLabel})
                         </span>
                       ) : null}
                     </h1>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-[10px] font-semibold ${
-                        hasPremiumAccess(dj)
-                          ? "border-violet-500/25 bg-violet-500/10 text-violet-300"
-                          : "border-white/10 bg-white/[0.04] text-zinc-500"
-                      }`}
-                    >
-                      {getArtistPlanBadge(dj.plan_type, dj.artist_kind, {
-                        trial_ends_at: dj.trial_ends_at,
-                        premium_until: dj.premium_until,
-                      })}
-                    </span>
-                    {ratingCount > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
-                        <Star className="size-3.5 fill-amber-400 text-amber-400" />
-                        {ratingAvg.toFixed(1)}
-                        <span className="text-amber-300/60">
-                          ({ratingCount}{" "}
-                          {ratingCount === 1 ? "hodnotenie" : "hodnotení"})
+
+                    <div className="flex max-w-full flex-wrap items-center justify-center gap-2 md:justify-start">
+                      {dj.is_verified ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold text-sky-300">
+                          <BadgeCheck className="size-3.5 shrink-0" />
+                          Overený
                         </span>
+                      ) : null}
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                          hasPremiumAccess(dj)
+                            ? "border-violet-500/25 bg-violet-500/10 text-violet-300"
+                            : "border-white/10 bg-white/[0.04] text-zinc-500"
+                        }`}
+                      >
+                        {getArtistPlanBadge(dj.plan_type, dj.artist_kind, {
+                          trial_ends_at: dj.trial_ends_at,
+                          premium_until: dj.premium_until,
+                        })}
                       </span>
-                    )}
+                      {ratingCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold text-zinc-300">
+                          <Star className="size-3 shrink-0 fill-violet-400 text-violet-400" />
+                          {ratingAvg.toFixed(1)}
+                          <span className="text-zinc-500">
+                            ({ratingCount})
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
 
                   {realName && (

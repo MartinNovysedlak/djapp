@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, MapPin, Move, Save, ZoomIn, ZoomOut } from "lucide-react";
+import { Loader2, Move, Save, ZoomIn, ZoomOut } from "lucide-react";
 
 import {
   Dialog,
@@ -12,26 +12,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
-const STAGE_SIZE = 260; // px — main crop viewport
-const OUTPUT_SIZE = 512; // px — exported square image resolution
+const STAGE_SIZE = 280;
+const OUTPUT_SIZE = 512;
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
+const MAX_ZOOM = 4;
 
 type NaturalSize = { w: number; h: number };
-type Pan = { x: number; y: number }; // fraction of container size, e.g. -0.5..0.5
+/** Pan as fraction of the crop stage (image moves with the pointer). */
+type Pan = { x: number; y: number };
 
-function computeDisplaySize(natural: NaturalSize, container: number, zoom: number) {
-  const scale0 = container / Math.min(natural.w, natural.h);
-  return {
-    w: natural.w * scale0 * zoom,
-    h: natural.h * scale0 * zoom,
-  };
+function coverScale(natural: NaturalSize, container: number, zoom: number) {
+  return (container / Math.min(natural.w, natural.h)) * zoom;
 }
 
-function clampPan(natural: NaturalSize, container: number, zoom: number, pan: Pan): Pan {
-  const { w, h } = computeDisplaySize(natural, container, zoom);
+function displaySize(natural: NaturalSize, container: number, zoom: number) {
+  const s = coverScale(natural, container, zoom);
+  return { w: natural.w * s, h: natural.h * s, scale: s };
+}
+
+function clampPan(
+  natural: NaturalSize,
+  container: number,
+  zoom: number,
+  pan: Pan
+): Pan {
+  const { w, h } = displaySize(natural, container, zoom);
   const maxX = Math.max(0, (w - container) / 2) / container;
   const maxY = Math.max(0, (h - container) / 2) / container;
   return {
@@ -40,8 +46,31 @@ function clampPan(natural: NaturalSize, container: number, zoom: number, pan: Pa
   };
 }
 
-/** Shared visual: renders the same crop region at an arbitrary viewport size. */
-function CroppedImage({
+/** Source square in natural image pixels that maps to the visible crop. */
+function sourceCropRect(
+  natural: NaturalSize,
+  container: number,
+  zoom: number,
+  pan: Pan
+) {
+  const { w: displayW, h: displayH, scale } = displaySize(
+    natural,
+    container,
+    zoom
+  );
+  const imageLeft = container / 2 - displayW / 2 + pan.x * container;
+  const imageTop = container / 2 - displayH / 2 + pan.y * container;
+  const sx = (0 - imageLeft) / scale;
+  const sy = (0 - imageTop) / scale;
+  const size = container / scale;
+  return {
+    sx: Math.max(0, Math.min(natural.w - size, sx)),
+    sy: Math.max(0, Math.min(natural.h - size, sy)),
+    size: Math.min(size, natural.w, natural.h),
+  };
+}
+
+function CropStageImage({
   src,
   natural,
   zoom,
@@ -54,13 +83,14 @@ function CroppedImage({
   pan: Pan;
   size: number;
 }) {
-  const { w, h } = computeDisplaySize(natural, size, zoom);
+  const { w, h } = displaySize(natural, size, zoom);
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt=""
       draggable={false}
-      className="absolute select-none"
+      className="absolute max-w-none select-none"
       style={{
         width: `${w}px`,
         height: `${h}px`,
@@ -92,28 +122,42 @@ export default function AvatarCropperDialog({
   const [zoom, setZoom] = React.useState(1);
   const [pan, setPan] = React.useState<Pan>({ x: 0, y: 0 });
 
-  const dragState = React.useRef<{ startX: number; startY: number; startPan: Pan } | null>(
-    null
-  );
+  const dragState = React.useRef<{
+    startX: number;
+    startY: number;
+    startPan: Pan;
+  } | null>(null);
 
-  // Load the selected file into a data URL whenever the dialog opens with a new file.
   React.useEffect(() => {
     if (!open || !file) {
       setImgSrc(null);
       setNatural(null);
       return;
     }
+    let cancelled = false;
     const reader = new FileReader();
-    reader.onload = (e) => setImgSrc(e.target?.result as string);
-    reader.readAsDataURL(file);
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, [open, file]);
+    reader.onload = () => {
+      if (cancelled) return;
+      const src = reader.result as string;
+      setImgSrc(src);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
 
-  const handleImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    setNatural({ w: img.naturalWidth, h: img.naturalHeight });
-  };
+      const probe = new window.Image();
+      probe.onload = () => {
+        if (cancelled) return;
+        setNatural({ w: probe.naturalWidth, h: probe.naturalHeight });
+      };
+      probe.onerror = () => {
+        if (!cancelled) setNatural(null);
+      };
+      probe.src = src;
+    };
+    reader.readAsDataURL(file);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, file]);
 
   const updateZoom = (nextZoom: number) => {
     const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
@@ -123,7 +167,7 @@ export default function AvatarCropperDialog({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!natural) return;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
     dragState.current = { startX: e.clientX, startY: e.clientY, startPan: pan };
   };
 
@@ -131,17 +175,18 @@ export default function AvatarCropperDialog({
     if (!dragState.current || !natural) return;
     const dx = (e.clientX - dragState.current.startX) / STAGE_SIZE;
     const dy = (e.clientY - dragState.current.startY) / STAGE_SIZE;
-    const next = {
-      x: dragState.current.startPan.x + dx,
-      y: dragState.current.startPan.y + dy,
-    };
-    setPan(clampPan(natural, STAGE_SIZE, zoom, next));
+    setPan(
+      clampPan(natural, STAGE_SIZE, zoom, {
+        x: dragState.current.startPan.x + dx,
+        y: dragState.current.startPan.y + dy,
+      })
+    );
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     dragState.current = null;
-    if ((e.target as HTMLElement).hasPointerCapture?.(e.pointerId)) {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
     }
   };
 
@@ -153,32 +198,39 @@ export default function AvatarCropperDialog({
   const handleConfirm = async () => {
     if (!imgSrc || !natural) return;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = OUTPUT_SIZE;
-    canvas.height = OUTPUT_SIZE;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    try {
+      const { sx, sy, size } = sourceCropRect(
+        natural,
+        STAGE_SIZE,
+        zoom,
+        pan
+      );
 
-    const { w, h } = computeDisplaySize(natural, OUTPUT_SIZE, zoom);
-    const centerX = OUTPUT_SIZE / 2 + pan.x * OUTPUT_SIZE;
-    const centerY = OUTPUT_SIZE / 2 + pan.y * OUTPUT_SIZE;
+      const canvas = document.createElement("canvas");
+      canvas.width = OUTPUT_SIZE;
+      canvas.height = OUTPUT_SIZE;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    const img = new Image();
-    img.src = imgSrc;
-    await new Promise<void>((resolve) => {
-      if (img.complete) return resolve();
-      img.onload = () => resolve();
-    });
+      const img = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.src = imgSrc;
+      });
 
-    ctx.drawImage(img, centerX - w / 2, centerY - h / 2, w, h);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
-    canvas.toBlob(
-      (blob) => {
-        if (blob) onConfirm(blob);
-      },
-      "image/jpeg",
-      0.92
-    );
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.92)
+      );
+      if (blob) await onConfirm(blob);
+    } catch (err) {
+      console.error("[AvatarCropperDialog]", err);
+    }
   };
 
   const ready = Boolean(imgSrc && natural);
@@ -189,11 +241,10 @@ export default function AvatarCropperDialog({
         <DialogHeader>
           <DialogTitle>Upraviť profilovú fotku</DialogTitle>
           <DialogDescription>
-            Potiahnutím posuň fotku a posuvníkom priblíž alebo vzdiaľ výrez.
+            Posuň a priblíž fotku — uloží sa výrez vo vnútri kruhu.
           </DialogDescription>
         </DialogHeader>
 
-        {/* ── Crop stage ──────────────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-4">
           <div
             onPointerDown={handlePointerDown}
@@ -202,53 +253,53 @@ export default function AvatarCropperDialog({
             onPointerCancel={handlePointerUp}
             onWheel={handleWheel}
             className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-inner"
-            style={{ width: STAGE_SIZE, height: STAGE_SIZE, touchAction: "none", cursor: ready ? "grab" : "default" }}
+            style={{
+              width: STAGE_SIZE,
+              height: STAGE_SIZE,
+              touchAction: "none",
+              cursor: ready ? "grab" : "default",
+            }}
           >
-            {imgSrc && (
-              <img
-                src={imgSrc}
-                alt=""
-                onLoad={handleImgLoad}
-                className="hidden"
-              />
-            )}
-            {ready && natural && (
-              <CroppedImage
+            {ready && natural ? (
+              <CropStageImage
                 src={imgSrc!}
                 natural={natural}
                 zoom={zoom}
                 pan={pan}
                 size={STAGE_SIZE}
               />
-            )}
-            {!ready && (
+            ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="size-5 animate-spin text-violet-400" />
               </div>
             )}
-            {/* Circular guide overlay */}
+
+            {/* Darken outside the crop circle — circle matches full stage */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0"
+              className="pointer-events-none absolute inset-0 rounded-2xl"
               style={{
-                boxShadow: `0 0 0 999px oklch(0.05 0.01 285 / 0.72)`,
-                borderRadius: "9999px",
-                margin: 10,
+                background:
+                  "radial-gradient(circle closest-side, transparent 69%, oklch(0.05 0.01 285 / 0.75) 70%)",
               }}
             />
-            {ready && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-[8%] rounded-full border border-white/40"
+            />
+
+            {ready ? (
               <div className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[10px] text-zinc-300 backdrop-blur-sm">
                 <Move className="size-3" />
                 Potiahni pre posun
               </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Zoom control */}
           <div className="flex w-full items-center gap-3">
             <button
               type="button"
-              onClick={() => updateZoom(zoom - 0.2)}
+              onClick={() => updateZoom(zoom - 0.15)}
               disabled={!ready}
               className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:bg-white/10 disabled:opacity-40"
             >
@@ -266,7 +317,7 @@ export default function AvatarCropperDialog({
             />
             <button
               type="button"
-              onClick={() => updateZoom(zoom + 0.2)}
+              onClick={() => updateZoom(zoom + 0.15)}
               disabled={!ready}
               className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:bg-white/10 disabled:opacity-40"
             >
@@ -274,44 +325,28 @@ export default function AvatarCropperDialog({
             </button>
           </div>
 
-          {/* ── Live previews ─────────────────────────────────────────────── */}
-          {ready && natural && (
-            <div className="grid w-full grid-cols-2 gap-3">
-              {/* Dashboard preview */}
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                <div
-                  className={cn(
-                    "relative overflow-hidden rounded-full border-2 border-border/50"
-                  )}
-                  style={{ width: 72, height: 72 }}
-                >
-                  <CroppedImage src={imgSrc!} natural={natural} zoom={zoom} pan={pan} size={72} />
+          {ready && natural ? (
+            <div className="flex w-full items-center justify-center gap-6">
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative size-16 overflow-hidden rounded-full border-2 border-white/20">
+                  <CropStageImage
+                    src={imgSrc!}
+                    natural={natural}
+                    zoom={zoom}
+                    pan={pan}
+                    size={64}
+                  />
                 </div>
-                <p className="text-[11px] text-zinc-500">V dashboarde</p>
-              </div>
-
-              {/* Catalogue card preview */}
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                <div className="relative flex h-16 w-full items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500">
-                  <div
-                    className="relative overflow-hidden rounded-full border-2 border-white/30 shadow-lg"
-                    style={{ width: 44, height: 44 }}
-                  >
-                    <CroppedImage src={imgSrc!} natural={natural} zoom={zoom} pan={pan} size={44} />
-                  </div>
-                </div>
-                <p className="flex items-center gap-1 text-[11px] text-zinc-500">
-                  <MapPin className="size-2.5" />V katalógu umelcov
-                </p>
+                <p className="text-[11px] text-zinc-500">Náhľad</p>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         <DialogFooter>
           <Button
             type="button"
-            onClick={handleConfirm}
+            onClick={() => void handleConfirm()}
             disabled={!ready || confirming}
             className="gap-2"
           >

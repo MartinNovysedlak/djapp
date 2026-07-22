@@ -16,6 +16,8 @@ export type UpdateDjProfileInput = {
   artistKind?: "dj" | "band" | "dj_band";
   bio: string;
   location: string | null;
+  /** Private — verification only, never shown publicly */
+  permanentAddress?: string;
   googleMapsUrl?: string;
   socialLinks: Record<string, string> | null;
   galleryUrls: string[];
@@ -82,6 +84,23 @@ export async function updateDjProfile(
     if (error) {
       console.error("[updateDjProfile]", error);
       return { ok: false, error: error.message };
+    }
+
+    const permanentAddress = input.permanentAddress?.trim() || "";
+    const { error: privateError } = await supabase
+      .from("dj_verification_private")
+      .upsert({
+        dj_id: authData.user.id,
+        permanent_address: permanentAddress,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (privateError) {
+      console.error("[updateDjProfile] private", privateError);
+      return {
+        ok: false,
+        error: privateError.message || "Trvalé bydlisko sa nepodarilo uložiť.",
+      };
     }
 
     return { ok: true, googleMapsUrl: googleMapsUrl || null };

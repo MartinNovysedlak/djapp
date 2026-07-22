@@ -44,6 +44,10 @@ function LoginForm() {
     void (async () => {
       const role = await getOwnRole();
       if (cancelled || !role) return;
+      if (role === "admin") {
+        router.replace("/admin");
+        return;
+      }
       if (role === "client" && redirectParam) {
         router.replace(redirectParam);
         return;
@@ -69,6 +73,10 @@ function LoginForm() {
     }
     const role = await getOwnRole();
     setIsLoading(false);
+    if (role === "admin") {
+      router.push("/admin");
+      return;
+    }
     if (role === "client" && redirectParam) {
       router.push(redirectParam);
       return;

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { getDjStageName } from "@/lib/dj-display";
+import { getPublishedDjPageBySlug } from "@/app/actions/dj-page";
 import DjProfileClient from "./DjProfileClient";
+import DjLandingClient from "@/app/p/[slug]/DjLandingClient";
 
 const PLATFORM_NAME = "BookTheVibe";
 
@@ -78,6 +80,21 @@ export async function generateMetadata({
   };
 }
 
-export default function DJDetailPage() {
+export default async function DJDetailPage({ params }: PageProps) {
+  const { slug } = await params;
+  const published = await getPublishedDjPageBySlug(slug);
+
+  if (published.ok && published.isCustomPublished) {
+    return (
+      <DjLandingClient
+        profile={published.profile}
+        theme={published.theme}
+        sections={published.sections}
+        reviews={published.reviews}
+        extras={published.extras}
+      />
+    );
+  }
+
   return <DjProfileClient />;
 }

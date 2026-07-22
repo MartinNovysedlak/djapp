@@ -1,8 +1,7 @@
 import type { MetadataRoute } from "next";
-import { BRAND } from "@/lib/brand";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || BRAND.url;
+const siteUrl = getPublicSiteUrl();
 
 export default function robots(): MetadataRoute.Robots {
   return {

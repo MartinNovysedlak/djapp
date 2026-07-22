@@ -28,7 +28,7 @@ export type DashboardProfile = {
   plan_type: string;
   trial_ends_at?: string | null;
   premium_until?: string | null;
-  role: "dj" | "client";
+  role: "dj" | "client" | "admin";
   artist_kind?: "dj" | "band" | "dj_band" | null;
   social_links: Record<string, string> | null;
   gallery_urls: string[] | null;
@@ -37,6 +37,10 @@ export type DashboardProfile = {
   real_first_name: string | null;
   real_last_name: string | null;
   show_real_name: boolean;
+  is_verified?: boolean;
+  verified_at?: string | null;
+  cover_url?: string | null;
+  updated_at?: string | null;
 };
 
 type DashboardUser = { id: string; email?: string };
@@ -113,6 +117,11 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
         setDashboardAuthCache(sessionUser, loaded);
         if (loaded.role === "client") {
           router.push("/client-dashboard");
+          return;
+        }
+        if (loaded.role === "admin") {
+          router.push("/admin");
+          return;
         }
         return;
       }

@@ -4,6 +4,7 @@ import { BRAND } from "@/lib/brand";
 
 const FOOTER_LINKS = [
   { href: "/djs", label: "Katalóg" },
+  { href: "/blog", label: "Blog" },
   { href: "/kontakt", label: "Kontakt" },
   { href: "/podmienky", label: "Podmienky používania" },
   { href: "/obchodne-podmienky", label: "Obchodné podmienky" },

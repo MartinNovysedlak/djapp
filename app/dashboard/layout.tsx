@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   FileText,
   FileSignature,
+  LayoutTemplate,
   Lock,
   LogOut,
   Menu,
@@ -86,6 +87,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       premium: false,
     },
     {
+      label: "Moja stránka",
+      href: "/dashboard/page-builder",
+      icon: <LayoutTemplate className="size-4" />,
+      premium: true,
+    },
+    {
       label: "Rezervácie",
       href: "/dashboard/bookings",
       icon: <CalendarCheck className="size-4" />,
@@ -142,6 +149,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   ];
 
   const isLiveBooth = Boolean(pathname?.includes("/live"));
+  const isPageBuilderEdit = Boolean(
+    pathname?.startsWith("/dashboard/page-builder/edit")
+  );
   const blocked =
     !loading &&
     !!user &&
@@ -164,16 +174,26 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isLiveBooth) {
+  if (isLiveBooth || isPageBuilderEdit) {
     return (
       <div className="relative min-h-svh bg-background">
         {loading && !user ? (
           <div className="flex min-h-svh items-center justify-center">
             <p className="text-muted-foreground">Načítavam…</p>
           </div>
+        ) : blocked ? (
+          <div className="p-6 md:p-10">
+            <PremiumUpgradeGate profile={profile} />
+          </div>
         ) : (
           children
         )}
+        {!isPageBuilderEdit ? (
+          <NewMessageToaster
+            chatBasePath="/dashboard/bookings"
+            inboxHref="/dashboard/messages"
+          />
+        ) : null}
       </div>
     );
   }

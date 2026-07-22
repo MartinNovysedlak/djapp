@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, Users, User, ArrowRight, LogOut, Mail } from "lucide-react";
+import { Home, Users, User, ArrowRight, LogOut, Mail, Newspaper } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -13,7 +13,7 @@ type AuthUser = { id: string; email?: string };
 export default function Navbar() {
   const pathname = usePathname() ?? "/";
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [role, setRole] = useState<"dj" | "client">("dj");
+  const [role, setRole] = useState<"dj" | "client" | "admin">("dj");
   const [authReady, setAuthReady] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -37,7 +37,13 @@ export default function Navbar() {
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
-      setRole(profile?.role === "client" ? "client" : "dj");
+      setRole(
+        profile?.role === "client"
+          ? "client"
+          : profile?.role === "admin"
+            ? "admin"
+            : "dj"
+      );
       setAuthReady(true);
     };
 
@@ -66,7 +72,11 @@ export default function Navbar() {
   }, []);
 
   const dashboardHref =
-    role === "client" ? "/client-dashboard" : "/dashboard/profile";
+    role === "admin"
+      ? "/admin"
+      : role === "client"
+        ? "/client-dashboard"
+        : "/dashboard/profile";
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
@@ -91,14 +101,17 @@ export default function Navbar() {
         : "text-zinc-400 hover:text-white hover:bg-white/5"
     }`;
 
+  const isPageBuilderEdit = pathname.startsWith("/dashboard/page-builder/edit");
   const isLiveGuest = pathname.startsWith("/live");
   const isLiveBooth =
     pathname.includes("/bookings/") && pathname.endsWith("/live");
+  const isAdminRoute = pathname.startsWith("/admin");
   const isDashboardRoute =
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/client-dashboard");
+    pathname.startsWith("/client-dashboard") ||
+    isAdminRoute;
 
-  if (isLiveGuest || isLiveBooth) {
+  if (isLiveGuest || isLiveBooth || isAdminRoute || isPageBuilderEdit) {
     return null;
   }
 
@@ -133,6 +146,10 @@ export default function Navbar() {
               <Users className="size-3.5" />
               Katalóg
             </Link>
+            <Link href="/blog" className={linkClass(isActive("/blog"))}>
+              <Newspaper className="size-3.5" />
+              Blog
+            </Link>
             <Link href="/kontakt" className={linkClass(isActive("/kontakt"))}>
               <Mail className="size-3.5" />
               Kontakt
@@ -142,12 +159,16 @@ export default function Navbar() {
                 href={dashboardHref}
                 className={linkClass(
                   isActive(
-                    role === "client" ? "/client-dashboard" : "/dashboard"
+                    role === "admin"
+                      ? "/admin"
+                      : role === "client"
+                        ? "/client-dashboard"
+                        : "/dashboard"
                   )
                 )}
               >
                 <User className="size-3.5" />
-                Dashboard
+                {role === "admin" ? "Admin" : "Dashboard"}
               </Link>
             ) : null}
           </div>
@@ -187,6 +208,7 @@ export default function Navbar() {
 
       <div className="h-[76px]" aria-hidden />
 
+      {!isPageBuilderEdit ? (
       <div className="btv-mobile-bottom-nav fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-background/80 px-3 py-2 shadow-[0_16px_50px_-12px_oklch(0_0_0/0.7)] backdrop-blur-2xl sm:hidden">
         <Link
           href="/"
@@ -209,6 +231,16 @@ export default function Navbar() {
           Katalóg
         </Link>
         <Link
+          href="/blog"
+          className={cn(
+            "flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[10px] transition-all duration-300",
+            isActive("/blog") ? "text-violet-300" : "text-zinc-500"
+          )}
+        >
+          <Newspaper className="size-4" />
+          Blog
+        </Link>
+        <Link
           href="/kontakt"
           className={cn(
             "flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[10px] transition-all duration-300",
@@ -223,16 +255,23 @@ export default function Navbar() {
             href={dashboardHref}
             className={cn(
               "flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[10px] transition-all duration-300",
-              isActive(role === "client" ? "/client-dashboard" : "/dashboard")
+              isActive(
+                role === "admin"
+                  ? "/admin"
+                  : role === "client"
+                    ? "/client-dashboard"
+                    : "/dashboard"
+              )
                 ? "text-violet-300"
                 : "text-zinc-500"
             )}
           >
             <User className="size-4" />
-            Dashboard
+            {role === "admin" ? "Admin" : "Dashboard"}
           </Link>
         ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

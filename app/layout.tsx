@@ -6,14 +6,14 @@ import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/lib/toast-context";
 import { ClearServiceWorkers } from "@/components/ClearServiceWorkers";
 import { BRAND, SEO_DEFAULT } from "@/lib/brand";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 const outfit = Outfit({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || BRAND.url;
+const siteUrl = getPublicSiteUrl();
 
 export const viewport: Viewport = {
   themeColor: "#0A0A0A",

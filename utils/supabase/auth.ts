@@ -87,7 +87,7 @@ export async function signUpWithEmail(
 }
 
 /** Looks up the signed-in user's role so we know where to redirect them. */
-export async function getOwnRole(): Promise<"dj" | "client" | null> {
+export async function getOwnRole(): Promise<"dj" | "client" | "admin" | null> {
   const supabase = createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
@@ -98,5 +98,7 @@ export async function getOwnRole(): Promise<"dj" | "client" | null> {
     .eq("id", data.user.id)
     .maybeSingle();
 
-  return profile?.role === "client" ? "client" : "dj";
+  if (profile?.role === "client") return "client";
+  if (profile?.role === "admin") return "admin";
+  return profile ? "dj" : null;
 }
