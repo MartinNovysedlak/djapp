@@ -19,13 +19,27 @@ export function isNonPublicSiteUrl(url: string): boolean {
 }
 
 /**
- * Canonical public site origin for metadata, sitemap, emails, QR, etc.
+ * Canonical public site origin for metadata, sitemap, emails, QR, share links.
  * Ignores localhost / LAN values in NEXT_PUBLIC_SITE_URL (e.g. 192.168.x.x).
+ * Always falls back to BRAND.url (bookthevibe.com) — never localhost.
  */
 export function getPublicSiteUrl(): string {
   const raw = (process.env.NEXT_PUBLIC_SITE_URL || "").trim().replace(/\/$/, "");
   if (raw && !isNonPublicSiteUrl(raw)) return raw;
   return BRAND.url.replace(/\/$/, "");
+}
+
+/** Absolute public DJ/band profile URL, e.g. https://bookthevibe.com/djs/dj-nova */
+export function getPublicDjUrl(slug: string): string {
+  const clean = slug.trim().replace(/^\/+|\/+$/g, "");
+  return `${getPublicSiteUrl()}/djs/${clean}`;
+}
+
+/** Host + path for read-only UI, e.g. bookthevibe.com/djs/dj-nova */
+export function getPublicDjDisplayPath(slug: string): string {
+  const origin = getPublicSiteUrl().replace(/^https?:\/\//i, "");
+  const clean = slug.trim().replace(/^\/+|\/+$/g, "");
+  return `${origin}/djs/${clean}`;
 }
 
 /** @deprecated Prefer getPublicSiteUrl — kept as alias for existing imports. */

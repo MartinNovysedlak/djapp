@@ -28,7 +28,9 @@ BEGIN
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data ->> 'display_name', ''),
-    'dj-' || substr(md5(NEW.id::text), 1, 8),
+    public.allocate_unique_public_slug(
+      public.slugify_artist_name(COALESCE(NEW.raw_user_meta_data ->> 'display_name', ''))
+    ),
     COALESCE(NEW.raw_user_meta_data ->> 'role', 'dj'),
     NEW.raw_user_meta_data ->> 'first_name',
     NEW.raw_user_meta_data ->> 'last_name',

@@ -11,6 +11,7 @@ import { renderHtmlToPdfBuffer } from "@/lib/contracts/pdf";
 import { normalizeContractHtmlForPdf } from "@/lib/contracts/normalize-html";
 import { parsePageSettingsFromHtml } from "@/lib/contracts/page-spacers";
 import { sendContractDocumentEmail, sendContractFilledEmail } from "@/lib/email";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import {
   prefillFromBilling,
   missingClientFillKeys,
@@ -1012,9 +1013,7 @@ export async function sendGeneratedInvoiceToClient(
     "Umelec";
 
   if (clientEmail) {
-    const site = (
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-    ).replace(/\/$/, "");
+    const site = getPublicSiteUrl();
     await sendContractDocumentEmail({
       clientEmail,
       clientName: invoice.client_name,
@@ -1465,9 +1464,7 @@ export async function submitClientInvoiceFill(
       const { data: authUser } = await admin.auth.admin.getUserById(invoice.dj_id);
       const djEmail = authUser.user?.email?.trim() || null;
       if (djEmail) {
-        const site = (
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-        ).replace(/\/$/, "");
+        const site = getPublicSiteUrl();
         const { data: djProfile } = await admin
           .from("profiles")
           .select("full_name, real_first_name, real_last_name")

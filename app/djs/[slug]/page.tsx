@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { getDjStageName } from "@/lib/dj-display";
 import { getPublishedDjPageBySlug } from "@/app/actions/dj-page";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import DjProfileClient from "./DjProfileClient";
 import DjLandingClient from "@/app/p/[slug]/DjLandingClient";
 
@@ -46,17 +47,7 @@ export async function generateMetadata({
     };
   }
 
-  const siteUrl = (() => {
-    if (process.env.NEXT_PUBLIC_SITE_URL) {
-      return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
-    }
-    if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}`;
-    }
-    return "http://localhost:3000";
-  })();
-
-  const pageUrl = `${siteUrl}/djs/${slug}`;
+  const pageUrl = `${getPublicSiteUrl()}/djs/${slug}`;
 
   return {
     title,

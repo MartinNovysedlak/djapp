@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import ical, { ICalCalendarMethod, ICalEventStatus } from "ical-generator";
 import { formatEventTypeLabel } from "@/lib/event-types";
 import { normalizeTime } from "@/lib/dates";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 export type ExportableBooking = {
   id: string;
@@ -19,9 +20,7 @@ export type ExportableBooking = {
 };
 
 function siteBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-  ).replace(/\/$/, "");
+  return getPublicSiteUrl();
 }
 
 function toLocalDate(isoDate: string, timeHHmm: string) {

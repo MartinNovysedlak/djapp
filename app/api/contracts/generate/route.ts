@@ -15,6 +15,7 @@ import {
   type GeneratedContractRow,
 } from "@/lib/contracts/types";
 import { resolveAndLinkBookingClient } from "@/lib/link-booking-client";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
@@ -241,9 +242,7 @@ export async function POST(request: Request) {
         "Umelec";
 
       if (clientEmail) {
-        const site = (
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-        ).replace(/\/$/, "");
+        const site = getPublicSiteUrl();
         const { sendContractDocumentEmail } = await import("@/lib/email");
         await sendContractDocumentEmail({
           clientEmail,

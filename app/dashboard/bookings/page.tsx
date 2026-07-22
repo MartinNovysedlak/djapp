@@ -27,6 +27,7 @@ import { useToast } from "@/lib/toast-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getPublicDjUrl, getPublicSiteUrl } from "@/lib/site-url";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -591,11 +592,9 @@ function BookingsPageInner() {
   );
 
   const handleShareProfile = async () => {
-    const path = publicSlug ? `/djs/${publicSlug}` : "/djs";
-    const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}${path}`
-        : path;
+    const url = publicSlug
+      ? getPublicDjUrl(publicSlug)
+      : `${getPublicSiteUrl()}/djs`;
     try {
       await navigator.clipboard.writeText(url);
       showToast("Odkaz na profil skopírovaný", "success");

@@ -10,6 +10,7 @@ import {
   sendContractDocumentEmail,
   sendContractFilledEmail,
 } from "@/lib/email";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import { resolveAndLinkBookingClient } from "@/lib/link-booking-client";
 import {
   prefillFromBilling,
@@ -758,9 +759,7 @@ export async function sendGeneratedContractToClient(
     "Umelec";
 
   if (clientEmail) {
-    const site = (
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-    ).replace(/\/$/, "");
+    const site = getPublicSiteUrl();
     await sendContractDocumentEmail({
       clientEmail,
       clientName: contract.client_name,
@@ -1102,9 +1101,7 @@ export async function submitClientContractFill(
       );
       const djEmail = authUser.user?.email?.trim() || null;
       if (djEmail) {
-        const site = (
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-        ).replace(/\/$/, "");
+        const site = getPublicSiteUrl();
         const djName =
           djProfile?.full_name?.trim() ||
           [djProfile?.real_first_name, djProfile?.real_last_name]

@@ -38,6 +38,7 @@ import { useToast } from "@/lib/toast-context";
 import Image from "next/image";
 import { Reveal } from "@/components/motion";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { getPublicDjDisplayPath, getPublicDjUrl } from "@/lib/site-url";
 import AvatarCropperDialog from "@/components/AvatarCropperDialog";
 import { useDashboardUser } from "@/components/DashboardUserContext";
 import {
@@ -857,7 +858,7 @@ export default function ProfilePage() {
                     id="publicSlug"
                     value={
                       publicSlug
-                        ? `djaplikacia.sk/djs/${publicSlug}`
+                        ? getPublicDjDisplayPath(publicSlug)
                         : "Profil ešte nemá verejný odkaz"
                     }
                     readOnly
@@ -874,7 +875,7 @@ export default function ProfilePage() {
                   aria-label="Skopírovať odkaz"
                   onClick={async () => {
                     if (!publicSlug) return;
-                    const full = `${window.location.origin}/djs/${publicSlug}`;
+                    const full = getPublicDjUrl(publicSlug);
                     try {
                       await navigator.clipboard.writeText(full);
                       setSlugCopied(true);

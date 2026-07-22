@@ -24,7 +24,7 @@ import { DjPageRenderer } from "@/components/page-builder/DjPageRenderer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useToast } from "@/lib/toast-context";
 import { useDashboardUser } from "@/components/DashboardUserContext";
-import { getPublicSiteUrl } from "@/lib/site-url";
+import { getPublicDjUrl } from "@/lib/site-url";
 import { defaultTheme, type PageSection, type PageTheme, hasUnpublishedPageChanges } from "@/lib/page-builder/types";
 import { cn } from "@/lib/utils";
 
@@ -114,9 +114,7 @@ export function PageOverview() {
     };
   }, [load]);
 
-  const publicUrl = publicSlug
-    ? `${typeof window !== "undefined" ? window.location.origin : getPublicSiteUrl()}/djs/${publicSlug}`
-    : null;
+  const publicUrl = publicSlug ? getPublicDjUrl(publicSlug) : null;
 
   async function handlePublish() {
     setPublishing(true);
