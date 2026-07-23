@@ -183,13 +183,13 @@ export function DjPageRenderer({
   return (
     <div
       className={cn(
-        "relative min-h-full overflow-hidden font-[family-name:var(--font-outfit)] isolation-isolate",
-        bg,
+        "relative min-h-full overflow-hidden bg-[#07070a] font-[family-name:var(--font-outfit)] isolation-isolate",
         motionClass,
         className
       )}
       style={themeAccentStyle(theme.accent)}
     >
+      <div className={cn("page-canvas-wash", bg)} aria-hidden />
       {atmosphereClass ? (
         <div className="page-atmosphere-stage" aria-hidden>
           <div className={atmosphereClass} />

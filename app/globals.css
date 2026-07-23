@@ -280,20 +280,43 @@
   animation: var(--animate-page-section-slide);
 }
 
-/* Page builder atmospheres & backgrounds (accent via --page-accent*)
- * Full-bleed washes so public /djs pages match the rich editor preview. */
+/* Page builder canvas wash + atmosphere (accent via --page-accent*)
+ * Continuous edge-to-edge field with a real center glow — not side-only blobs. */
+.page-canvas-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #07070a;
+}
+
 .page-bg-gradient {
   background-color: #07070a;
   background-image:
     radial-gradient(
-      ellipse 90% 70% at 50% 0%,
+      ellipse 120% 80% at 50% -10%,
+      color-mix(in oklab, var(--page-accent) 38%, #121018),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 90% 70% at 50% 42%,
       color-mix(in oklab, var(--page-accent) 18%, transparent),
-      transparent 70%
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 55% 50% at 8% 18%,
+      color-mix(in oklab, var(--page-accent) 22%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 55% 50% at 92% 22%,
+      color-mix(in oklab, var(--page-accent) 20%, transparent),
+      transparent 62%
     ),
     linear-gradient(
       180deg,
-      color-mix(in oklab, var(--page-accent) 32%, #0a0a0a) 0%,
-      #0a0a0a 52%,
+      color-mix(in oklab, var(--page-accent) 16%, #0c0a12) 0%,
+      #09090e 48%,
       #07070a 100%
     );
 }
@@ -302,24 +325,30 @@
   background-color: #06060b;
   background-image:
     radial-gradient(
-      ellipse 120% 90% at 50% 30%,
-      color-mix(in oklab, var(--page-accent) 10%, transparent),
+      ellipse 100% 85% at 50% 28%,
+      color-mix(in oklab, var(--page-accent) 20%, transparent),
       transparent 72%
     ),
     radial-gradient(
-      ellipse 75% 55% at 18% 12%,
+      ellipse 70% 60% at 12% 10%,
       var(--page-accent-soft),
       transparent 58%
     ),
     radial-gradient(
-      ellipse 55% 45% at 82% 16%,
-      color-mix(in oklab, var(--page-accent) 28%, transparent),
-      transparent 52%
+      ellipse 65% 55% at 88% 14%,
+      color-mix(in oklab, var(--page-accent) 30%, transparent),
+      transparent 55%
     ),
     radial-gradient(
-      ellipse 60% 50% at 50% 92%,
-      color-mix(in oklab, var(--page-accent) 16%, transparent),
-      transparent 55%
+      ellipse 80% 55% at 50% 95%,
+      color-mix(in oklab, var(--page-accent) 14%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      165deg,
+      #0a0812 0%,
+      #06060b 45%,
+      color-mix(in oklab, var(--page-accent) 8%, #06060b) 100%
     );
 }
 
@@ -327,102 +356,117 @@
   background-color: #050508;
   background-image:
     radial-gradient(
-      ellipse 100% 80% at 50% 10%,
-      color-mix(in oklab, var(--page-accent) 12%, transparent),
-      transparent 75%
-    ),
-    radial-gradient(
-      ellipse 80% 50% at 50% -5%,
+      ellipse 95% 70% at 50% 0%,
       var(--page-accent-soft),
-      transparent 62%
+      transparent 55%
     ),
     radial-gradient(
-      ellipse 35% 28% at 68% 42%,
+      ellipse 85% 65% at 50% 38%,
+      color-mix(in oklab, var(--page-accent) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 35% at 72% 48%,
       var(--page-accent-dim),
-      transparent 55%
-    );
+      transparent 60%
+    ),
+    linear-gradient(180deg, #0a0a10 0%, #050508 55%, #040406 100%);
 }
 
 .page-bg-radial {
   background-color: #08080c;
   background-image:
     radial-gradient(
-      ellipse 100% 90% at 50% 40%,
-      color-mix(in oklab, var(--page-accent) 12%, transparent),
-      transparent 78%
+      ellipse 110% 90% at 50% 32%,
+      color-mix(in oklab, var(--page-accent) 28%, #14121c),
+      transparent 62%
     ),
     radial-gradient(
-      ellipse 70% 55% at 50% 35%,
-      color-mix(in oklab, var(--page-accent) 26%, #121218),
-      #08080c 68%
-    );
+      ellipse 80% 60% at 50% 48%,
+      color-mix(in oklab, var(--page-accent) 14%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 50% 55% at 0% 20%,
+      color-mix(in oklab, var(--page-accent) 18%, transparent),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 50% 55% at 100% 25%,
+      color-mix(in oklab, var(--page-accent) 16%, transparent),
+      transparent 65%
+    ),
+    linear-gradient(180deg, #0c0c12 0%, #08080c 50%, #06060a 100%);
 }
 
 .page-bg-vignette {
   background-color: #030305;
   background-image:
     radial-gradient(
-      ellipse 100% 100% at 50% 45%,
-      color-mix(in oklab, var(--page-accent) 8%, transparent),
-      transparent 70%
+      ellipse 90% 75% at 50% 38%,
+      color-mix(in oklab, var(--page-accent) 14%, #18181e),
+      transparent 58%
     ),
     radial-gradient(
-      ellipse 75% 65% at 50% 40%,
-      #141418 0%,
-      transparent 55%
+      ellipse 70% 55% at 50% 40%,
+      #16161c 0%,
+      transparent 60%
     ),
     radial-gradient(
-      ellipse 100% 100% at 50% 50%,
-      transparent 35%,
+      ellipse 120% 100% at 50% 50%,
+      transparent 40%,
       #030305 100%
-    );
+    ),
+    linear-gradient(180deg, #0a0a0e 0%, #030305 100%);
 }
 
 .page-bg-beam {
   background-color: #07070a;
   background-image:
     radial-gradient(
-      ellipse 110% 80% at 50% 25%,
-      color-mix(in oklab, var(--page-accent) 10%, transparent),
-      transparent 72%
+      ellipse 100% 75% at 50% 20%,
+      color-mix(in oklab, var(--page-accent) 16%, transparent),
+      transparent 70%
     ),
     linear-gradient(
       125deg,
-      transparent 28%,
-      var(--page-accent-dim) 48%,
-      color-mix(in oklab, var(--page-accent) 22%, transparent) 52%,
-      transparent 72%
+      transparent 22%,
+      var(--page-accent-dim) 46%,
+      color-mix(in oklab, var(--page-accent) 28%, transparent) 52%,
+      transparent 78%
     ),
     radial-gradient(
-      ellipse 50% 40% at 62% 22%,
-      var(--page-accent-dim),
-      transparent 60%
-    );
+      ellipse 55% 45% at 58% 28%,
+      var(--page-accent-soft),
+      transparent 62%
+    ),
+    linear-gradient(180deg, #0a0a10 0%, #07070a 100%);
 }
 
 .page-bg-horizon {
   background-color: #050508;
   background-image:
     radial-gradient(
-      ellipse 100% 70% at 50% 48%,
-      color-mix(in oklab, var(--page-accent) 10%, transparent),
-      transparent 70%
+      ellipse 120% 70% at 50% 42%,
+      color-mix(in oklab, var(--page-accent) 18%, transparent),
+      transparent 65%
     ),
     linear-gradient(
       180deg,
-      #08080c 0%,
-      color-mix(in oklab, var(--page-accent) 14%, #0a0a0e) 42%,
-      var(--page-accent-dim) 50%,
-      #08080c 62%,
+      #09090e 0%,
+      color-mix(in oklab, var(--page-accent) 12%, #0a0a10) 36%,
+      color-mix(in oklab, var(--page-accent) 22%, #121018) 50%,
+      color-mix(in oklab, var(--page-accent) 10%, #0a0a10) 64%,
       #050508 100%
     );
 }
 
-/* Atmosphere effects — full-bleed behind content */
+/* Atmosphere — full bleed + center presence */
 .page-atmosphere-stage {
   pointer-events: none;
   position: absolute;
   inset: 0;
+  z-index: 0;
   overflow: hidden;
 }
 
@@ -439,6 +483,17 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse 75% 55% at 50% 22%,
+      var(--page-accent-dim),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 50% 55%,
+      color-mix(in oklab, var(--page-accent) 12%, transparent),
+      transparent 75%
+    );
 }
 
 .page-atmosphere-aurora::before,
@@ -446,25 +501,27 @@
   content: "";
   position: absolute;
   border-radius: 9999px;
-  filter: blur(72px);
+  filter: blur(80px);
   animation: page-orb-float 16s ease-in-out infinite;
 }
 
 .page-atmosphere-aurora::before {
-  width: min(55vw, 640px);
-  height: min(55vw, 640px);
-  top: -18%;
-  left: -8%;
+  width: min(70vw, 720px);
+  height: min(70vw, 720px);
+  top: -22%;
+  left: -12%;
   background: var(--page-accent-soft);
+  opacity: 0.95;
 }
 
 .page-atmosphere-aurora::after {
-  width: min(45vw, 520px);
-  height: min(45vw, 520px);
-  top: 8%;
-  right: -6%;
-  background: color-mix(in oklab, var(--page-accent) 30%, oklch(0.55 0.12 220));
+  width: min(60vw, 620px);
+  height: min(60vw, 620px);
+  top: 0%;
+  right: -10%;
+  background: color-mix(in oklab, var(--page-accent) 34%, oklch(0.55 0.12 220));
   animation-delay: -7s;
+  opacity: 0.9;
 }
 
 .page-atmosphere-grid {
@@ -482,8 +539,8 @@
       transparent 1px
     );
   background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 75% 65% at 50% 28%, black, transparent);
-  opacity: 0.7;
+  mask-image: radial-gradient(ellipse 90% 75% at 50% 30%, black, transparent 78%);
+  opacity: 0.65;
 }
 
 .page-atmosphere-orbs {
@@ -491,6 +548,11 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  background: radial-gradient(
+    ellipse 70% 50% at 50% 30%,
+    var(--page-accent-dim),
+    transparent 72%
+  );
 }
 
 .page-atmosphere-orbs::before,
@@ -498,23 +560,23 @@
   content: "";
   position: absolute;
   border-radius: 9999px;
-  filter: blur(56px);
+  filter: blur(64px);
   animation: page-orb-float 14s ease-in-out infinite;
 }
 
 .page-atmosphere-orbs::before {
-  width: min(50vw, 520px);
-  height: min(50vw, 520px);
-  top: -8%;
-  left: -8%;
+  width: min(58vw, 580px);
+  height: min(58vw, 580px);
+  top: -10%;
+  left: -10%;
   background: var(--page-accent-glow);
 }
 
 .page-atmosphere-orbs::after {
-  width: min(42vw, 440px);
-  height: min(42vw, 440px);
-  bottom: 10%;
-  right: -6%;
+  width: min(50vw, 500px);
+  height: min(50vw, 500px);
+  bottom: 8%;
+  right: -8%;
   background: color-mix(in oklab, var(--page-accent) 35%, oklch(0.45 0.18 250));
   animation-delay: -6s;
 }
@@ -525,12 +587,17 @@
   inset: 0;
   background:
     radial-gradient(
-      ellipse 90% 50% at 20% 70%,
+      ellipse 90% 60% at 50% 35%,
+      color-mix(in oklab, var(--page-accent) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 15% 70%,
       color-mix(in oklab, var(--page-accent) 14%, transparent),
       transparent 55%
     ),
     radial-gradient(
-      ellipse 80% 45% at 85% 30%,
+      ellipse 70% 45% at 88% 28%,
       oklch(1 0 0 / 0.05),
       transparent 50%
     ),
@@ -542,6 +609,11 @@
   position: absolute;
   inset: 0;
   background-image:
+    radial-gradient(
+      ellipse 80% 55% at 50% 28%,
+      color-mix(in oklab, var(--page-accent) 10%, transparent),
+      transparent 70%
+    ),
     radial-gradient(1.5px 1.5px at 12% 18%, oklch(1 0 0 / 0.65), transparent),
     radial-gradient(1px 1px at 28% 42%, oklch(1 0 0 / 0.45), transparent),
     radial-gradient(1.5px 1.5px at 48% 12%, var(--page-accent-soft), transparent),
@@ -551,20 +623,26 @@
     radial-gradient(1.5px 1.5px at 35% 78%, oklch(1 0 0 / 0.35), transparent),
     radial-gradient(1px 1px at 8% 62%, oklch(1 0 0 / 0.4), transparent),
     radial-gradient(1.5px 1.5px at 55% 88%, oklch(1 0 0 / 0.3), transparent);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .page-atmosphere-scanlines {
   pointer-events: none;
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    oklch(1 0 0 / 0.025) 2px,
-    oklch(1 0 0 / 0.025) 3px
-  );
+  background:
+    radial-gradient(
+      ellipse 85% 60% at 50% 25%,
+      var(--page-accent-dim),
+      transparent 70%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      oklch(1 0 0 / 0.025) 2px,
+      oklch(1 0 0 / 0.025) 3px
+    );
   mask-image: linear-gradient(180deg, black 0%, black 70%, transparent);
   opacity: 0.9;
 }

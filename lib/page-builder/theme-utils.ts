@@ -14,9 +14,9 @@ export function themeAccentStyle(accent: PageAccent): CSSProperties {
   const oklch = ACCENT_OKLCH[accent];
   return {
     ["--page-accent" as string]: `oklch(${oklch})`,
-    ["--page-accent-soft" as string]: `oklch(${oklch} / 0.42)`,
-    ["--page-accent-glow" as string]: `oklch(${oklch} / 0.55)`,
-    ["--page-accent-dim" as string]: `oklch(${oklch} / 0.18)`,
+    ["--page-accent-soft" as string]: `oklch(${oklch} / 0.5)`,
+    ["--page-accent-glow" as string]: `oklch(${oklch} / 0.62)`,
+    ["--page-accent-dim" as string]: `oklch(${oklch} / 0.24)`,
   };
 }
 
