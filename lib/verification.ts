@@ -40,10 +40,10 @@ export function getFilledSocialLinks(
   socialLinks?: Record<string, string> | null
 ): { key: string; url: string }[] {
   if (!socialLinks) return [];
-  return SOCIAL_KEYS.map((key) => {
+  return SOCIAL_KEYS.flatMap((key) => {
     const url = socialLinks[key]?.trim();
-    return url ? { key, url } : null;
-  }).filter((item): item is { key: string; url: string } => Boolean(item));
+    return url ? [{ key, url }] : [];
+  });
 }
 
 export function hasSocialLink(
