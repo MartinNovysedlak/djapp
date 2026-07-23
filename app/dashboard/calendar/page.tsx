@@ -64,7 +64,6 @@ import { useDjBookings, type CachedBooking } from "@/hooks/useDjBookings";
 import { CalendarSyncPanel } from "@/components/CalendarSyncPanel";
 
 type BookingStatus = "pending" | "accepted" | "rejected";
-type EntryType = "booking" | "blockout";
 
 type Booking = CachedBooking;
 

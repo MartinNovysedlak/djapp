@@ -262,7 +262,7 @@ export async function listAdminDjs(search?: string) {
     return { ok: false as const, error: "Prístup len pre admina.", items: [] };
   }
 
-  let query = supabase
+  const query = supabase
     .from("profiles")
     .select(
       "id, full_name, real_first_name, real_last_name, location, avatar_url, public_slug, artist_kind, plan_type, is_verified, verified_at, created_at, phone"
