@@ -60,6 +60,26 @@ export async function updateDjProfile(
       return { ok: false, error: "Len účty umelcov môžu upravovať tento profil." };
     }
 
+    if (!input.location?.trim()) {
+      return {
+        ok: false,
+        error:
+          "Miesto pôsobenia je povinné — bez neho ťa klienti v katalógu nenájdu.",
+      };
+    }
+
+    if (!input.fullName?.trim()) {
+      return { ok: false, error: "Umelecké meno je povinné." };
+    }
+
+    if (!input.realFirstName?.trim() || !input.realLastName?.trim()) {
+      return { ok: false, error: "Krstné meno a priezvisko sú povinné." };
+    }
+
+    if (!input.phone?.trim()) {
+      return { ok: false, error: "Telefónne číslo je povinné." };
+    }
+
     const artistKind =
       input.artistKind === "band" || input.artistKind === "dj_band"
         ? input.artistKind

@@ -32,10 +32,14 @@ async function requireAdmin() {
     .select("id, role")
     .eq("id", data.user.id)
     .maybeSingle();
+  const { isAuthorizedAdmin } = await import("@/lib/admin-auth");
   return {
     supabase,
     user: data.user,
-    admin: profile?.role === "admin",
+    admin: isAuthorizedAdmin({
+      role: profile?.role,
+      email: data.user.email,
+    }),
     profile,
   };
 }

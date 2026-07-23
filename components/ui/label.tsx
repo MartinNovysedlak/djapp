@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
+import { RequiredMark } from "@/components/ui/required-mark";
 
-function Label({ className, ...props }: React.ComponentProps<"label">) {
+function Label({
+  className,
+  children,
+  required,
+  ...props
+}: React.ComponentProps<"label"> & { required?: boolean }) {
   return (
     <label
       data-slot="label"
@@ -13,8 +19,13 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
         className
       )}
       {...props}
-    />
-  )
+    >
+      <span className="inline-flex items-center">
+        {children}
+        {required ? <RequiredMark /> : null}
+      </span>
+    </label>
+  );
 }
 
-export { Label }
+export { Label };

@@ -16,7 +16,7 @@ async function fetchDjBySlug(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, bio, public_slug, avatar_url, artist_kind")
+    .select("id, full_name, bio, public_slug, avatar_url, artist_kind, location")
     .eq("public_slug", slug)
     .maybeSingle();
   return data;
@@ -36,18 +36,29 @@ export async function generateMetadata({
         : "DJ";
 
   const title = `${djName} | ${kindLabel} na ${PLATFORM_NAME}`;
-  const description = `Pozri si profil ${
-    dj?.artist_kind === "band" ? "kapely" : "umelca"
-  } ${djName}, prečítaj si recenzie a zarezervuj si termín na svoju akciu.`;
+  const locationBit = dj?.location?.trim() ? ` z ${dj.location.trim()}` : "";
+  const bioBit = dj?.bio?.trim()
+    ? dj.bio.trim().slice(0, 110).replace(/\s+\S*$/, "") + "…"
+    : null;
+  const description =
+    bioBit ||
+    `Pozri profil ${
+      dj?.artist_kind === "band" ? "kapely" : "umelca"
+    } ${djName}${locationBit} na BookTheVibe. Recenzie, galéria a nezáväzná rezervácia online.`;
 
   if (!dj) {
     return {
       title: `Profil nenájdený | ${PLATFORM_NAME}`,
-      description,
+      description:
+        "Tento profil umelca sa nenašiel. Prehliadaj katalóg BookTheVibe a nájdi DJ-a alebo kapelu na svoju akciu.",
+      robots: { index: false, follow: true },
     };
   }
 
   const pageUrl = `${getPublicSiteUrl()}/djs/${slug}`;
+  const images = dj.avatar_url
+    ? [{ url: dj.avatar_url, alt: djName }]
+    : undefined;
 
   return {
     title,
@@ -59,15 +70,18 @@ export async function generateMetadata({
       siteName: PLATFORM_NAME,
       locale: "sk_SK",
       type: "profile",
+      images,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: dj.avatar_url ? [dj.avatar_url] : undefined,
     },
     alternates: {
       canonical: pageUrl,
     },
+    robots: { index: true, follow: true },
   };
 }
 

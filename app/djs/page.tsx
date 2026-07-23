@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,25 +11,32 @@ import {
   ArrowRight,
   Users,
   Star,
-  ArrowUpDown,
   Check,
   Scale,
   BadgeCheck,
+  Clock,
+  ArrowDownAZ,
+  X,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Reveal, Aurora, Equalizer } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import { getDjRealName, getDjStageName, getArtistKindLabel, getArtistPlanBadge, normalizeArtistKind, type ArtistKind } from "@/lib/dj-display";
 import { hasPremiumAccess } from "@/lib/plans";
 import { SiteFooter } from "@/components/SiteFooter";
+import {
+  getCitiesForCountry,
+  locationCountry,
+  locationMatchesFilter,
+  locationOptionHint,
+  locationOptionValue,
+  parseLocationOptionValue,
+  SK_CITIES,
+  CZ_CITIES,
+  type Country,
+} from "@/lib/locations";
 
 type DJProfile = {
   id: string;
@@ -52,10 +59,18 @@ type DJProfile = {
 type RatingInfo = { avg: number; count: number };
 
 const SORT_OPTIONS = [
-  { value: "rating", label: "Najlepšie hodnotenie" },
-  { value: "name", label: "Abecedne (meno)" },
-  { value: "location", label: "Podľa lokality" },
-  { value: "newest", label: "Najnovší profil" },
+  { value: "rating", label: "Hodnotenie", icon: Star },
+  { value: "name", label: "Abecedne", icon: ArrowDownAZ },
+  { value: "location", label: "Lokalita", icon: MapPin },
+  { value: "newest", label: "Najnovší", icon: Clock },
+] as const;
+
+type SortBy = (typeof SORT_OPTIONS)[number]["value"];
+
+const COUNTRY_FILTERS: { value: "all" | Country; label: string }[] = [
+  { value: "all", label: "Všetci" },
+  { value: "SK", label: "Slovensko" },
+  { value: "CZ", label: "Česko" },
 ];
 
 const KIND_FILTERS: { value: "all" | ArtistKind; label: string }[] = [
@@ -64,6 +79,56 @@ const KIND_FILTERS: { value: "all" | ArtistKind; label: string }[] = [
   { value: "band", label: "Kapely" },
   { value: "dj_band", label: "DJ + Kapela" },
 ];
+
+function FilterSegment({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function SegmentedPills<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+              active
+                ? "border-violet-400/45 bg-violet-500/20 text-violet-100 shadow-[0_0_20px_-8px_oklch(0.6_0.26_295/0.7)]"
+                : "border-white/8 bg-white/[0.03] text-zinc-400 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200"
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── Helper to generate gradient from name ──────────────────────────────────────
 const gradients = [
@@ -266,13 +331,31 @@ function DJsCatalogue() {
   const [ratings, setRatings] = useState<Record<string, RatingInfo>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
+  const [filterCountry, setFilterCountry] = useState<"all" | Country>("all");
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<"all" | ArtistKind>("all");
-  const [sortBy, setSortBy] = useState<string>("rating");
+  const [sortBy, setSortBy] = useState<SortBy>("rating");
   const [compareMode, setCompareMode] = useState(
     searchParams.get("compare") === "1"
   );
   const [selected, setSelected] = useState<string[]>([]);
+
+  const locationOptions: ComboboxOption[] = useMemo(() => {
+    const source =
+      filterCountry === "all"
+        ? [...SK_CITIES, ...CZ_CITIES]
+        : getCitiesForCountry(filterCountry);
+
+    const places = source.map((c) => ({
+      value: locationOptionValue(c),
+      label: c.name,
+      hint:
+        filterCountry === "all"
+          ? `${locationOptionHint(c)} · ${c.country}`
+          : locationOptionHint(c),
+    }));
+    return [{ value: "__all__", label: "Všetky lokality" }, ...places];
+  }, [filterCountry]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -286,6 +369,8 @@ function DJsCatalogue() {
           )
           .eq("role", "dj")
           .not("full_name", "is", null)
+          .not("location", "is", null)
+          .neq("location", "")
           .order("full_name", { ascending: true }),
         supabase.from("reviews").select("dj_id, rating"),
       ]);
@@ -317,20 +402,27 @@ function DJsCatalogue() {
 
   const filtered = useMemo(() => {
     const result = djs.filter((dj) => {
+      if (!dj.full_name?.trim() || !dj.location?.trim()) return false;
+
+      const djCountry = locationCountry(dj.location);
+      const matchesCountry =
+        filterCountry === "all" || djCountry === filterCountry;
+
       const matchesName =
         !search ||
         (dj.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
         (dj.bio || "").toLowerCase().includes(search.toLowerCase());
 
-      const matchesLocation =
-        !locationFilter ||
-        (dj.location || "").toLowerCase().includes(locationFilter.toLowerCase());
+      // Combobox values are SK:city:Čadca — strip to the place name.
+      const placeOnly = parseLocationOptionValue(locationFilter);
+
+      const matchesLocation = locationMatchesFilter(dj.location, placeOnly);
 
       const matchesKind =
         kindFilter === "all" ||
         normalizeArtistKind(dj.artist_kind) === kindFilter;
 
-      return matchesName && matchesLocation && matchesKind;
+      return matchesCountry && matchesName && matchesLocation && matchesKind;
     });
 
     const sorted = [...result];
@@ -350,14 +442,17 @@ function DJsCatalogue() {
         break;
       case "newest":
         sorted.sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         break;
       default:
-        sorted.sort((a, b) => (a.full_name || "").localeCompare(b.full_name || "", "sk"));
+        sorted.sort((a, b) =>
+          (a.full_name || "").localeCompare(b.full_name || "", "sk")
+        );
     }
     return sorted;
-  }, [djs, search, locationFilter, kindFilter, sortBy, ratings]);
+  }, [djs, search, filterCountry, locationFilter, kindFilter, sortBy, ratings]);
 
   return (
     <div className="relative flex min-h-svh flex-col bg-background">
@@ -415,57 +510,100 @@ function DJsCatalogue() {
           </Reveal>
         </div>
 
-        {/* ── Search, Location & Sort filters ──────────────────────────────── */}
+        {/* ── Filters ─────────────────────────────────────────────────────── */}
         <Reveal delay={300}>
-          <div className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
-            {KIND_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setKindFilter(f.value)}
-                className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                  kindFilter === f.value
-                    ? "border-violet-500/40 bg-violet-500/20 text-violet-100"
-                    : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <div className="glass mx-auto mt-4 flex max-w-3xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_-24px_oklch(0.55_0.26_295/0.4)] sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-              <Input
-                placeholder="Hľadať podľa mena alebo bio…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-11 rounded-xl border-white/5 bg-white/[0.03] pl-10 text-sm transition-all duration-300 focus-visible:border-violet-400/50 focus-visible:ring-violet-500/20"
-              />
+          <div className="mx-auto mt-10 max-w-3xl rounded-3xl border border-white/10 bg-black/40 shadow-[0_24px_80px_-32px_oklch(0.55_0.26_295/0.55)] backdrop-blur-xl">
+            <div className="rounded-t-3xl border-b border-white/8 bg-white/[0.03] p-4 sm:p-5">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+                <Input
+                  placeholder="Hľadať podľa mena alebo bio…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-12 rounded-2xl border-white/8 bg-white/[0.04] pl-11 pr-10 text-sm transition-all focus-visible:border-violet-400/40 focus-visible:ring-violet-500/20"
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-300"
+                    aria-label="Vymazať hľadanie"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <div className="relative sm:w-48">
-              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-              <Input
-                placeholder="Mesto / lokalita"
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="h-11 rounded-xl border-white/5 bg-white/[0.03] pl-10 text-sm transition-all duration-300 focus-visible:border-violet-400/50 focus-visible:ring-violet-500/20"
-              />
+
+            <div className="space-y-5 p-4 sm:p-5">
+              <FilterSegment label="Typ umelca">
+                <SegmentedPills
+                  options={KIND_FILTERS}
+                  value={kindFilter}
+                  onChange={setKindFilter}
+                />
+              </FilterSegment>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <FilterSegment label="Krajina">
+                  <SegmentedPills
+                    options={COUNTRY_FILTERS}
+                    value={filterCountry}
+                    onChange={(v) => {
+                      setFilterCountry(v);
+                      setLocationFilter(null);
+                    }}
+                  />
+                </FilterSegment>
+
+                <FilterSegment label="Miesto pôsobenia">
+                  <Combobox
+                    options={locationOptions}
+                    value={locationFilter ?? "__all__"}
+                    onValueChange={(v) =>
+                      setLocationFilter(!v || v === "__all__" ? null : v)
+                    }
+                    placeholder="Mesto alebo kraj…"
+                    searchPlaceholder="Hľadať mesto alebo kraj…"
+                    emptyText="Nič sa nenašlo."
+                    icon={<MapPin className="size-4" />}
+                    className="h-10 rounded-xl border-white/8 bg-white/[0.04]"
+                  />
+                </FilterSegment>
+              </div>
+
+              <FilterSegment label="Zoradiť podľa">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                  {SORT_OPTIONS.map((opt) => {
+                    const active = sortBy === opt.value;
+                    const Icon = opt.icon;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSortBy(opt.value)}
+                        className={cn(
+                          "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-medium transition-all",
+                          active
+                            ? "border-violet-400/45 bg-violet-500/20 text-violet-100"
+                            : "border-white/8 bg-white/[0.03] text-zinc-400 hover:border-white/15 hover:text-zinc-200"
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "size-3.5 shrink-0",
+                            active && opt.value === "rating"
+                              ? "fill-violet-300 text-violet-300"
+                              : undefined
+                          )}
+                        />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </FilterSegment>
             </div>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v ?? "rating")}>
-              <SelectTrigger className="w-full justify-start gap-2 rounded-xl border-white/5 bg-white/[0.03] px-3 text-sm data-[size=default]:h-11 sm:w-56">
-                <ArrowUpDown className="size-4 shrink-0 text-zinc-500" />
-                <SelectValue placeholder="Triediť podľa…" />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </Reveal>
 
@@ -478,11 +616,17 @@ function DJsCatalogue() {
           <Reveal>
             <div className="py-32 text-center">
               <p className="text-sm text-zinc-500">
-                {search || locationFilter || kindFilter !== "all"
+                {search ||
+                locationFilter ||
+                kindFilter !== "all" ||
+                filterCountry !== "all"
                   ? "Žiadny umelec nezodpovedá tvojmu hľadaniu."
                   : "Zatiaľ tu nie sú žiadni umelci. Buď prvý!"}
               </p>
-              {!search && !locationFilter && kindFilter === "all" && (
+              {!search &&
+                !locationFilter &&
+                kindFilter === "all" &&
+                filterCountry === "all" && (
                 <Link
                   href="/register"
                   className="mt-4 inline-flex items-center gap-1.5 text-sm text-violet-300 transition-all duration-300 hover:gap-2.5 hover:brightness-125"
@@ -495,14 +639,25 @@ function DJsCatalogue() {
           </Reveal>
         ) : (
           <>
-            <p className="mb-5 mt-8 text-xs text-zinc-600">
-              {filtered.length}{" "}
-              {filtered.length === 1
-                ? "umelec nájdený"
-                : filtered.length < 5
-                  ? "umelci nájdení"
-                  : "umelcov nájdených"}
-            </p>
+            <div className="mb-5 mt-8 flex items-center justify-between gap-3">
+              <p className="text-xs text-zinc-500">
+                <span className="font-semibold text-zinc-300">
+                  {filtered.length}
+                </span>{" "}
+                {filtered.length === 1
+                  ? "umelec"
+                  : filtered.length < 5
+                    ? "umelci"
+                    : "umelcov"}
+              </p>
+              <p className="text-[11px] text-zinc-600">
+                Zoradené:{" "}
+                <span className="text-zinc-400">
+                  {SORT_OPTIONS.find((o) => o.value === sortBy)?.label ??
+                    "Hodnotenie"}
+                </span>
+              </p>
+            </div>
             <div
               className={cn(
                 "grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",

@@ -123,7 +123,15 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (loaded.role === "admin") {
-          router.push("/admin");
+          const { isAuthorizedAdmin } = await import("@/lib/admin-auth");
+          if (
+            isAuthorizedAdmin({
+              role: loaded.role,
+              email: sessionUser.email,
+            })
+          ) {
+            router.push("/admin");
+          }
           return;
         }
         return;

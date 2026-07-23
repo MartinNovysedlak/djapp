@@ -25,6 +25,7 @@ import { countUnreadBookingMessages } from "@/app/actions/booking-messages";
 import { NewMessageToaster } from "@/components/chat/NewMessageToaster";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
+import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 
 export default function ClientDashboardLayout({
   children,
@@ -98,6 +99,28 @@ function ClientDashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadDocs, setUnreadDocs] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select(
+          "role, full_name, real_first_name, real_last_name, phone, artist_kind, location"
+        )
+        .eq("id", user.id)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      if (!isProfileOnboardingComplete(data)) {
+        router.replace("/onboarding");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, user, router]);
 
   const refreshUnread = useCallback(async () => {
     if (!user) {

@@ -4,12 +4,9 @@ import { Aurora } from "@/components/motion";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BRAND } from "@/lib/brand";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Podmienky používania",
-  description: `Všeobecné podmienky používania platformy ${BRAND.name} — práva a povinnosti používateľov, rezervácie, obsah a zodpovednosť.`,
-  alternates: { canonical: "/podmienky" },
-};
+export const metadata: Metadata = buildPageMetadata("podmienky");
 
 const updated = "21. 7. 2026";
 

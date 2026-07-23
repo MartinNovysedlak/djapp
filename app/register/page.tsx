@@ -3,11 +3,12 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Disc, Loader2, Lock, Mail, Music2, Phone, Sparkles, User, Users } from "lucide-react";
+import { CheckCircle2, Disc, Loader2, Lock, Mail, MapPin, Music2, Phone, Sparkles, User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { signUpWithEmail } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,13 @@ import {
   getArtistNameFieldLabel,
   type ArtistKind,
 } from "@/lib/dj-display";
+import {
+  COUNTRIES,
+  formatLocation,
+  getCitiesForCountry,
+  locationOptionHint,
+  type Country,
+} from "@/lib/locations";
 
 type Role = "client" | "dj";
 
@@ -40,10 +48,20 @@ function RegisterForm() {
   const [artistName, setArtistName] = useState("");
   // Artist-only — whether the real first/last name may appear next to the stage name.
   const [showRealName, setShowRealName] = useState(false);
+  const [country, setCountry] = useState<Country>("SK");
+  const [cityName, setCityName] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const cityOptions: ComboboxOption[] = getCitiesForCountry(country).map(
+    (c) => ({
+      value: c.name,
+      label: c.name,
+      hint: locationOptionHint(c),
+    })
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,9 +91,19 @@ function RegisterForm() {
       );
       return;
     }
+    if (role === "dj" && !cityName?.trim()) {
+      setErrorMessage(
+        "Vyber miesto pôsobenia — bez neho ťa klienti v katalógu nenájdu."
+      );
+      return;
+    }
 
     const displayName =
       role === "client" ? `${trimmedFirst} ${trimmedLast}` : artistName.trim();
+    const location =
+      role === "dj" && cityName
+        ? formatLocation(cityName, country)
+        : null;
 
     setErrorMessage(null);
     setIsLoading(true);
@@ -88,6 +116,7 @@ function RegisterForm() {
         firstName: trimmedFirst,
         lastName: trimmedLast,
         phone: trimmedPhone,
+        location,
         showRealName: role === "dj" ? showRealName : false,
         artistKind: role === "dj" ? artistKind : undefined,
       }
@@ -236,7 +265,14 @@ function RegisterForm() {
           </div>
 
           {role === "dj" ? (
-            <div className="mb-6 grid grid-cols-3 gap-2">
+            <div className="mb-6 space-y-2">
+              <p className="text-sm font-medium text-zinc-300">
+                Typ umelca
+                <span className="ml-0.5 text-violet-400" aria-hidden>
+                  *
+                </span>
+              </p>
+              <div className="grid grid-cols-3 gap-2">
               {ARTIST_KIND_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -255,13 +291,16 @@ function RegisterForm() {
                   </span>
                 </button>
               ))}
+              </div>
             </div>
           ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="first-name">Krstné meno</Label>
+                <Label htmlFor="first-name" required>
+                  Krstné meno
+                </Label>
                 <div className="relative">
                   <User className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
                   <Input
@@ -277,7 +316,9 @@ function RegisterForm() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="last-name">Priezvisko</Label>
+                <Label htmlFor="last-name" required>
+                  Priezvisko
+                </Label>
                 <Input
                   id="last-name"
                   type="text"
@@ -293,7 +334,7 @@ function RegisterForm() {
 
             {role === "dj" && (
               <div className="space-y-2">
-                <Label htmlFor="artist-name">
+                <Label htmlFor="artist-name" required>
                   {getArtistNameFieldLabel(artistKind)}
                 </Label>
                 <div className="relative">
@@ -342,7 +383,9 @@ function RegisterForm() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefónne číslo</Label>
+              <Label htmlFor="phone" required>
+                Telefónne číslo
+              </Label>
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
@@ -358,8 +401,55 @@ function RegisterForm() {
               </div>
             </div>
 
+            {role === "dj" ? (
+              <div className="space-y-2">
+                <Label required>Miesto pôsobenia</Label>
+                <div className="grid grid-cols-[auto_1fr] gap-2">
+                  <div className="flex h-10 items-center gap-0.5 rounded-xl border border-input bg-transparent p-1">
+                    {COUNTRIES.map((c) => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => {
+                          if (c.code !== country) {
+                            setCountry(c.code);
+                            setCityName(null);
+                          }
+                        }}
+                        className={cn(
+                          "flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors",
+                          country === c.code
+                            ? "bg-violet-500/15 text-violet-300"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {c.code}
+                      </button>
+                    ))}
+                  </div>
+                  <Combobox
+                    options={cityOptions}
+                    value={cityName}
+                    onValueChange={setCityName}
+                    placeholder="Vyber mesto alebo kraj…"
+                    searchPlaceholder="Hľadať mesto alebo kraj…"
+                    emptyText="Nič sa nenašlo — napíš vlastné miesto."
+                    icon={<MapPin className="size-4" />}
+                    creatable
+                    createLabel={(q) => `Použiť „${q}“ ako miesto`}
+                    className="h-10"
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500">
+                  Povinné — bez miesta ťa klienti v katalógu neuvidia.
+                </p>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" required>
+                Email
+              </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
@@ -376,7 +466,9 @@ function RegisterForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Heslo</Label>
+              <Label htmlFor="password" required>
+                Heslo
+              </Label>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
@@ -394,7 +486,9 @@ function RegisterForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Potvrď heslo</Label>
+              <Label htmlFor="confirm-password" required>
+                Potvrď heslo
+              </Label>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
@@ -448,7 +542,16 @@ function RegisterForm() {
           <GoogleSignInButton
             next={redirectParam ?? undefined}
             label="Zaregistrovať sa cez Google"
+            intent={{
+              role,
+              artistKind: role === "dj" ? artistKind : undefined,
+            }}
           />
+          <p className="mt-2 text-center text-[11px] text-zinc-500">
+            Z Google doplníme meno a fotku. Potom hneď doplníš telefón
+            {role === "dj" ? " a miesto pôsobenia" : ""} — bez toho ťa
+            nepustíme ďalej.
+          </p>
 
           <p className="mt-6 text-center text-xs text-muted-foreground/60">
             Už máš účet?{" "}

@@ -88,6 +88,8 @@ export function Combobox({
   return (
     <PopoverPrimitive.Root
       open={open}
+      // Non-modal: no body scroll-lock / padding that shoves the layout sideways.
+      modal={false}
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
@@ -122,9 +124,11 @@ export function Combobox({
           side="bottom"
           align="start"
           sideOffset={6}
-          className="isolate z-50"
+          positionMethod="fixed"
+          collisionPadding={12}
+          className="isolate z-[400]"
         >
-          <PopoverPrimitive.Popup className="w-(--anchor-width) min-w-64 origin-(--transform-origin) overflow-hidden rounded-xl border border-white/10 bg-black/90 text-popover-foreground shadow-2xl backdrop-blur-xl duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+          <PopoverPrimitive.Popup className="z-[400] w-(--anchor-width) min-w-64 max-w-[min(100vw-1.5rem,24rem)] origin-(--transform-origin) overflow-hidden rounded-xl border border-white/10 bg-black/95 text-popover-foreground shadow-2xl backdrop-blur-xl duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
             <div className="flex items-center gap-2 border-b border-white/10 px-3">
               <Search className="size-3.5 shrink-0 text-muted-foreground/60" />
               <input
@@ -135,7 +139,7 @@ export function Combobox({
                 className="h-10 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
               />
             </div>
-            <div className="max-h-64 overflow-y-auto p-1">
+            <div className="max-h-64 overflow-y-auto overscroll-contain p-1">
               {showCreateOption && (
                 <button
                   type="button"

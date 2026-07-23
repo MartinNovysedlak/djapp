@@ -2,26 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { listPublishedBlogPosts } from "@/app/actions/blog";
-import { BRAND } from "@/lib/brand";
-import { getPublicSiteUrl } from "@/lib/site-url";
 import { SiteFooter } from "@/components/SiteFooter";
+import { buildPageMetadata } from "@/lib/seo";
 
-const site = getPublicSiteUrl();
-
-export const metadata: Metadata = {
-  title: `Blog o svadbe a DJ | ${BRAND.name}`,
-  description:
-    "Tipy na svadbu, výber DJ-a, reálne ceny 2026 a praktické rady pre plánovanie. Blog BookTheVibe.",
-  alternates: { canonical: `${site}/blog` },
-  openGraph: {
-    title: `Blog o svadbe a DJ | ${BRAND.name}`,
-    description:
-      "Tipy na svadbu, výber DJ-a, reálne ceny 2026 a praktické rady pre plánovanie.",
-    url: `${site}/blog`,
-    type: "website",
-    siteName: BRAND.name,
-  },
-};
+export const metadata: Metadata = buildPageMetadata("blog");
 
 export default async function BlogIndexPage() {
   const result = await listPublishedBlogPosts();

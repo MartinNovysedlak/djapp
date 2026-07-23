@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
 /** Admin-only blog image upload. */
 export async function POST(request: Request) {
@@ -17,7 +18,12 @@ export async function POST(request: Request) {
       .eq("id", authData.user.id)
       .maybeSingle();
 
-    if (profile?.role !== "admin") {
+    if (
+      !isAuthorizedAdmin({
+        role: profile?.role,
+        email: authData.user.email,
+      })
+    ) {
       return NextResponse.json({ error: "Len admin." }, { status: 403 });
     }
 

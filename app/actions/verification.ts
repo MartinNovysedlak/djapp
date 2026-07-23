@@ -10,6 +10,7 @@ import {
   type VerificationSnapshot,
   type VerificationStatus,
 } from "@/lib/verification";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -29,7 +30,11 @@ async function requireUser() {
 
 async function requireAdmin() {
   const ctx = await requireUser();
-  if (!ctx.user || !ctx.profile || ctx.profile.role !== "admin") {
+  if (
+    !ctx.user ||
+    !ctx.profile ||
+    !isAuthorizedAdmin({ role: ctx.profile.role, email: ctx.user.email })
+  ) {
     return { ...ctx, admin: false as const };
   }
   return { ...ctx, admin: true as const };

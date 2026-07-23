@@ -37,6 +37,7 @@ import { useToast } from "@/lib/toast-context";
 import Image from "next/image";
 import { Reveal } from "@/components/motion";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { getPublicDjDisplayPath, getPublicDjUrl } from "@/lib/site-url";
 import AvatarCropperDialog from "@/components/AvatarCropperDialog";
 import { useDashboardUser } from "@/components/DashboardUserContext";
@@ -44,6 +45,7 @@ import {
   COUNTRIES,
   formatLocation,
   getCitiesForCountry,
+  locationOptionHint,
   parseLocation,
   type Country,
 } from "@/lib/locations";
@@ -128,7 +130,7 @@ export default function ProfilePage() {
   const cityOptions: ComboboxOption[] = getCitiesForCountry(country).map((c) => ({
     value: c.name,
     label: c.name,
-    hint: c.region,
+    hint: locationOptionHint(c),
   }));
 
   // Initialize form fields from the shared context profile — no extra
@@ -444,6 +446,19 @@ export default function ProfilePage() {
       return;
     }
 
+    if (!cityName?.trim()) {
+      showToast(
+        "Miesto pôsobenia je povinné — bez neho ťa klienti v katalógu nenájdu.",
+        "error"
+      );
+      return;
+    }
+
+    if (!fullName.trim() || !realFirstName.trim() || !realLastName.trim() || !phone.trim()) {
+      showToast("Vyplň všetky povinné polia označené *.", "error");
+      return;
+    }
+
     setSaving(true);
 
     const socialLinks: Record<string, string> = {};
@@ -675,7 +690,10 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Typ umelca</p>
+              <p className="text-sm text-muted-foreground">
+                Typ umelca
+                <RequiredMark />
+              </p>
               <div className="grid grid-cols-3 gap-2">
                 {ARTIST_KIND_OPTIONS.map((opt) => (
                   <button
@@ -701,6 +719,7 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <label htmlFor="fullName" className="text-sm text-muted-foreground">
                 {getArtistNameFieldLabel(artistKind)}
+                <RequiredMark />
                 {getArtistNameFieldHint(artistKind) ? (
                   <span className="ml-1 text-zinc-600">
                     ({getArtistNameFieldHint(artistKind)})
@@ -718,6 +737,7 @@ export default function ProfilePage() {
                       ? "Nova Collective"
                       : "DJ Nova"
                 }
+                required
               />
             </div>
 
@@ -725,6 +745,7 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <label htmlFor="realFirstName" className="text-sm text-muted-foreground">
                   Krstné meno
+                  <RequiredMark />
                 </label>
                 <Input
                   id="realFirstName"
@@ -732,11 +753,13 @@ export default function ProfilePage() {
                   onChange={(e) => setRealFirstName(e.target.value)}
                   placeholder="Ján"
                   autoComplete="given-name"
+                  required
                 />
               </div>
               <div className="space-y-2">
                 <label htmlFor="realLastName" className="text-sm text-muted-foreground">
                   Priezvisko
+                  <RequiredMark />
                 </label>
                 <Input
                   id="realLastName"
@@ -744,6 +767,7 @@ export default function ProfilePage() {
                   onChange={(e) => setRealLastName(e.target.value)}
                   placeholder="Novák"
                   autoComplete="family-name"
+                  required
                 />
               </div>
             </div>
@@ -751,6 +775,7 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <label htmlFor="phone" className="text-sm text-muted-foreground">
                 Telefónne číslo
+                <RequiredMark />
               </label>
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
@@ -762,6 +787,7 @@ export default function ProfilePage() {
                   placeholder="+421 900 123 456"
                   autoComplete="tel"
                   className="pl-9"
+                  required
                 />
               </div>
               <p className="text-xs text-muted-foreground/60">
@@ -793,7 +819,10 @@ export default function ProfilePage() {
 
             {/* Location */}
             <div id="verification-location" className="space-y-2 scroll-mt-28">
-              <label className="text-sm text-muted-foreground">Lokalita</label>
+              <label className="text-sm text-muted-foreground">
+                Miesto pôsobenia
+                <RequiredMark />
+              </label>
               <div className="grid grid-cols-[auto_1fr] gap-2 sm:grid-cols-[minmax(0,9rem)_1fr]">
                 <div className="flex h-11 items-center gap-0.5 rounded-xl border border-input bg-transparent p-1">
                   {COUNTRIES.map((c) => (
@@ -822,8 +851,8 @@ export default function ProfilePage() {
                   options={cityOptions}
                   value={cityName}
                   onValueChange={setCityName}
-                  placeholder="Vyber mesto alebo napíš miesto…"
-                  searchPlaceholder="Hľadať mesto, dedinku, hotel…"
+                  placeholder="Vyber mesto, kraj alebo napíš miesto…"
+                  searchPlaceholder="Hľadať mesto, kraj, dedinku…"
                   emptyText="Nič sa nenašlo — napíš vlastné miesto."
                   icon={<MapPin className="size-4" />}
                   creatable
@@ -833,7 +862,7 @@ export default function ProfilePage() {
               <p className="text-xs text-muted-foreground/60">
                 {cityName
                   ? formatLocation(cityName, country)
-                  : "Vyber mesto zo zoznamu, alebo napíš konkrétnu dedinku či miesto."}
+                  : "Povinné — môžeš zvoliť mesto, celý kraj, alebo vlastné miesto. Bez tohto údaju ťa klienti v katalógu neuvidia."}
               </p>
             </div>
 

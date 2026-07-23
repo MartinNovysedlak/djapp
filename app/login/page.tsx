@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInWithEmail, getOwnRole } from "@/utils/supabase/auth";
+import { signInWithEmail, getPostAuthPath } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -42,19 +42,9 @@ function LoginForm() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const role = await getOwnRole();
-      if (cancelled || !role) return;
-      if (role === "admin") {
-        router.replace("/admin");
-        return;
-      }
-      if (role === "client" && redirectParam) {
-        router.replace(redirectParam);
-        return;
-      }
-      router.replace(
-        role === "client" ? "/client-dashboard" : "/dashboard/bookings"
-      );
+      const path = await getPostAuthPath(redirectParam);
+      if (cancelled || path === "/login") return;
+      router.replace(path);
     })();
     return () => {
       cancelled = true;
@@ -71,17 +61,9 @@ function LoginForm() {
       setErrorMessage(error);
       return;
     }
-    const role = await getOwnRole();
+    const path = await getPostAuthPath(redirectParam);
     setIsLoading(false);
-    if (role === "admin") {
-      router.push("/admin");
-      return;
-    }
-    if (role === "client" && redirectParam) {
-      router.push(redirectParam);
-      return;
-    }
-    router.push(role === "client" ? "/client-dashboard" : "/dashboard/bookings");
+    router.push(path);
   }
 
   return (

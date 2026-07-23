@@ -99,7 +99,13 @@ async function requireAdmin() {
     .select("role")
     .eq("id", data.user.id)
     .maybeSingle();
-  if (profile?.role !== "admin") {
+  const { isAuthorizedAdmin } = await import("@/lib/admin-auth");
+  if (
+    !isAuthorizedAdmin({
+      role: profile?.role,
+      email: data.user.email,
+    })
+  ) {
     return { ok: false as const, error: "Prístup len pre admina." };
   }
   return { ok: true as const, supabase };

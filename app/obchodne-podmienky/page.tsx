@@ -4,12 +4,9 @@ import { Aurora } from "@/components/motion";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BRAND } from "@/lib/brand";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Obchodné podmienky",
-  description: `Obchodné podmienky ${BRAND.name} pre platené plány, dokumenty, fakturáciu a komerčné využívanie platformy umelcami a podnikateľmi.`,
-  alternates: { canonical: "/obchodne-podmienky" },
-};
+export const metadata: Metadata = buildPageMetadata("obchodnePodmienky");
 
 const updated = "21. 7. 2026";
 

@@ -29,9 +29,10 @@ export const metadata: Metadata = {
   description: SEO_DEFAULT.description,
   keywords: [...SEO_DEFAULT.keywords],
   applicationName: BRAND.name,
-  authors: [{ name: BRAND.name }],
+  authors: [{ name: BRAND.name, url: siteUrl }],
   creator: BRAND.name,
   publisher: BRAND.name,
+  category: "music",
   alternates: {
     canonical: "/",
   },
@@ -42,15 +43,29 @@ export const metadata: Metadata = {
     siteName: BRAND.name,
     title: SEO_DEFAULT.title,
     description: SEO_DEFAULT.description,
+    images: [
+      {
+        url: BRAND.logoPngPath,
+        alt: BRAND.name,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: SEO_DEFAULT.title,
     description: SEO_DEFAULT.description,
+    images: [BRAND.logoPngPath],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   icons: {
     icon: [

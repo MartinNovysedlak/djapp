@@ -8,7 +8,6 @@ import {
   Check,
   FileSignature,
   Calendar,
-  Mic2,
   MapPin,
   Users,
   Zap,
@@ -17,6 +16,10 @@ import {
   Link2,
   Receipt,
   Star,
+  Scale,
+  LayoutTemplate,
+  BadgeCheck,
+  Filter,
 } from "lucide-react";
 
 import {
@@ -26,37 +29,21 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { Reveal, Equalizer, Aurora } from "@/components/motion";
-import { BRAND, SEO_DEFAULT } from "@/lib/brand";
+import { BRAND } from "@/lib/brand";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BrandLogo } from "@/components/BrandLogo";
 import {
   PREMIUM_PRICE_LABEL,
   TRIAL_DAYS,
 } from "@/lib/plans";
+import { buildPageMetadata, getHomeJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: { absolute: SEO_DEFAULT.title },
-  description: SEO_DEFAULT.description,
-  alternates: { canonical: "/" },
-  openGraph: {
-    title: SEO_DEFAULT.title,
-    description: SEO_DEFAULT.description,
-    url: "/",
-    siteName: BRAND.name,
-    locale: BRAND.locale,
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SEO_DEFAULT.title,
-    description: SEO_DEFAULT.description,
-  },
-};
+export const metadata: Metadata = buildPageMetadata("home");
 
 const faqItems = [
   {
     q: `Čo je ${BRAND.name}?`,
-    a: "Webová platforma, ktorá spája klientov s umelcami (DJ, kapela alebo DJ + Kapela). Klient nájde umelca v katalógu a pošle nezáväzný dopyt. Umelec spravuje rezervácie, kalendár, zmluvy, faktúry, playlist a live requesty na jednom mieste.",
+    a: "Webová platforma, ktorá spája klientov s umelcami (DJ, kapela alebo DJ + Kapela). Klient nájde umelca v katalógu podľa krajiny, kraja, regiónu aj mesta a pošle nezáväzný dopyt — aj viacerým naraz. Umelec spravuje rezervácie, kalendár, zmluvy, faktúry, page builder, playlist a live requesty na jednom mieste.",
   },
   {
     q: "Je BookTheVibe zadarmo?",
@@ -64,7 +51,11 @@ const faqItems = [
   },
   {
     q: "Ako sa dostanem do katalógu umelcov?",
-    a: "Zaregistruj sa ako umelec (DJ, kapela alebo DJ + Kapela), vyplň profil (umelecké meno / názov, bio, fotka, lokalita) a tvoja verejná vizitka sa zobrazí v katalógu. Klienti ťa nájdu podľa mena alebo mesta.",
+    a: "Zaregistruj sa ako umelec (aj cez Google), doplň povinné údaje — vrátane miesta pôsobenia (mesto, región alebo kraj) — a tvoja verejná vizitka sa zobrazí v katalógu. Bez lokality ťa klienti v katalógu neuvidia.",
+  },
+  {
+    q: "Ako funguje hľadanie a hromadný dopyt?",
+    a: "V katalógu filtruješ podľa typu (DJ / kapela), krajiny (SK / CZ), mesta, kraja alebo regiónu (napr. Kysuce, Orava). Pri hľadaní mesta uvidíš aj umelcov z toho istého regiónu a kraja. Môžeš porovnať až 4 umelcov a poslať jednu požiadavku naraz.",
   },
   {
     q: "Ako funguje rezervácia pre klientov?",
@@ -72,17 +63,23 @@ const faqItems = [
   },
   {
     q: "Čo všetko má umelec v dashboarde?",
-    a: "Rezervácie, kalendár a blokácie, synchronizáciu s Google/Apple, PDF zmluvy a faktúry, harmonogram akcie, playlist, live song requesty, špeciálnu ponuku a žiadosť o Google recenziu po akcii.",
+    a: "Rezervácie, kalendár a blokácie, synchronizáciu s Google/Apple, page builder verejnej stránky, PDF zmluvy a faktúry, harmonogram akcie, playlist, live song requesty, špeciálnu ponuku a žiadosť o overenie profilu.",
   },
   {
     q: "Sú moje údaje v bezpečí?",
-    a: "Používame moderné prihlásenie a šifrované spojenie. Tvoje dáta patria tebe — nepredávame ich tretím stranám.",
+    a: "Používame moderné prihlásenie (vrátane Google) a šifrované spojenie. Tvoje dáta patria tebe — nepredávame ich tretím stranám.",
   },
 ];
 
 export default function Home() {
+  const jsonLd = getHomeJsonLd();
+
   return (
     <div className="relative flex min-h-svh flex-col overflow-hidden bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Aurora />
 
       <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-6">
@@ -110,8 +107,8 @@ export default function Home() {
 
           <Reveal delay={240}>
             <p className="mx-auto mt-6 max-w-xl text-balance text-base leading-relaxed text-zinc-400 md:text-lg">
-              Katalóg umelcov, nezáväzné rezervácie, kalendár, zmluvy a live
-              requesty. Klient nájde umelca. Umelec drží celý event pod
+              Katalóg so smart filtrami, hromadný dopyt, page builder, kalendár a
+              dokumenty. Klient nájde správneho umelca. Ty držíš celý event pod
               kontrolou.
             </p>
           </Reveal>
@@ -173,10 +170,10 @@ export default function Home() {
                     <div className="hidden w-36 space-y-1.5 md:block">
                       {[
                         { label: "Profil", active: false },
+                        { label: "Page builder", active: false },
                         { label: "Rezervácie", active: true },
                         { label: "Kalendár", active: false },
                         { label: "Zmluvy", active: false },
-                        { label: "Live", active: false },
                       ].map((item) => (
                         <div
                           key={item.label}
@@ -321,14 +318,103 @@ export default function Home() {
                 <div className="relative flex h-full flex-col justify-between gap-6 md:flex-row md:items-center">
                   <div className="max-w-sm">
                     <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-300 shadow-[0_0_30px_-8px_oklch(0.6_0.26_295/0.7)] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">
+                      <Filter className="size-6" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white">
+                      Smart katalóg SK &amp; CZ
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      Filtruj podľa typu, krajiny, mesta, kraja aj regiónu —
+                      Kysuce, Orava, Liptov a ďalšie. Hľadáš Čadcu? Uvidíš aj
+                      umelcov z celého regiónu a kraja.
+                    </p>
+                  </div>
+                  <div className="w-full max-w-[260px] space-y-2.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Všetci", "SK", "CZ"].map((t, i) => (
+                        <span
+                          key={t}
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${
+                            i === 1
+                              ? "border-violet-400/40 bg-violet-500/20 text-violet-100"
+                              : "border-white/8 bg-white/[0.03] text-zinc-500"
+                          }`}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                      <div className="flex items-center gap-2 text-[11px] text-zinc-300">
+                        <MapPin className="size-3.5 text-violet-300" />
+                        Čadca
+                      </div>
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
+                        + Kysuce · Žilinský kraj
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Kysuce", "Orava", "Liptov"].map((r) => (
+                        <span
+                          key={r}
+                          className="rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[10px] text-zinc-400"
+                        >
+                          {r}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={120} className="md:col-span-2" from="right">
+              <div className="card-lift group relative h-full overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-cyan-500/[0.07] via-card to-card p-8">
+                <div className="relative">
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
+                    <Scale className="size-6" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">
+                    Hromadný dopyt
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    Vyber až 4 umelcov, pošli jednu požiadavku a porovnaj ponuky
+                    na jednom mieste.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={100} className="md:col-span-2" from="left">
+              <div className="card-lift group relative h-full overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-fuchsia-500/[0.07] via-card to-card p-8">
+                <div className="relative">
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-fuchsia-500/15 text-fuchsia-300 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">
+                    <LayoutTemplate className="size-6" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">
+                    Page builder
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                    Postav si verejnú stránku — témy, sekcie a vizuál, ktorý
+                    zdieľaš jedným odkazom.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={200} className="md:col-span-4" from="right">
+              <div className="card-lift group relative h-full overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-amber-500/[0.07] via-card to-card p-8">
+                <div className="relative flex h-full flex-col justify-between gap-6 md:flex-row md:items-center">
+                  <div className="max-w-sm">
+                    <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
                       <ClipboardCheck className="size-6" />
                     </div>
                     <h3 className="text-xl font-semibold text-white">
                       Rezervácie bez chaosu
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      Klient pošle dopyt s dátumom, časom a adresou. Ty prijmeš
-                      alebo odmietneš — a všetko ostane v jednom dashboarde.
+                      Klient pošle dopyt s dátumom a detailmi. Ty prijmeš alebo
+                      odmietneš — chat, statusy a história v jednom dashboarde.
                     </p>
                   </div>
                   <div className="w-full max-w-[240px] space-y-2">
@@ -367,93 +453,49 @@ export default function Home() {
                 </div>
               </div>
             </Reveal>
-
-            <Reveal delay={120} className="md:col-span-2" from="right">
-              <div className="card-lift group relative h-full overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-cyan-500/[0.07] via-card to-card p-8">
-                <div className="relative">
-                  <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
-                    <Calendar className="size-6" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">
-                    Kalendár & sync
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    Blokácie, vlastné akcie a prepojenie s Google/Apple
-                    kalendárom — obsadené termíny sa klientovi sami zablokujú.
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal delay={100} className="md:col-span-2" from="left">
-              <div className="card-lift group relative h-full overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-fuchsia-500/[0.07] via-card to-card p-8">
-                <div className="relative">
-                  <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-fuchsia-500/15 text-fuchsia-300 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">
-                    <FileSignature className="size-6" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">
-                    Zmluvy & faktúry
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    Šablóny, PDF dokumenty a odoslanie klientovi priamo z
-                    rezervácie — bez Word chaosu.
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal delay={200} className="md:col-span-4" from="right">
-              <div className="card-lift group relative h-full overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-amber-500/[0.07] via-card to-card p-8">
-                <div className="relative flex h-full flex-col justify-between gap-6 md:flex-row md:items-center">
-                  <div className="max-w-sm">
-                    <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
-                      <Users className="size-6" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-white">
-                      Verejný katalóg
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      Profil s fotkou, bio, galériou, videami a odkazmi. Klienti
-                      ťa nájdu podľa mesta — ty získaš dopyty, nie spam.
-                    </p>
-                  </div>
-                  <div className="flex w-full max-w-[260px] items-end gap-2.5">
-                    {[
-                      "from-violet-400 to-fuchsia-500",
-                      "from-cyan-400 to-blue-500",
-                      "from-amber-400 to-orange-500",
-                    ].map((g) => (
-                      <div
-                        key={g}
-                        className="flex-1 overflow-hidden rounded-xl border border-white/8 bg-white/[0.03]"
-                      >
-                        <div
-                          className={`flex h-14 items-center justify-center bg-gradient-to-br ${g}`}
-                        >
-                          <Mic2 className="size-4 text-white/80" />
-                        </div>
-                        <div className="space-y-1 p-2">
-                          <div className="h-1.5 w-3/4 rounded-full bg-white/15" />
-                          <div className="flex items-center gap-1">
-                            <MapPin className="size-2 text-zinc-600" />
-                            <div className="h-1 w-1/2 rounded-full bg-white/[0.08]" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Reveal>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
+              {
+                icon: Calendar,
+                title: "Kalendár & sync",
+                text: "Blokácie, vlastné akcie a prepojenie s Google/Apple — obsadené termíny sa klientovi sami zablokujú.",
+              },
+              {
+                icon: FileSignature,
+                title: "Zmluvy & faktúry",
+                text: "Šablóny, PDF dokumenty a odoslanie klientovi priamo z rezervácie.",
+              },
               {
                 icon: Radio,
                 title: "Live song requesty",
                 text: "QR na akcii — hostia posielajú piesne, ty ich schvaľuješ v live boothi.",
               },
+              {
+                icon: BadgeCheck,
+                title: "Overený profil",
+                text: "Doplň povinné údaje, požiadaj o overenie a buduj dôveru v katalógu.",
+              },
+            ].map((item, i) => (
+              <Reveal key={item.title} delay={80 * i}>
+                <div className="card-lift h-full rounded-3xl border border-white/8 bg-card/70 p-6 backdrop-blur-md">
+                  <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-white/5 text-violet-300">
+                    <item.icon className="size-5" />
+                  </div>
+                  <h3 className="text-base font-semibold text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                    {item.text}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {[
               {
                 icon: Link2,
                 title: "Harmonogram & playlist",
@@ -463,6 +505,11 @@ export default function Home() {
                 icon: Star,
                 title: "Recenzie po akcii",
                 text: "Po evente môžeš požiadať o Google recenziu — automaticky, nie ručne.",
+              },
+              {
+                icon: Users,
+                title: "Verejný profil",
+                text: "Fotka, bio, galéria, videá a sociálne siete. Miesto pôsobenia je povinné — bez neho ťa katalóg neukáže.",
               },
             ].map((item, i) => (
               <Reveal key={item.title} delay={80 * i}>
@@ -497,12 +544,25 @@ export default function Home() {
                     Pre klientov
                   </div>
                   <h2 className="text-balance text-2xl font-bold tracking-tight text-white md:text-3xl">
-                    Nájdi umelca pre svoju akciu
+                    Nájdi umelca podľa mesta, regiónu aj kraja
                   </h2>
                   <p className="mt-3 max-w-lg text-sm leading-relaxed text-zinc-400">
-                    Prehliadaj profily, pozri dostupnosť a pošli nezáväzný dopyt
-                    — bez telefonátov a bez chaosu v správach.
+                    Prehliadaj profily na Slovensku a v Česku, porovnaj až 4
+                    umelcov a pošli nezáväzný dopyt — bez telefonátov a chaosu v
+                    správach.
                   </p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-2 md:justify-start">
+                    {["SK / CZ", "Mesto & kraj", "Regióny", "Až 4 naraz"].map(
+                      (chip) => (
+                        <span
+                          key={chip}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-zinc-300"
+                        >
+                          {chip}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
                 <Link
                   href="/djs"
@@ -551,12 +611,12 @@ export default function Home() {
                 </p>
                 <ul className="mb-8 flex-1 space-y-3.5">
                   {[
-                    "Verejný profil s fotkou, bio a lokalitou",
-                    "Miesto v katalógu — klienti ťa nájdu sami",
+                    "Verejný profil s fotkou, bio a miestom pôsobenia",
+                    "Miesto v katalógu — klienti ťa nájdu podľa mesta, regiónu aj kraja",
                     "Odkazy na Instagram, Spotify a web",
                     "Galéria a videá na vizitke",
-                    "Jednoduchá verejná stránka, ktorú môžeš zdieľať",
-                    "Bez karty, bez viazanosti",
+                    "Základný page builder verejnej stránky",
+                    "Registrácia aj cez Google — bez karty, bez viazanosti",
                   ].map((item) => (
                     <li
                       key={item}
@@ -602,11 +662,11 @@ export default function Home() {
                 </p>
                 <ul className="relative mb-8 flex-1 space-y-3.5">
                   {[
-                    "Rezervácie a dopyty od klientov",
+                    "Rezervácie, dopyty a chat s klientmi",
                     "Kalendár, blokácie a ICS sync",
                     "PDF zmluvy a faktúry",
+                    "Pokročilý page builder (témy a štruktúra)",
                     "Harmonogram, playlist a live requesty",
-                    "Špeciálna ponuka a marketing",
                     "Všetko z Free plánu",
                   ].map((item) => (
                     <li

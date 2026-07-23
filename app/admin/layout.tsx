@@ -7,6 +7,7 @@ import { BadgeCheck, ChartColumn, LogOut, Newspaper, Shield } from "lucide-react
 import { createClient } from "@/utils/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
 import { cn } from "@/lib/utils";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
 export default function AdminLayout({
   children,
@@ -33,7 +34,12 @@ export default function AdminLayout({
         .eq("id", data.user.id)
         .maybeSingle();
       if (cancelled) return;
-      if (profile?.role !== "admin") {
+      if (
+        !isAuthorizedAdmin({
+          role: profile?.role,
+          email: data.user.email,
+        })
+      ) {
         router.replace(
           profile?.role === "client" ? "/client-dashboard" : "/dashboard/profile"
         );

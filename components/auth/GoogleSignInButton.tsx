@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { signInWithGoogle } from "@/utils/supabase/auth";
+import type { OAuthSignupIntent } from "@/lib/oauth-intent";
 
 function GoogleIcon() {
   return (
@@ -32,11 +33,14 @@ function GoogleIcon() {
 type GoogleSignInButtonProps = {
   next?: string;
   label?: string;
+  /** When registering — locked to selected role on the form. */
+  intent?: OAuthSignupIntent;
 };
 
 export function GoogleSignInButton({
   next,
   label = "Prihlásiť sa cez Google",
+  intent,
 }: GoogleSignInButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,12 +48,11 @@ export function GoogleSignInButton({
   async function handleClick() {
     setError(null);
     setIsLoading(true);
-    const { error } = await signInWithGoogle(next);
-    if (error) {
+    const { error: authError } = await signInWithGoogle(next, intent);
+    if (authError) {
       setIsLoading(false);
-      setError(error);
+      setError(authError);
     }
-    // On success the browser navigates away to Google, so no need to reset loading.
   }
 
   return (
@@ -68,11 +71,11 @@ export function GoogleSignInButton({
         )}
         {label}
       </Button>
-      {error && (
+      {error ? (
         <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {error}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

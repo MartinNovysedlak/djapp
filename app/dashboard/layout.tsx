@@ -36,6 +36,7 @@ import {
   isTrialActive,
   isPaidPremiumActive,
 } from "@/lib/plans";
+import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
@@ -59,6 +60,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const premium = hasPremiumAccess(profile);
   const trialDays = getTrialDaysLeft(profile);
   const onTrial = isTrialActive(profile) && !isPaidPremiumActive(profile);
+
+  useEffect(() => {
+    if (loading || !user || !profile) return;
+    if (profile.role === "admin") return;
+    if (!isProfileOnboardingComplete(profile)) {
+      router.replace("/onboarding");
+    }
+  }, [loading, user, profile, router]);
 
   useEffect(() => {
     if (!user) {

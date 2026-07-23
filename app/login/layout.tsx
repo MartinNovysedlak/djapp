@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { BRAND } from "@/lib/brand";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Prihlásenie",
-  description: `Prihlás sa do ${BRAND.name} — dashboard pre umelcov a klientov.`,
-  robots: { index: false, follow: true },
-  alternates: { canonical: "/login" },
-};
+export const metadata: Metadata = buildPageMetadata("login");
 
 export default function LoginLayout({
   children,
