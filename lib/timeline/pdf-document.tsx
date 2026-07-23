@@ -11,7 +11,7 @@ import {
   ROBOTO_BOLD_BASE64,
   ROBOTO_REGULAR_BASE64,
 } from "@/lib/contracts/fonts-data";
-import type { TimelineEnergy, TimelineItemType } from "@/lib/timeline/types";
+import type { TimelineItemType } from "@/lib/timeline/types";
 
 Font.register({
   family: "Roboto",
