@@ -28,6 +28,9 @@ export type DashboardProfile = {
   plan_type: string;
   trial_ends_at?: string | null;
   premium_until?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_subscription_status?: string | null;
   role: "dj" | "client" | "admin";
   artist_kind?: "dj" | "band" | "dj_band" | null;
   social_links: Record<string, string> | null;

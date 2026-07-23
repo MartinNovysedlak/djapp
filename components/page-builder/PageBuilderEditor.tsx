@@ -1113,7 +1113,7 @@ export function PageBuilderEditor() {
               Zavrieť
             </Button>
             <Link
-              href="/dashboard/profile"
+              href="/dashboard/profile?upgrade=1"
               className={cn(buttonVariants({}), "rounded-xl")}
               onClick={() => setPremiumPresetOpen(false)}
             >

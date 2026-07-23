@@ -55,14 +55,19 @@ import {
 import { updateDjProfile } from "@/app/actions/profile";
 import { getMyPermanentAddress } from "@/app/actions/verification";
 import {
+  canOpenCustomerPortal,
   formatPremiumPrice,
   getPlanDisplayName,
   getTrialDaysLeft,
-  hasPremiumAccess,
+  isPaidPremiumActive,
   isTrialActive,
   PREMIUM_PRICE_LABEL,
   TRIAL_DAYS,
 } from "@/lib/plans";
+import {
+  PremiumPaywallModal,
+  redirectToStripePortal,
+} from "@/components/PremiumPaywallModal";
 import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
 import { VerificationRequestSection } from "@/components/verification/VerificationRequestSection";
 import { BillingProfileForm } from "@/components/invoices/BillingProfileForm";
@@ -80,12 +85,16 @@ const MAX_VIDEOS = 6;
 
 export default function ProfilePage() {
   const { showToast } = useToast();
-  const { user, profile, loading, setProfile } = useDashboardUser();
+  const { user, profile, loading, setProfile, refreshProfile } =
+    useDashboardUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const billingQueryHandled = useRef(false);
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -163,6 +172,26 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [profile?.id]);
+
+  useEffect(() => {
+    if (billingQueryHandled.current || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const upgrade = params.get("upgrade");
+    const billing = params.get("billing");
+    if (!upgrade && !billing) return;
+    billingQueryHandled.current = true;
+
+    if (upgrade === "1") {
+      setPaywallOpen(true);
+    }
+    if (billing === "success") {
+      showToast("Platba prebehla. Premium sa aktivuje o chvíľu.", "success");
+      void refreshProfile();
+    } else if (billing === "cancel") {
+      showToast("Platba bola zrušená.", "info");
+    }
+    window.history.replaceState({}, "", "/dashboard/profile");
+  }, [refreshProfile, showToast]);
 
   // ── Avatar upload ────────────────────────────────────────────────────────
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1240,7 +1269,10 @@ export default function ProfilePage() {
 
         {/* Plan info card */}
         <Reveal delay={260}>
-        <Card className="card-lift rounded-3xl border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-card/70 to-card/70 backdrop-blur-md">
+        <Card
+          id="plan"
+          className="card-lift rounded-3xl border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-card/70 to-card/70 backdrop-blur-md"
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-foreground">
               <FileText className="size-4 text-primary" />
@@ -1248,38 +1280,61 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">
                   {getPlanDisplayName(profile)}
                 </p>
                 <p className="text-xs text-muted-foreground/60">
-                  {hasPremiumAccess(profile)
-                    ? isTrialActive(profile)
+                  {isPaidPremiumActive(profile)
+                    ? "Všetky Premium funkcie odomknuté. Predplatné spravuješ v Stripe portáli."
+                    : isTrialActive(profile)
                       ? `Trial: zostáva ${getTrialDaysLeft(profile)} dní. Potom ${formatPremiumPrice()}.`
-                      : "Všetky Premium funkcie odomknuté."
-                    : `Free: profil a katalóg. Premium funkcie za ${formatPremiumPrice()} (prvých ${TRIAL_DAYS} dní zadarmo pri registrácii).`}
+                      : `Free: profil a katalóg. Premium funkcie za ${formatPremiumPrice()} (prvých ${TRIAL_DAYS} dní zadarmo pri registrácii).`}
                 </p>
               </div>
-              {!hasPremiumAccess(profile) && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="shrink-0 rounded-full border-amber-500/30 bg-amber-500/10 text-amber-400 transition-all duration-300 hover:-translate-y-0.5 hover:bg-amber-500/20"
-                  onClick={() => {
-                    showToast(
-                      `Platba Premium (${PREMIUM_PRICE_LABEL}/mes.) pribudne čoskoro. Zatiaľ ťa môžeme aktivovať manuálne.`,
-                      "info"
-                    );
-                  }}
-                >
-                  Premium {PREMIUM_PRICE_LABEL}
-                </Button>
-              )}
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {!isPaidPremiumActive(profile) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={billingBusy}
+                    className="rounded-full border-amber-500/30 bg-amber-500/10 text-amber-400 transition-all duration-300 hover:-translate-y-0.5 hover:bg-amber-500/20"
+                    onClick={() => setPaywallOpen(true)}
+                  >
+                    Premium {PREMIUM_PRICE_LABEL}
+                  </Button>
+                ) : null}
+                {canOpenCustomerPortal(profile) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={billingBusy}
+                    className="rounded-full border-white/15 bg-white/5 text-zinc-200 hover:bg-white/10"
+                    onClick={async () => {
+                      setBillingBusy(true);
+                      try {
+                        await redirectToStripePortal();
+                      } catch (err) {
+                        const message =
+                          err instanceof Error
+                            ? err.message
+                            : "Portál sa nepodarilo otvoriť.";
+                        showToast(message, "error");
+                        setBillingBusy(false);
+                      }
+                    }}
+                  >
+                    Spravovať predplatné
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </CardContent>
         </Card>
         </Reveal>
+
+        <PremiumPaywallModal open={paywallOpen} onOpenChange={setPaywallOpen} />
 
         <Reveal delay={260}>
           <Card className="rounded-3xl border-white/8 bg-card/70 backdrop-blur-md">

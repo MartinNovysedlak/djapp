@@ -6,6 +6,7 @@ import {
   normalizeTime,
 } from "@/lib/dates";
 import { hasAcceptedConflict } from "@/app/actions/bookings";
+import { requirePremiumAccess } from "@/lib/require-premium";
 
 export type CalendarEntryResult = {
   ok: boolean;
@@ -14,6 +15,11 @@ export type CalendarEntryResult = {
 };
 
 async function requireDj() {
+  const premium = await requirePremiumAccess();
+  if (!premium.ok) {
+    return { ok: false as const, error: premium.error };
+  }
+
   const ssr = await createSSRClient();
   const { data: authData, error: authError } = await ssr.auth.getUser();
 

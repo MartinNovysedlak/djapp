@@ -7,10 +7,22 @@ export const PREMIUM_PRICE_EUR = 5.99;
 export const PREMIUM_PRICE_LABEL = "€5,99";
 export const TRIAL_DAYS = 14;
 
+export const PREMIUM_FEATURES = [
+  "Rezervácie, kalendár a blokovanie termínov",
+  "Zmluvy a faktúry v jednom mieste",
+  "Chat s klientmi a dopyty",
+  "Live requesty a timeline eventu",
+  "Pokročilý page builder (témy, farby, štruktúra)",
+  "Export kalendára a biznis nástroje",
+] as const;
+
 export type PlanFields = {
   plan_type?: string | null;
   trial_ends_at?: string | null;
   premium_until?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_subscription_status?: string | null;
 };
 
 export function normalizePlanType(
@@ -45,6 +57,24 @@ export function hasPremiumAccess(
 ): boolean {
   if (!profile) return false;
   return isTrialActive(profile, now) || isPaidPremiumActive(profile, now);
+}
+
+/** Paid Stripe subscriber (not just app trial). */
+export function isStripeSubscriber(
+  profile: PlanFields | null | undefined,
+  now = new Date()
+): boolean {
+  return (
+    isPaidPremiumActive(profile, now) &&
+    Boolean(profile?.stripe_subscription_id)
+  );
+}
+
+/** Can open Stripe Customer Portal (customer exists). */
+export function canOpenCustomerPortal(
+  profile: PlanFields | null | undefined
+): boolean {
+  return Boolean(profile?.stripe_customer_id);
 }
 
 export function getPlanDisplayName(
