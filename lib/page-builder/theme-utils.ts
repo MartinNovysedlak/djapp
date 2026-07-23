@@ -4,7 +4,6 @@ import {
   type PageAccent,
   type PageDensity,
   type PageRadius,
-  type PageSurface,
   type PageTheme,
   type PageTitleWeight,
 } from "@/lib/page-builder/types";

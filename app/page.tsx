@@ -422,7 +422,7 @@ export default function Home() {
                       "from-violet-400 to-fuchsia-500",
                       "from-cyan-400 to-blue-500",
                       "from-amber-400 to-orange-500",
-                    ].map((g, i) => (
+                    ].map((g) => (
                       <div
                         key={g}
                         className="flex-1 overflow-hidden rounded-xl border border-white/8 bg-white/[0.03]"

@@ -21,7 +21,7 @@ export function sectionBodyStyle(style: SectionStyle): CSSProperties {
 }
 
 /** @deprecated prefer sectionTitleStyle */
-export function sectionTitleClass(_style: SectionStyle) {
+export function sectionTitleClass() {
   return cn("text-white");
 }
 

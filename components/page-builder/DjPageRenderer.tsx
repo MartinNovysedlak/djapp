@@ -276,7 +276,7 @@ export function DjPageRenderer({
                 }}
                 style={sectionTitleStyle(section.style)}
                 className={cn(
-                  sectionTitleClass(section.style),
+                  sectionTitleClass(),
                   titleWeight,
                   textRevealClass(!editMode),
                   section.style.align === "center" && "text-center",
@@ -436,7 +436,7 @@ export function DjPageRenderer({
                     onChange={(v) => setProp("title", v)}
                     style={sectionTitleStyle(section.style)}
                     className={cn(
-                      sectionTitleClass(section.style),
+                      sectionTitleClass(),
                       titleWeight,
                       textRevealClass(!editMode),
                       feature && accent.text,
@@ -567,7 +567,7 @@ export function DjPageRenderer({
                           onChange={(v) => setProp("title", v)}
                           style={sectionTitleStyle(section.style)}
                           className={cn(
-                            sectionTitleClass(section.style),
+                            sectionTitleClass(),
                             titleWeight,
                             textRevealClass(!editMode),
                             "mb-1 block w-full text-white"
@@ -1272,7 +1272,7 @@ export function DjPageRenderer({
                         onChange={(v) => setProp("title", v)}
                         style={sectionTitleStyle(section.style)}
                         className={cn(
-                          sectionTitleClass(section.style),
+                          sectionTitleClass(),
                           titleWeight,
                           textRevealClass(!editMode),
                           "block",

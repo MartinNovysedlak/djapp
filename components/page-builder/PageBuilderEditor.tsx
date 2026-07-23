@@ -911,7 +911,7 @@ export function PageBuilderEditor() {
               onDeleteSection={
                 isPremium
                   ? removeSection
-                  : (_id: string) => {
+                  : () => {
                       requirePremium("Mazanie sekcií");
                     }
               }
@@ -919,7 +919,7 @@ export function PageBuilderEditor() {
               onRequestInsertAt={
                 isPremium
                   ? openInsertAt
-                  : (_index: number) => {
+                  : () => {
                       requirePremium("Pridávanie sekcií");
                     }
               }
