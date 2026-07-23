@@ -281,8 +281,7 @@
 }
 
 /* Page builder atmospheres & backgrounds (accent via --page-accent*)
- * Gradients are stage-centered (~max-w-3xl) so catalog matches editor,
- * with a soft full-bleed wash so sides continue the same palette. */
+ * Full-bleed washes so public /djs pages match the rich editor preview. */
 .page-bg-gradient {
   background-color: #07070a;
   background-image:
@@ -297,11 +296,6 @@
       #0a0a0a 52%,
       #07070a 100%
     );
-  background-size:
-    min(48rem, 100%) 100%,
-    100% 100%;
-  background-position: center top, center top;
-  background-repeat: no-repeat;
 }
 
 .page-bg-mesh {
@@ -313,12 +307,12 @@
       transparent 72%
     ),
     radial-gradient(
-      ellipse 75% 55% at 22% 12%,
+      ellipse 75% 55% at 18% 12%,
       var(--page-accent-soft),
       transparent 58%
     ),
     radial-gradient(
-      ellipse 55% 45% at 78% 16%,
+      ellipse 55% 45% at 82% 16%,
       color-mix(in oklab, var(--page-accent) 28%, transparent),
       transparent 52%
     ),
@@ -327,13 +321,6 @@
       color-mix(in oklab, var(--page-accent) 16%, transparent),
       transparent 55%
     );
-  background-size:
-    100% 100%,
-    min(48rem, 100%) 100%,
-    min(48rem, 100%) 100%,
-    min(48rem, 100%) 100%;
-  background-position: center, center top, center top, center top;
-  background-repeat: no-repeat;
 }
 
 .page-bg-spotlight {
@@ -354,12 +341,6 @@
       var(--page-accent-dim),
       transparent 55%
     );
-  background-size:
-    100% 100%,
-    min(48rem, 100%) 100%,
-    min(48rem, 100%) 100%;
-  background-position: center, center top, center top;
-  background-repeat: no-repeat;
 }
 
 .page-bg-radial {
@@ -375,11 +356,6 @@
       color-mix(in oklab, var(--page-accent) 26%, #121218),
       #08080c 68%
     );
-  background-size:
-    100% 100%,
-    min(48rem, 100%) 100%;
-  background-position: center, center top;
-  background-repeat: no-repeat;
 }
 
 .page-bg-vignette {
@@ -400,12 +376,6 @@
       transparent 35%,
       #030305 100%
     );
-  background-size:
-    100% 100%,
-    min(48rem, 100%) 100%,
-    100% 100%;
-  background-position: center, center top, center;
-  background-repeat: no-repeat;
 }
 
 .page-bg-beam {
@@ -428,12 +398,6 @@
       var(--page-accent-dim),
       transparent 60%
     );
-  background-size:
-    100% 100%,
-    min(48rem, 100%) 100%,
-    min(48rem, 100%) 100%;
-  background-position: center, center top, center top;
-  background-repeat: no-repeat;
 }
 
 .page-bg-horizon {
@@ -452,27 +416,20 @@
       #08080c 62%,
       #050508 100%
     );
-  background-size:
-    100% 100%,
-    min(52rem, 100%) 100%;
-  background-position: center, center top;
-  background-repeat: no-repeat;
 }
 
-/* Atmosphere effects live in a centered stage (matches editor max-w-3xl) */
+/* Atmosphere effects — full-bleed behind content */
 .page-atmosphere-stage {
   pointer-events: none;
   position: absolute;
   inset: 0;
-  display: flex;
-  justify-content: center;
   overflow: hidden;
 }
 
 .page-atmosphere-stage > [class*="page-atmosphere-"] {
-  position: relative;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-width: 48rem;
   height: 100%;
   overflow: hidden;
 }
@@ -494,18 +451,18 @@
 }
 
 .page-atmosphere-aurora::before {
-  width: min(85%, 520px);
-  height: min(85%, 520px);
+  width: min(55vw, 640px);
+  height: min(55vw, 640px);
   top: -18%;
-  left: -12%;
+  left: -8%;
   background: var(--page-accent-soft);
 }
 
 .page-atmosphere-aurora::after {
-  width: min(70%, 420px);
-  height: min(70%, 420px);
+  width: min(45vw, 520px);
+  height: min(45vw, 520px);
   top: 8%;
-  right: -14%;
+  right: -6%;
   background: color-mix(in oklab, var(--page-accent) 30%, oklch(0.55 0.12 220));
   animation-delay: -7s;
 }
@@ -546,18 +503,18 @@
 }
 
 .page-atmosphere-orbs::before {
-  width: min(80%, 420px);
-  height: min(80%, 420px);
+  width: min(50vw, 520px);
+  height: min(50vw, 520px);
   top: -8%;
-  left: -12%;
+  left: -8%;
   background: var(--page-accent-glow);
 }
 
 .page-atmosphere-orbs::after {
-  width: min(70%, 360px);
-  height: min(70%, 360px);
+  width: min(42vw, 440px);
+  height: min(42vw, 440px);
   bottom: 10%;
-  right: -10%;
+  right: -6%;
   background: color-mix(in oklab, var(--page-accent) 35%, oklch(0.45 0.18 250));
   animation-delay: -6s;
 }

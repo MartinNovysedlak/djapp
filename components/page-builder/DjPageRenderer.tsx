@@ -183,7 +183,7 @@ export function DjPageRenderer({
   return (
     <div
       className={cn(
-        "relative min-h-full overflow-hidden font-[family-name:var(--font-outfit)]",
+        "relative min-h-full overflow-hidden font-[family-name:var(--font-outfit)] isolation-isolate",
         bg,
         motionClass,
         className
@@ -200,7 +200,7 @@ export function DjPageRenderer({
       ) : null}
       <div
         className={cn(
-          "relative z-10 mx-auto flex max-w-3xl flex-col px-4 py-6 sm:px-6 sm:py-10",
+          "relative z-10 mx-auto flex max-w-4xl flex-col px-4 py-6 sm:px-6 sm:py-10",
           theme.sectionDividers
             ? "gap-0 divide-y divide-white/15"
             : gapClass

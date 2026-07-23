@@ -337,7 +337,7 @@ export function PageOverview() {
       <div
         className={cn(
           "mx-auto overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-2xl shadow-black/40",
-          previewMode === "mobile" ? "max-w-[390px]" : "w-full max-w-3xl"
+          previewMode === "mobile" ? "max-w-[390px]" : "w-full max-w-4xl"
         )}
       >
         <DjPageRenderer

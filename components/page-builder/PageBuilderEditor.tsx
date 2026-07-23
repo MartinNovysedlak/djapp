@@ -893,7 +893,7 @@ export function PageBuilderEditor() {
           <div
             className={cn(
               "mx-auto overflow-hidden rounded-2xl border border-white/10 shadow-2xl",
-              previewMode === "mobile" ? "max-w-[390px]" : "max-w-3xl"
+              previewMode === "mobile" ? "max-w-[390px]" : "max-w-4xl"
             )}
           >
             <DjPageRenderer

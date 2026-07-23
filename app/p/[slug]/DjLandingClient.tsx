@@ -40,7 +40,7 @@ export default function DjLandingClient({
       bookingEnabled
       className="flex min-h-svh flex-col"
       beforeSections={
-        <div className="mx-auto w-full max-w-3xl px-4 pt-6 sm:px-6">
+        <div className="mx-auto w-full max-w-4xl px-4 pt-6 sm:px-6">
           <Link
             href="/djs"
             className="group inline-flex items-center gap-1.5 text-xs text-zinc-500 transition-colors duration-300 hover:text-zinc-200"
