@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ChevronDown, Loader2, Save, Speaker } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Save, Speaker, X } from "lucide-react";
 import {
   getDjRequirements,
   upsertDjRequirements,
@@ -18,15 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  getLightsLabel,
-  getMicrophoneLabel,
+  getRequirementItemLabel,
+  getRequirementItemMeta,
   getSoundProvidedLabel,
-  LIGHTS_OPTIONS,
-  MICROPHONE_OPTIONS,
+  REQUIREMENT_CATALOG,
   SOUND_PROVIDED_OPTIONS,
   type DjRequirements,
-  type LightsSetup,
-  type MicrophoneNeed,
+  type RequirementItem,
+  type RequirementItemId,
   type SoundProvidedBy,
 } from "@/lib/tech/types";
 import { useToast } from "@/lib/toast-context";
@@ -41,91 +40,118 @@ type Props = {
   embedded?: boolean;
 };
 
+type DraftItem = RequirementItem & { noteOpen: boolean };
+
+function formatItemSummary(item: RequirementItem) {
+  const label = getRequirementItemLabel(item.id);
+  const parts: string[] = [];
+  if (item.id === "power_sockets" && item.quantity != null) {
+    parts.push(`min. ${item.quantity}×`);
+  }
+  if (item.note) parts.push(item.note);
+  return parts.length ? `${label} — ${parts.join(" · ")}` : label;
+}
+
 function RequirementsReadView({ data }: { data: DjRequirements }) {
-  const rows: { label: string; value: string | null }[] = [
-    {
-      label: "Ozvučenie",
-      value: [
-        getSoundProvidedLabel(data.sound_provided_by),
-        data.sound_notes,
-      ]
-        .filter(Boolean)
-        .join(" — ") || null,
-    },
-    { label: "Stôl / pult", value: data.booth_table_notes },
-    {
-      label: "Prúd",
-      value: [
-        data.power_sockets_min != null
-          ? `min. ${data.power_sockets_min}× zásuvka`
-          : null,
-        data.power_dedicated_circuit
-          ? "samostatný okruh (nie so svetlami)"
-          : null,
-        data.power_notes,
-      ]
-        .filter(Boolean)
-        .join(" · ") || null,
-    },
-    {
-      label: "Monitor pri DJ",
-      value: data.needs_booth_monitor
-        ? "Áno — potrebujem reproduktory pri pulte"
-        : null,
-    },
-    {
-      label: "Mikrofón",
-      value: [
-        getMicrophoneLabel(data.microphone_need),
-        data.microphone_notes,
-      ]
-        .filter(Boolean)
-        .join(" — ") || null,
-    },
-    {
-      label: "Svetlá",
-      value: [getLightsLabel(data.lights_setup), data.lights_notes]
-        .filter(Boolean)
-        .join(" — ") || null,
-    },
-    {
-      label: "Vonku",
-      value: data.needs_weather_cover
-        ? "Potrebujem zákryt / ochranu pred dažďom"
-        : null,
-    },
-    {
-      label: "Parkovanie / vykládka",
-      value: [
-        data.needs_parking ? "Potrebujem parkovanie pri vykládke" : null,
-        data.load_in_notes,
-      ]
-        .filter(Boolean)
-        .join(" — ") || null,
-    },
-    { label: "Ďalšie", value: data.other_notes },
-  ];
+  const sound = [
+    getSoundProvidedLabel(data.sound_provided_by),
+    data.sound_notes,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+
+  const hasAnything = Boolean(sound) || data.items.length > 0;
 
   return (
-    <dl className="space-y-3">
-      {rows.map((row) =>
-        row.value ? (
-          <div key={row.label}>
-            <dt className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              {row.label}
-            </dt>
-            <dd className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-200">
-              {row.value}
-            </dd>
-          </div>
-        ) : null
-      )}
-      {!rows.some((r) => r.value) ? (
+    <div className="space-y-4">
+      {sound ? (
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+            Ozvučenie
+          </p>
+          <p className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-200">
+            {sound}
+          </p>
+        </div>
+      ) : null}
+
+      {data.items.length > 0 ? (
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+            Dodatočné požiadavky
+          </p>
+          <ul className="mt-2 space-y-2">
+            {data.items.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-200"
+              >
+                {formatItemSummary(item)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {!hasAnything ? (
         <p className="text-xs text-zinc-500">
           Požiadavky zatiaľ nie sú vyplnené.
         </p>
       ) : null}
-    </dl>
+    </div>
+  );
+}
+
+function OptionalNote({
+  open,
+  value,
+  onOpen,
+  onChange,
+  onClose,
+  placeholder,
+}: {
+  open: boolean;
+  value: string;
+  onOpen: () => void;
+  onChange: (v: string) => void;
+  onClose: () => void;
+  placeholder?: string;
+}) {
+  if (!open && !value) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="text-[11px] font-medium text-violet-300/90 transition-colors hover:text-violet-200"
+      >
+        + Pridať poznámku
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-[11px] text-zinc-500">Poznámka</Label>
+        <button
+          type="button"
+          onClick={() => {
+            onChange("");
+            onClose();
+          }}
+          className="text-[11px] text-zinc-500 hover:text-zinc-300"
+        >
+          Odstrániť
+        </button>
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? "Doplňujúci detail…"}
+        className="min-h-[64px] rounded-xl"
+        maxLength={500}
+      />
+    </div>
   );
 }
 
@@ -144,42 +170,23 @@ export function DjRequirementsPanel({
   const [data, setData] = useState<DjRequirements | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [soundBy, setSoundBy] = useState<SoundProvidedBy | "">("");
+  const [soundBy, setSoundBy] = useState<SoundProvidedBy | null>(null);
   const [soundNotes, setSoundNotes] = useState("");
-  const [boothTable, setBoothTable] = useState("");
-  const [sockets, setSockets] = useState("2");
-  const [dedicated, setDedicated] = useState(true);
-  const [powerNotes, setPowerNotes] = useState("");
-  const [boothMonitor, setBoothMonitor] = useState(false);
-  const [mic, setMic] = useState<MicrophoneNeed | "">("");
-  const [micNotes, setMicNotes] = useState("");
-  const [lights, setLights] = useState<LightsSetup | "">("");
-  const [lightsNotes, setLightsNotes] = useState("");
-  const [weatherCover, setWeatherCover] = useState(false);
-  const [parking, setParking] = useState(false);
-  const [loadIn, setLoadIn] = useState("");
-  const [other, setOther] = useState("");
+  const [soundNoteOpen, setSoundNoteOpen] = useState(false);
+  const [items, setItems] = useState<DraftItem[]>([]);
   const [visible, setVisible] = useState(true);
 
   const applyData = useCallback((r: DjRequirements | null) => {
     setData(r);
-    setSoundBy(r?.sound_provided_by ?? "");
+    setSoundBy(r?.sound_provided_by ?? null);
     setSoundNotes(r?.sound_notes ?? "");
-    setBoothTable(r?.booth_table_notes ?? "");
-    setSockets(
-      r?.power_sockets_min != null ? String(r.power_sockets_min) : "2"
+    setSoundNoteOpen(Boolean(r?.sound_notes));
+    setItems(
+      (r?.items ?? []).map((item) => ({
+        ...item,
+        noteOpen: Boolean(item.note),
+      }))
     );
-    setDedicated(r?.power_dedicated_circuit ?? true);
-    setPowerNotes(r?.power_notes ?? "");
-    setBoothMonitor(r?.needs_booth_monitor ?? false);
-    setMic(r?.microphone_need ?? "");
-    setMicNotes(r?.microphone_notes ?? "");
-    setLights(r?.lights_setup ?? "");
-    setLightsNotes(r?.lights_notes ?? "");
-    setWeatherCover(r?.needs_weather_cover ?? false);
-    setParking(r?.needs_parking ?? false);
-    setLoadIn(r?.load_in_notes ?? "");
-    setOther(r?.other_notes ?? "");
     setVisible(r?.visible_to_client ?? true);
   }, []);
 
@@ -201,27 +208,46 @@ export function DjRequirementsPanel({
     void load();
   }, [open, loaded, load]);
 
+  const selectedIds = new Set(items.map((i) => i.id));
+  const available = REQUIREMENT_CATALOG.filter((c) => !selectedIds.has(c.id));
+
+  function addItem(id: RequirementItemId) {
+    if (selectedIds.has(id)) return;
+    const meta = getRequirementItemMeta(id);
+    setItems((prev) => [
+      ...prev,
+      {
+        id,
+        note: null,
+        noteOpen: false,
+        ...(meta?.hasQuantity ? { quantity: 2 } : {}),
+      },
+    ]);
+  }
+
+  function removeItem(id: RequirementItemId) {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  function updateItem(id: RequirementItemId, patch: Partial<DraftItem>) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, ...patch } : i))
+    );
+  }
+
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (submitting || mode !== "dj") return;
     setSubmitting(true);
     const result = await upsertDjRequirements({
       bookingId,
-      soundProvidedBy: (soundBy || null) as SoundProvidedBy | null,
+      soundProvidedBy: soundBy,
       soundNotes,
-      boothTableNotes: boothTable,
-      powerSocketsMin: sockets ? Number(sockets) : null,
-      powerDedicatedCircuit: dedicated,
-      powerNotes,
-      needsBoothMonitor: boothMonitor,
-      microphoneNeed: (mic || null) as MicrophoneNeed | null,
-      microphoneNotes: micNotes,
-      lightsSetup: (lights || null) as LightsSetup | null,
-      lightsNotes,
-      needsWeatherCover: weatherCover,
-      needsParking: parking,
-      loadInNotes: loadIn,
-      otherNotes: other,
+      items: items.map(({ id, note, quantity }) => ({
+        id,
+        note: note?.trim() || null,
+        ...(id === "power_sockets" ? { quantity: quantity ?? null } : {}),
+      })),
       visibleToClient: visible,
     });
     setSubmitting(false);
@@ -253,7 +279,7 @@ export function DjRequirementsPanel({
             <p className="text-sm font-semibold text-white">Požiadavky DJ</p>
             <p className="text-[11px] text-zinc-500">
               {mode === "dj"
-                ? "Ozvučenie, prúd, stôl, mikrofón, svetlá…"
+                ? "Ozvučenie + dodatočné požiadavky"
                 : "Čo umelec potrebuje na akcii"}
             </p>
           </div>
@@ -278,18 +304,18 @@ export function DjRequirementsPanel({
               <Loader2 className="size-5 animate-spin text-amber-400" />
             </div>
           ) : mode === "dj" ? (
-            <form onSubmit={handleSave} className="space-y-3">
+            <form onSubmit={handleSave} className="space-y-4">
               <p className="text-[11px] leading-relaxed text-zinc-500">
-                Jednoduchý checklist pre klienta a miesto — čo treba pripraviť
-                na ozvučenie a setup. Uvidia to v dashboarde aj cez odkaz / QR.
+                Najprv ozvučenie, potom pridaj čo ešte treba — poznámka je
+                voliteľná pri každej položke.
               </p>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label>Ozvučenie (PA)</Label>
                 <Select
-                  value={soundBy || undefined}
+                  value={soundBy}
                   onValueChange={(v) =>
-                    setSoundBy((v as SoundProvidedBy) || "")
+                    setSoundBy((v as SoundProvidedBy) || null)
                   }
                 >
                   <SelectTrigger className="h-10 w-full rounded-xl">
@@ -313,188 +339,126 @@ export function DjRequirementsPanel({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Poznámka k ozvučeniu</Label>
-                <Textarea
+                <OptionalNote
+                  open={soundNoteOpen}
                   value={soundNotes}
-                  onChange={(e) => setSoundNotes(e.target.value)}
-                  placeholder="napr. suby podľa veľkosti sály, 100 dB bez skreslenia…"
-                  className="min-h-[70px] rounded-xl"
-                  maxLength={500}
+                  onOpen={() => setSoundNoteOpen(true)}
+                  onClose={() => setSoundNoteOpen(false)}
+                  onChange={setSoundNotes}
+                  placeholder="napr. suby podľa veľkosti sály…"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Stôl / pult</Label>
-                <Input
-                  value={boothTable}
-                  onChange={(e) => setBoothTable(e.target.value)}
-                  placeholder="napr. pevný stôl min. 180×80 cm, výška ~90 cm"
-                  className="h-10 rounded-xl"
-                  maxLength={400}
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Min. počet zásuviek 230V</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={sockets}
-                    onChange={(e) => setSockets(e.target.value)}
-                    className="h-10 rounded-xl"
-                  />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    Dodatočné požiadavky
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-zinc-500">
+                    Vyber zo zoznamu — potom môžeš doplniť poznámku.
+                  </p>
                 </div>
-                <div className="flex items-end pb-1">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={dedicated}
-                      onChange={(e) => setDedicated(e.target.checked)}
-                      className="size-4 rounded border-white/20 bg-black/40"
-                    />
-                    Samostatný okruh (nie so svetlami)
-                  </label>
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <Label>Poznámka k prúdu</Label>
-                <Input
-                  value={powerNotes}
-                  onChange={(e) => setPowerNotes(e.target.value)}
-                  placeholder="zásuvky blízko pultu, predlžovačka…"
-                  className="h-10 rounded-xl"
-                  maxLength={400}
-                />
-              </div>
+                {items.length > 0 ? (
+                  <ul className="space-y-2">
+                    {items.map((item) => {
+                      const meta = getRequirementItemMeta(item.id);
+                      return (
+                        <li
+                          key={item.id}
+                          className="rounded-xl border border-white/10 bg-black/35 px-3 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white">
+                                {meta?.label ?? item.id}
+                              </p>
+                              {meta?.hint ? (
+                                <p className="text-[11px] text-zinc-500">
+                                  {meta.hint}
+                                </p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.id)}
+                              className="rounded-lg p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
+                              aria-label="Odstrániť"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
 
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={boothMonitor}
-                  onChange={(e) => setBoothMonitor(e.target.checked)}
-                  className="size-4 rounded border-white/20 bg-black/40"
-                />
-                Potrebujem monitor / reproduktory pri DJ pulte
-              </label>
+                          {meta?.hasQuantity ? (
+                            <div className="mt-2 max-w-[140px] space-y-1">
+                              <Label className="text-[11px] text-zinc-500">
+                                Min. počet
+                              </Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={item.quantity ?? 2}
+                                onChange={(e) =>
+                                  updateItem(item.id, {
+                                    quantity: Number(e.target.value) || null,
+                                  })
+                                }
+                                className="h-9 rounded-xl"
+                              />
+                            </div>
+                          ) : null}
 
-              <div className="space-y-1.5">
-                <Label>Mikrofón</Label>
-                <Select
-                  value={mic || undefined}
-                  onValueChange={(v) =>
-                    setMic((v as MicrophoneNeed) || "")
-                  }
-                >
-                  <SelectTrigger className="h-10 w-full rounded-xl">
-                    <SelectValue placeholder="Vyber">
-                      {(v) =>
-                        MICROPHONE_OPTIONS.find((o) => o.value === v)?.label ??
-                        "Vyber"
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MICROPHONE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value} label={o.label}>
-                        {o.label}
-                      </SelectItem>
+                          <div className="mt-2">
+                            <OptionalNote
+                              open={item.noteOpen}
+                              value={item.note ?? ""}
+                              onOpen={() =>
+                                updateItem(item.id, { noteOpen: true })
+                              }
+                              onClose={() =>
+                                updateItem(item.id, {
+                                  noteOpen: false,
+                                  note: null,
+                                })
+                              }
+                              onChange={(v) =>
+                                updateItem(item.id, { note: v || null })
+                              }
+                              placeholder={
+                                item.id === "booth_table"
+                                  ? "napr. min. 180×80 cm, výška ~90 cm"
+                                  : item.id === "microphone"
+                                    ? "káblový / bezdrôtový, príhovory…"
+                                    : "Doplňujúci detail…"
+                              }
+                            />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-zinc-500">
+                    Zatiaľ nič pridané — vyber nižšie.
+                  </p>
+                )}
+
+                {available.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {available.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => addItem(opt.id)}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-zinc-300 transition-colors hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-white"
+                      >
+                        <Plus className="size-3" />
+                        {opt.label}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Poznámka k mikrofónu</Label>
-                <Input
-                  value={micNotes}
-                  onChange={(e) => setMicNotes(e.target.value)}
-                  placeholder="príhovory, tombola, karaoke…"
-                  className="h-10 rounded-xl"
-                  maxLength={300}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Svetlá</Label>
-                <Select
-                  value={lights || undefined}
-                  onValueChange={(v) =>
-                    setLights((v as LightsSetup) || "")
-                  }
-                >
-                  <SelectTrigger className="h-10 w-full rounded-xl">
-                    <SelectValue placeholder="Vyber">
-                      {(v) =>
-                        LIGHTS_OPTIONS.find((o) => o.value === v)?.label ??
-                        "Vyber"
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LIGHTS_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value} label={o.label}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Poznámka k svetlám</Label>
-                <Input
-                  value={lightsNotes}
-                  onChange={(e) => setLightsNotes(e.target.value)}
-                  className="h-10 rounded-xl"
-                  maxLength={400}
-                />
-              </div>
-
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={weatherCover}
-                  onChange={(e) => setWeatherCover(e.target.checked)}
-                  className="size-4 rounded border-white/20 bg-black/40"
-                />
-                Ak je vonku — potrebujem zákryt / ochranu pred dažďom
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={parking}
-                  onChange={(e) => setParking(e.target.checked)}
-                  className="size-4 rounded border-white/20 bg-black/40"
-                />
-                Potrebujem parkovanie pri vykládke
-              </label>
-
-              <div className="space-y-1.5">
-                <Label>Vykládka / prístup</Label>
-                <Textarea
-                  value={loadIn}
-                  onChange={(e) => setLoadIn(e.target.value)}
-                  placeholder="vchod, výťah, čas load-inu…"
-                  className="min-h-[70px] rounded-xl"
-                  maxLength={500}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Ďalšie požiadavky</Label>
-                <Textarea
-                  value={other}
-                  onChange={(e) => setOther(e.target.value)}
-                  className="min-h-[70px] rounded-xl"
-                  maxLength={800}
-                />
+                  </div>
+                ) : null}
               </div>
 
               <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">

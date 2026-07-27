@@ -2,19 +2,19 @@
 
 import { createClient as createSSRClient } from "@/utils/supabase/server";
 import { adminClient, resolveGuestShareBooking } from "@/lib/guest-share";
-import type {
-  DjRequirements,
-  HallSize,
-  LightsSetup,
-  MicrophoneNeed,
-  PowerAvailable,
-  SoundProvidedBy,
-  VenueQuestionnaire,
-  VenueSetting,
+import {
+  normalizeRequirementItems,
+  type DjRequirements,
+  type HallSize,
+  type PowerAvailable,
+  type RequirementItem,
+  type SoundProvidedBy,
+  type VenueQuestionnaire,
+  type VenueSetting,
 } from "@/lib/tech/types";
 
 const REQ_COLS =
-  "id, booking_id, sound_provided_by, sound_notes, booth_table_notes, power_sockets_min, power_dedicated_circuit, power_notes, needs_booth_monitor, microphone_need, microphone_notes, lights_setup, lights_notes, needs_weather_cover, needs_parking, load_in_notes, other_notes, visible_to_client, updated_by, created_at, updated_at";
+  "id, booking_id, sound_provided_by, sound_notes, items, visible_to_client, updated_by, created_at, updated_at";
 
 const VENUE_COLS =
   "id, booking_id, venue_setting, guest_count, hall_size, hall_size_notes, ceiling_height, power_available, power_notes, stage_available, outdoor_notes, other_notes, submitted_at, updated_by, created_at, updated_at";
@@ -25,16 +25,16 @@ const SOUND_SET = new Set([
   "shared",
   "need_from_venue",
 ]);
-const MIC_SET = new Set([
-  "none",
-  "dj_brings",
-  "venue_wired",
-  "venue_wireless",
-]);
-const LIGHTS_SET = new Set(["dj_brings", "venue_has", "both", "none"]);
 const SETTING_SET = new Set(["indoor", "outdoor", "mixed", "unknown"]);
 const HALL_SET = new Set(["small", "medium", "large", "unknown"]);
 const POWER_SET = new Set(["yes", "no", "unknown"]);
+
+function mapDjRequirementsRow(data: Record<string, unknown>): DjRequirements {
+  return {
+    ...(data as Omit<DjRequirements, "items">),
+    items: normalizeRequirementItems(data.items),
+  };
+}
 
 function normalizeText(value: string | undefined | null, max: number) {
   return (value ?? "").trim().slice(0, max) || null;
@@ -106,19 +106,7 @@ async function resolveTechAccess(
 export type DjRequirementsInput = {
   soundProvidedBy?: SoundProvidedBy | null;
   soundNotes?: string | null;
-  boothTableNotes?: string | null;
-  powerSocketsMin?: number | null;
-  powerDedicatedCircuit?: boolean;
-  powerNotes?: string | null;
-  needsBoothMonitor?: boolean;
-  microphoneNeed?: MicrophoneNeed | null;
-  microphoneNotes?: string | null;
-  lightsSetup?: LightsSetup | null;
-  lightsNotes?: string | null;
-  needsWeatherCover?: boolean;
-  needsParking?: boolean;
-  loadInNotes?: string | null;
-  otherNotes?: string | null;
+  items?: RequirementItem[];
   visibleToClient?: boolean;
 };
 
@@ -158,7 +146,9 @@ export async function getDjRequirements(
     return { ok: false, error: "Požiadavky sa nepodarilo načítať." };
   }
 
-  const requirements = (data as DjRequirements | null) ?? null;
+  const requirements = data
+    ? mapDjRequirementsRow(data as Record<string, unknown>)
+    : null;
   if (
     requirements &&
     access.role !== "dj" &&
@@ -184,45 +174,18 @@ export async function upsertDjRequirements(input: {
   }
 
   const sound = input.soundProvidedBy ?? null;
-  const mic = input.microphoneNeed ?? null;
-  const lights = input.lightsSetup ?? null;
 
   if (sound && !SOUND_SET.has(sound)) {
     return { ok: false, error: "Neplatná voľba ozvučenia." };
   }
-  if (mic && !MIC_SET.has(mic)) {
-    return { ok: false, error: "Neplatná voľba mikrofónu." };
-  }
-  if (lights && !LIGHTS_SET.has(lights)) {
-    return { ok: false, error: "Neplatná voľba svetiel." };
-  }
 
-  let sockets: number | null = null;
-  if (input.powerSocketsMin != null && String(input.powerSocketsMin) !== "") {
-    const n = Math.round(Number(input.powerSocketsMin));
-    if (!Number.isFinite(n) || n < 1 || n > 20) {
-      return { ok: false, error: "Počet zásuviek musí byť 1–20." };
-    }
-    sockets = n;
-  }
+  const items = normalizeRequirementItems(input.items ?? []);
 
   const row = {
     booking_id: input.bookingId,
     sound_provided_by: sound,
     sound_notes: normalizeText(input.soundNotes, 500),
-    booth_table_notes: normalizeText(input.boothTableNotes, 400),
-    power_sockets_min: sockets,
-    power_dedicated_circuit: Boolean(input.powerDedicatedCircuit),
-    power_notes: normalizeText(input.powerNotes, 400),
-    needs_booth_monitor: Boolean(input.needsBoothMonitor),
-    microphone_need: mic,
-    microphone_notes: normalizeText(input.microphoneNotes, 300),
-    lights_setup: lights,
-    lights_notes: normalizeText(input.lightsNotes, 400),
-    needs_weather_cover: Boolean(input.needsWeatherCover),
-    needs_parking: Boolean(input.needsParking),
-    load_in_notes: normalizeText(input.loadInNotes, 500),
-    other_notes: normalizeText(input.otherNotes, 800),
+    items,
     visible_to_client: input.visibleToClient !== false,
     updated_by: access.userId,
     updated_at: new Date().toISOString(),
@@ -239,7 +202,10 @@ export async function upsertDjRequirements(input: {
     return { ok: false, error: "Požiadavky sa nepodarilo uložiť." };
   }
 
-  return { ok: true, requirements: data as DjRequirements };
+  return {
+    ok: true,
+    requirements: mapDjRequirementsRow(data as Record<string, unknown>),
+  };
 }
 
 export async function getVenueQuestionnaire(
