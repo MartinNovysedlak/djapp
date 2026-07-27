@@ -36,6 +36,14 @@ import {
 import { useToast } from "@/lib/toast-context";
 import { cn } from "@/lib/utils";
 import {
+  absoluteFromOffset,
+  combineOffsetHoursMinutes,
+  formatOffsetLabel,
+  normalizeReferenceStart,
+  offsetFromAbsolute,
+  splitOffset,
+} from "@/lib/timeline/template-time";
+import {
   getTimelineTypeMeta,
   TIMELINE_ITEM_TYPES,
   TIMELINE_START_MODES,
@@ -43,12 +51,16 @@ import {
   type TimelineStartMode,
 } from "@/lib/timeline/types";
 
+type TimeInputMode = "offset" | "absolute";
+
 type FormState = {
   itemType: TimelineItemType;
   title: string;
   notes: string;
   durationMinutes: string;
-  defaultOffsetMinutes: string;
+  offsetHours: string;
+  offsetMinutes: string;
+  absoluteTime: string;
   startMode: TimelineStartMode | "";
   startDetail: string;
   isCritical: boolean;
@@ -61,7 +73,9 @@ const EMPTY_FORM: FormState = {
   title: "Nástup novomanželov",
   notes: "",
   durationMinutes: "",
-  defaultOffsetMinutes: "",
+  offsetHours: "",
+  offsetMinutes: "",
+  absoluteTime: "",
   startMode: "timed",
   startDetail: "",
   isCritical: false,
@@ -78,6 +92,8 @@ export function ProgramTemplateEditor({ templateId }: Props) {
   const [items, setItems] = useState<ProgramTemplateItem[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [referenceStart, setReferenceStart] = useState("16:00");
+  const [timeInputMode, setTimeInputMode] = useState<TimeInputMode>("offset");
   const [savingMeta, setSavingMeta] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -96,6 +112,9 @@ export function ProgramTemplateEditor({ templateId }: Props) {
     setItems(result.items);
     setName(result.template.name);
     setDescription(result.template.description ?? "");
+    setReferenceStart(
+      normalizeReferenceStart(result.template.reference_start_time)
+    );
   }, [templateId, showToast]);
 
   useEffect(() => {
@@ -111,29 +130,66 @@ export function ProgramTemplateEditor({ templateId }: Props) {
     }));
   }
 
-  function startEdit(item: ProgramTemplateItem) {
-    setEditingId(item.id);
-    setForm({
+  function formFromItem(
+    item: ProgramTemplateItem,
+    refStart: string
+  ): FormState {
+    const split = splitOffset(item.default_offset_minutes);
+    return {
       itemType: item.item_type,
       title: item.title,
       notes: item.notes ?? "",
       durationMinutes:
         item.duration_minutes != null ? String(item.duration_minutes) : "",
-      defaultOffsetMinutes:
-        item.default_offset_minutes != null
-          ? String(item.default_offset_minutes)
-          : "",
+      offsetHours: split.hours,
+      offsetMinutes: split.minutes,
+      absoluteTime: absoluteFromOffset(refStart, item.default_offset_minutes),
       startMode: item.start_mode ?? "",
       startDetail: item.start_detail ?? "",
       isCritical: item.is_critical,
       songTitle: item.song_title ?? "",
       songArtist: item.song_artist ?? "",
-    });
+    };
+  }
+
+  function startEdit(item: ProgramTemplateItem) {
+    setEditingId(item.id);
+    setForm(formFromItem(item, referenceStart));
   }
 
   function cancelEdit() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+  }
+
+  function resolveOffsetMinutes():
+    | { ok: true; value: number | null }
+    | { ok: false; error: string } {
+    if (timeInputMode === "absolute") {
+      if (!form.absoluteTime.trim()) return { ok: true, value: null };
+      const offset = offsetFromAbsolute(referenceStart, form.absoluteTime);
+      if (offset == null) {
+        return {
+          ok: false,
+          error: "Neplatný čas bodu voči predpokladanému začiatku.",
+        };
+      }
+      return { ok: true, value: offset };
+    }
+    const combined = combineOffsetHoursMinutes(
+      form.offsetHours,
+      form.offsetMinutes
+    );
+    if (
+      (form.offsetHours.trim() || form.offsetMinutes.trim()) &&
+      combined == null
+    ) {
+      return {
+        ok: false,
+        error: "Offset: hodiny ≥ 0, minúty 0–59.",
+      };
+    }
+    return { ok: true, value: combined };
   }
 
   async function saveMeta() {
@@ -143,6 +199,7 @@ export function ProgramTemplateEditor({ templateId }: Props) {
       templateId: template.id,
       name,
       description,
+      referenceStartTime: referenceStart,
     });
     setSavingMeta(false);
     if (!result.ok) {
@@ -150,12 +207,22 @@ export function ProgramTemplateEditor({ templateId }: Props) {
       return;
     }
     setTemplate(result.template);
+    setReferenceStart(
+      normalizeReferenceStart(result.template.reference_start_time)
+    );
     showToast("Šablóna uložená.", "success");
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+
+    const offsetResult = resolveOffsetMinutes();
+    if (!offsetResult.ok) {
+      showToast(offsetResult.error, "error");
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = {
@@ -165,9 +232,7 @@ export function ProgramTemplateEditor({ templateId }: Props) {
       durationMinutes: form.durationMinutes
         ? Number(form.durationMinutes)
         : null,
-      defaultOffsetMinutes: form.defaultOffsetMinutes
-        ? Number(form.defaultOffsetMinutes)
-        : null,
+      defaultOffsetMinutes: offsetResult.value,
       startMode: (form.startMode || null) as TimelineStartMode | null,
       startDetail: form.startDetail,
       isCritical: form.isCritical,
@@ -300,6 +365,21 @@ export function ProgramTemplateEditor({ templateId }: Props) {
             maxLength={400}
           />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="meta-ref">Predpokladaný začiatok akcie</Label>
+          <Input
+            id="meta-ref"
+            type="time"
+            value={referenceStart}
+            onChange={(e) => setReferenceStart(e.target.value)}
+            className="h-10 rounded-xl"
+          />
+          <p className="text-[11px] text-zinc-500">
+            Pri režime „Konkrétne časy“ sa body viažu na tento začiatok. Pri
+            použití šablóny na rezerváciu zadáš skutočný začiatok a časy sa
+            posunú.
+          </p>
+        </div>
         <Button
           type="button"
           onClick={() => void saveMeta()}
@@ -309,7 +389,7 @@ export function ProgramTemplateEditor({ templateId }: Props) {
           {savingMeta ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            "Uložiť názov"
+            "Uložiť šablónu"
           )}
         </Button>
       </div>
@@ -321,9 +401,65 @@ export function ProgramTemplateEditor({ templateId }: Props) {
         <p className="text-sm font-medium text-white">
           {editingId ? "Upraviť bod" : "Pridať bod"}
         </p>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setTimeInputMode("offset");
+              setForm((f) => {
+                if (!f.absoluteTime.trim()) return f;
+                const offset = offsetFromAbsolute(
+                  referenceStart,
+                  f.absoluteTime
+                );
+                const split = splitOffset(offset);
+                return {
+                  ...f,
+                  offsetHours: split.hours,
+                  offsetMinutes: split.minutes,
+                };
+              });
+            }}
+            className={cn(
+              "flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+              timeInputMode === "offset"
+                ? "border-violet-500/40 bg-violet-500/15 text-white"
+                : "border-white/10 bg-black/30 text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            Od začiatku
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTimeInputMode("absolute");
+              setForm((f) => {
+                const offset = combineOffsetHoursMinutes(
+                  f.offsetHours,
+                  f.offsetMinutes
+                );
+                return {
+                  ...f,
+                  absoluteTime: absoluteFromOffset(referenceStart, offset),
+                };
+              });
+            }}
+            className={cn(
+              "flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+              timeInputMode === "absolute"
+                ? "border-violet-500/40 bg-violet-500/15 text-white"
+                : "border-white/10 bg-black/30 text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            Konkrétne časy
+          </button>
+        </div>
+
         <p className="text-[11px] leading-relaxed text-zinc-500">
-          Offset = minúty od začiatku akcie (napr. 0 = začiatok, 90 = po 1,5 h).
-          Pri použití šablóny sa časy dopočítajú zo skutočného začiatku.
+          {timeInputMode === "offset"
+            ? "Zadaj hodiny a/alebo minúty od začiatku akcie (napr. 1 h 30 min)."
+            : `Zadaj hodiny podľa predpokladaného začiatku ${referenceStart}. Pri použití šablóny sa prispôsobia skutočnému začiatku.`}
         </p>
 
         <div className="space-y-1.5">
@@ -365,37 +501,65 @@ export function ProgramTemplateEditor({ templateId }: Props) {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Offset od začiatku (min)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={4320}
-              value={form.defaultOffsetMinutes}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  defaultOffsetMinutes: e.target.value,
-                }))
-              }
-              placeholder="napr. 120"
-              className="h-10 rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Trvanie (min)</Label>
-            <Input
-              type="number"
-              min={1}
-              max={1440}
-              value={form.durationMinutes}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, durationMinutes: e.target.value }))
-              }
-              placeholder="napr. 15"
-              className="h-10 rounded-xl"
-            />
-          </div>
+          {timeInputMode === "offset" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>Hodiny od začiatku</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={72}
+                  value={form.offsetHours}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, offsetHours: e.target.value }))
+                  }
+                  placeholder="napr. 1"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Minúty od začiatku</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={form.offsetMinutes}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, offsetMinutes: e.target.value }))
+                  }
+                  placeholder="napr. 30"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Čas bodu</Label>
+              <Input
+                type="time"
+                value={form.absoluteTime}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, absoluteTime: e.target.value }))
+                }
+                className="h-10 rounded-xl"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Trvanie (min)</Label>
+          <Input
+            type="number"
+            min={1}
+            max={1440}
+            value={form.durationMinutes}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, durationMinutes: e.target.value }))
+            }
+            placeholder="napr. 15"
+            className="h-10 rounded-xl"
+          />
         </div>
 
         <div className="space-y-1.5">
@@ -532,11 +696,16 @@ export function ProgramTemplateEditor({ templateId }: Props) {
                         </span>
                         {item.default_offset_minutes != null ? (
                           <span className="text-[10px] text-sky-300">
-                            +{item.default_offset_minutes} min
+                            {timeInputMode === "absolute"
+                              ? absoluteFromOffset(
+                                  referenceStart,
+                                  item.default_offset_minutes
+                                )
+                              : formatOffsetLabel(item.default_offset_minutes)}
                           </span>
                         ) : (
                           <span className="text-[10px] text-zinc-500">
-                            bez offsetu
+                            bez času
                           </span>
                         )}
                         {item.duration_minutes ? (

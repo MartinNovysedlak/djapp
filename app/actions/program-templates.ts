@@ -15,6 +15,7 @@ export type ProgramTemplate = {
   dj_id: string;
   name: string;
   description: string | null;
+  reference_start_time: string;
   created_at: string;
   updated_at: string;
   item_count?: number;
@@ -54,7 +55,7 @@ export type ProgramTemplateItemInput = {
 };
 
 const TEMPLATE_COLS =
-  "id, dj_id, name, description, created_at, updated_at";
+  "id, dj_id, name, description, reference_start_time, created_at, updated_at";
 
 const ITEM_COLS =
   "id, template_id, sort_order, item_type, title, notes, duration_minutes, default_offset_minutes, start_mode, start_detail, is_critical, song_title, song_artist, tech_notes, created_at, updated_at";
@@ -279,6 +280,7 @@ export async function updateProgramTemplate(input: {
   templateId: string;
   name: string;
   description?: string | null;
+  referenceStartTime?: string | null;
 }): Promise<
   { ok: true; template: ProgramTemplate } | { ok: false; error: string }
 > {
@@ -286,16 +288,37 @@ export async function updateProgramTemplate(input: {
   if (!name) return { ok: false, error: "Zadaj názov šablóny." };
   if (!input.templateId) return { ok: false, error: "Chýba ID šablóny." };
 
+  let referenceStart: string | undefined;
+  if (input.referenceStartTime != null && input.referenceStartTime !== "") {
+    const match = input.referenceStartTime
+      .trim()
+      .match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      return { ok: false, error: "Neplatný predpokladaný začiatok." };
+    }
+    const h = Number(match[1]);
+    const m = Number(match[2]);
+    if (h > 23 || m > 59) {
+      return { ok: false, error: "Neplatný predpokladaný začiatok." };
+    }
+    referenceStart = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
+  }
+
   const auth = await requireDj();
   if (!auth.ok) return auth;
 
+  const patch: Record<string, string | null> = {
+    name,
+    description: normalizeText(input.description, 400) || null,
+    updated_at: new Date().toISOString(),
+  };
+  if (referenceStart) {
+    patch.reference_start_time = referenceStart;
+  }
+
   const { data, error } = await auth.supabase
     .from("program_templates")
-    .update({
-      name,
-      description: normalizeText(input.description, 400) || null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("id", input.templateId)
     .eq("dj_id", auth.userId)
     .select(TEMPLATE_COLS)

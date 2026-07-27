@@ -563,8 +563,7 @@ export function EventTimeline({
                     Vytvoriť program
                   </p>
                   <p className="text-[11px] text-zinc-500">
-                    Začni zo šablóny (štandardná svadba, firemná akcia…) alebo od
-                    nuly.
+                    Vyber hotovú šablónu alebo zostav program manuálne.
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button
@@ -572,7 +571,7 @@ export function EventTimeline({
                       onClick={() => setTemplateDialogOpen(true)}
                       className="gap-1.5 rounded-full"
                     >
-                      Od šablóny
+                      Vybrať zo šablóny
                     </Button>
                     <Button
                       type="button"
@@ -580,7 +579,7 @@ export function EventTimeline({
                       onClick={() => setDjScratch(true)}
                       className="gap-1.5 rounded-full"
                     >
-                      Od nuly
+                      Vytvoriť manuálne
                     </Button>
                   </div>
                 </div>
@@ -595,7 +594,7 @@ export function EventTimeline({
                     onClick={() => setTemplateDialogOpen(true)}
                     className="rounded-full"
                   >
-                    Načítať zo šablóny
+                    Vybrať zo šablóny
                   </Button>
                 </div>
               ) : null}
