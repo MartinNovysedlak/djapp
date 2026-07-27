@@ -12,6 +12,7 @@ import {
   LayoutTemplate,
   Lock,
   LogOut,
+  ListMusic,
   Menu,
   Megaphone,
   MessageCircle,
@@ -135,6 +136,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       label: "Špeciálna ponuka",
       href: "/dashboard/extras",
       icon: <Sparkles className="size-4" />,
+      premium: true,
+    },
+    {
+      label: "Šablóny programu",
+      href: "/dashboard/program-templates",
+      icon: <ListMusic className="size-4" />,
       premium: true,
     },
     {

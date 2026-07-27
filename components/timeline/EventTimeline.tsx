@@ -26,6 +26,7 @@ import {
   toggleTimelineItemDone,
   updateTimelineItem,
 } from "@/app/actions/timeline";
+import { ApplyProgramTemplateDialog } from "@/components/templates/ApplyProgramTemplateDialog";
 import { formatTimelineTime } from "@/lib/timeline/format";
 import {
   formatTimelineTimeRange,
@@ -183,6 +184,9 @@ export function EventTimeline({
   const [showAdvanced, setShowAdvanced] = useState(
     draft?.showAdvanced ?? false
   );
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [djScratch, setDjScratch] = useState(false);
+  const canEdit = mode === "client" || mode === "dj";
 
   useEffect(() => {
     if (mode === "dj") return;
@@ -226,6 +230,8 @@ export function EventTimeline({
   }, [open, loaded, loadItems]);
 
   const sorted = useMemo(() => sortTimelineItems(items), [items]);
+  const showEditorForm =
+    mode === "client" || (mode === "dj" && (djScratch || sorted.length > 0));
   const criticalCount = useMemo(
     () => sorted.filter((i) => i.is_critical).length,
     [sorted]
@@ -549,7 +555,52 @@ export function EventTimeline({
                     Exportovať program (PDF)
                   </Button>
                 </div>
-              ) : (
+              ) : null}
+
+              {mode === "dj" && sorted.length === 0 && !djScratch ? (
+                <div className="space-y-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-5 text-center">
+                  <p className="text-sm font-medium text-white">
+                    Vytvoriť program
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    Začni zo šablóny (štandardná svadba, firemná akcia…) alebo od
+                    nuly.
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => setTemplateDialogOpen(true)}
+                      className="gap-1.5 rounded-full"
+                    >
+                      Od šablóny
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDjScratch(true)}
+                      className="gap-1.5 rounded-full"
+                    >
+                      Od nuly
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {mode === "dj" && sorted.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setTemplateDialogOpen(true)}
+                    className="rounded-full"
+                  >
+                    Načítať zo šablóny
+                  </Button>
+                </div>
+              ) : null}
+
+              {showEditorForm ? (
                 <form onSubmit={handleSubmit} className="space-y-3">
                   <p className="text-[11px] leading-relaxed text-zinc-500">
                     Zostav program pre kapelu alebo hudobný sprievod: body s
@@ -915,12 +966,13 @@ export function EventTimeline({
                     ) : null}
                   </div>
                 </form>
-              )}
+              ) : null}
 
               {sorted.length === 0 ? (
                 <p className="px-1 py-3 text-xs text-zinc-500">
-                  Zatiaľ žiadne body. Pridaj napr. prípravu, nástup, tanečné
-                  kolo, vystúpenie, show alebo prestávku.
+                  {mode === "dj" && !djScratch
+                    ? "Vyber spôsob vytvorenia programu vyššie."
+                    : "Zatiaľ žiadne body. Pridaj napr. prípravu, nástup, tanečné kolo, vystúpenie, show alebo prestávku."}
                 </p>
               ) : (
                 <ol className="relative space-y-0 border-l border-white/10 pl-4">
@@ -1063,7 +1115,7 @@ export function EventTimeline({
                               </div>
                             </div>
 
-                            {mode === "client" ? (
+                            {canEdit ? (
                               <div className="flex shrink-0 flex-col items-center gap-0.5">
                                 <button
                                   type="button"
@@ -1122,6 +1174,18 @@ export function EventTimeline({
           )}
         </div>
       ) : null}
+
+      <ApplyProgramTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        bookingId={bookingId}
+        hasExistingItems={sorted.length > 0}
+        onApplied={() => {
+          setDjScratch(true);
+          setLoaded(false);
+          void loadItems();
+        }}
+      />
     </div>
   );
 }

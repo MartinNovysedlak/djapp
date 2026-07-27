@@ -303,11 +303,15 @@ export async function addTimelineItem(input: {
     );
     if (!access.ok) return access;
 
-    if (access.role !== "client" && access.role !== "guest") {
+    if (
+      access.role !== "client" &&
+      access.role !== "guest" &&
+      access.role !== "dj"
+    ) {
       return {
         ok: false,
         error:
-          "Harmonogram môže upravovať len klient pri potvrdenej rezervácii.",
+          "Harmonogram môže upravovať len účastník potvrdenej rezervácie.",
       };
     }
 
@@ -360,7 +364,11 @@ export async function updateTimelineItem(input: {
   try {
     const access = await resolveItemAccess(input.itemId, input.shareToken);
     if (!access.ok) return access;
-    if (access.role !== "client" && access.role !== "guest") {
+    if (
+      access.role !== "client" &&
+      access.role !== "guest" &&
+      access.role !== "dj"
+    ) {
       return { ok: false, error: "Harmonogram môže upravovať len klient." };
     }
 
@@ -397,7 +405,11 @@ export async function deleteTimelineItem(
   try {
     const access = await resolveItemAccess(itemId, shareToken);
     if (!access.ok) return access;
-    if (access.role !== "client" && access.role !== "guest") {
+    if (
+      access.role !== "client" &&
+      access.role !== "guest" &&
+      access.role !== "dj"
+    ) {
       return { ok: false, error: "Harmonogram môže mazať len klient." };
     }
 
@@ -430,7 +442,11 @@ export async function moveTimelineItem(
   try {
     const access = await resolveItemAccess(itemId, shareToken);
     if (!access.ok) return access;
-    if (access.role !== "client" && access.role !== "guest") {
+    if (
+      access.role !== "client" &&
+      access.role !== "guest" &&
+      access.role !== "dj"
+    ) {
       return { ok: false, error: "Poradie môže meniť len klient." };
     }
 
