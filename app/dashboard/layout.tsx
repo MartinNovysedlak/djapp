@@ -7,6 +7,7 @@ import {
   User,
   Calendar,
   CalendarCheck,
+  ClipboardList,
   FileText,
   FileSignature,
   LayoutTemplate,
@@ -142,6 +143,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       label: "Šablóny programu",
       href: "/dashboard/program-templates",
       icon: <ListMusic className="size-4" />,
+      premium: true,
+    },
+    {
+      label: "Šablóny požiadaviek",
+      href: "/dashboard/requirement-templates",
+      icon: <ClipboardList className="size-4" />,
       premium: true,
     },
     {

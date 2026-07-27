@@ -1,10 +1,11 @@
-export type SoundProvidedBy =
+export type SoundChoice =
   | "dj_brings"
   | "venue_has"
   | "shared"
   | "need_from_venue";
 
 export type RequirementItemId =
+  | "sound"
   | "booth_table"
   | "power_sockets"
   | "dedicated_circuit"
@@ -24,6 +25,7 @@ export type RequirementItem = {
   id: RequirementItemId;
   note: string | null;
   quantity?: number | null;
+  choice?: string | null;
 };
 
 export type VenueSetting = "indoor" | "outdoor" | "mixed" | "unknown";
@@ -35,8 +37,6 @@ export type PowerAvailable = "yes" | "no" | "unknown";
 export type DjRequirements = {
   id: string;
   booking_id: string;
-  sound_provided_by: SoundProvidedBy | null;
-  sound_notes: string | null;
   items: RequirementItem[];
   visible_to_client: boolean;
   updated_by: string | null;
@@ -63,19 +63,19 @@ export type VenueQuestionnaire = {
   updated_at: string;
 };
 
-export const SOUND_PROVIDED_OPTIONS: {
-  value: SoundProvidedBy;
+export const SOUND_CHOICE_OPTIONS: {
+  value: SoundChoice;
   label: string;
   hint: string;
 }[] = [
   {
     value: "dj_brings",
-    label: "Prinášam vlastné ozvučenie",
+    label: "Prinášam vlastné",
     hint: "PA / suby idú so mnou",
   },
   {
     value: "venue_has",
-    label: "Ozvučenie je na mieste",
+    label: "Je na mieste",
     hint: "Hrám do existujúceho systému",
   },
   {
@@ -85,7 +85,7 @@ export const SOUND_PROVIDED_OPTIONS: {
   },
   {
     value: "need_from_venue",
-    label: "Potrebujem ozvučenie od miesta",
+    label: "Potrebujem od miesta",
     hint: "Miesto / klient zabezpečí PA",
   },
 ];
@@ -95,7 +95,14 @@ export const REQUIREMENT_CATALOG: {
   label: string;
   hint: string;
   hasQuantity?: boolean;
+  choices?: typeof SOUND_CHOICE_OPTIONS;
 }[] = [
+  {
+    id: "sound",
+    label: "Ozvučenie (PA)",
+    hint: "Kto zabezpečí zvuk",
+    choices: SOUND_CHOICE_OPTIONS,
+  },
   {
     id: "booth_table",
     label: "Stôl / pult",
@@ -169,6 +176,21 @@ export const REQUIREMENT_CATALOG: {
   },
 ];
 
+/** Predvolená šablóna — typický set pre súkromnú akciu / svadbu */
+export const DEFAULT_REQUIREMENT_TEMPLATE_ITEMS: RequirementItem[] = [
+  { id: "sound", note: null, choice: "dj_brings" },
+  { id: "booth_table", note: null },
+  { id: "power_sockets", note: null, quantity: 2 },
+  { id: "dedicated_circuit", note: null },
+  { id: "booth_monitor", note: null },
+  { id: "microphone", note: null },
+  { id: "lights", note: null },
+  { id: "parking", note: null },
+  { id: "load_in", note: null },
+];
+
+export const DEFAULT_REQUIREMENT_TEMPLATE_NAME = "Štandardné požiadavky";
+
 export const VENUE_SETTING_OPTIONS: { value: VenueSetting; label: string }[] =
   [
     { value: "indoor", label: "Vnútri" },
@@ -194,12 +216,11 @@ export const POWER_AVAILABLE_OPTIONS: {
 ];
 
 const ITEM_IDS = new Set(REQUIREMENT_CATALOG.map((c) => c.id));
+const SOUND_CHOICES = new Set(SOUND_CHOICE_OPTIONS.map((o) => o.value));
 
-export function getSoundProvidedLabel(
-  value: SoundProvidedBy | null | undefined
-) {
+export function getSoundChoiceLabel(value: string | null | undefined) {
   if (!value) return null;
-  return SOUND_PROVIDED_OPTIONS.find((o) => o.value === value)?.label ?? value;
+  return SOUND_CHOICE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
 export function getRequirementItemMeta(id: RequirementItemId) {
@@ -208,6 +229,20 @@ export function getRequirementItemMeta(id: RequirementItemId) {
 
 export function getRequirementItemLabel(id: RequirementItemId) {
   return getRequirementItemMeta(id)?.label ?? id;
+}
+
+export function formatRequirementItemSummary(item: RequirementItem) {
+  const label = getRequirementItemLabel(item.id);
+  const parts: string[] = [];
+  if (item.id === "sound" && item.choice) {
+    const choice = getSoundChoiceLabel(item.choice);
+    if (choice) parts.push(choice);
+  }
+  if (item.id === "power_sockets" && item.quantity != null) {
+    parts.push(`min. ${item.quantity}×`);
+  }
+  if (item.note) parts.push(item.note);
+  return parts.length ? `${label} — ${parts.join(" · ")}` : label;
 }
 
 export function normalizeRequirementItems(raw: unknown): RequirementItem[] {
@@ -228,19 +263,27 @@ export function normalizeRequirementItems(raw: unknown): RequirementItem[] {
     const note =
       typeof noteRaw === "string" ? noteRaw.trim().slice(0, 500) || null : null;
 
-    let quantity: number | null | undefined;
+    const item: RequirementItem = {
+      id: id as RequirementItemId,
+      note,
+    };
+
     if (id === "power_sockets") {
       const q = (entry as { quantity?: unknown }).quantity;
       const n = typeof q === "number" ? q : Number(q);
-      quantity =
+      item.quantity =
         Number.isFinite(n) && n >= 1 && n <= 20 ? Math.round(n) : null;
     }
 
-    out.push({
-      id: id as RequirementItemId,
-      note,
-      ...(id === "power_sockets" ? { quantity: quantity ?? null } : {}),
-    });
+    if (id === "sound") {
+      const c = (entry as { choice?: unknown }).choice;
+      item.choice =
+        typeof c === "string" && SOUND_CHOICES.has(c as SoundChoice)
+          ? c
+          : "dj_brings";
+    }
+
+    out.push(item);
   }
 
   return out;

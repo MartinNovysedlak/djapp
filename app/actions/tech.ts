@@ -8,23 +8,16 @@ import {
   type HallSize,
   type PowerAvailable,
   type RequirementItem,
-  type SoundProvidedBy,
   type VenueQuestionnaire,
   type VenueSetting,
 } from "@/lib/tech/types";
 
 const REQ_COLS =
-  "id, booking_id, sound_provided_by, sound_notes, items, visible_to_client, updated_by, created_at, updated_at";
+  "id, booking_id, items, visible_to_client, updated_by, created_at, updated_at";
 
 const VENUE_COLS =
   "id, booking_id, venue_setting, guest_count, hall_size, hall_size_notes, ceiling_height, power_available, power_notes, stage_available, outdoor_notes, other_notes, submitted_at, updated_by, created_at, updated_at";
 
-const SOUND_SET = new Set([
-  "dj_brings",
-  "venue_has",
-  "shared",
-  "need_from_venue",
-]);
 const SETTING_SET = new Set(["indoor", "outdoor", "mixed", "unknown"]);
 const HALL_SET = new Set(["small", "medium", "large", "unknown"]);
 const POWER_SET = new Set(["yes", "no", "unknown"]);
@@ -104,8 +97,6 @@ async function resolveTechAccess(
 }
 
 export type DjRequirementsInput = {
-  soundProvidedBy?: SoundProvidedBy | null;
-  soundNotes?: string | null;
   items?: RequirementItem[];
   visibleToClient?: boolean;
 };
@@ -173,18 +164,10 @@ export async function upsertDjRequirements(input: {
     return { ok: false, error: "Požiadavky môže upravovať len umelec." };
   }
 
-  const sound = input.soundProvidedBy ?? null;
-
-  if (sound && !SOUND_SET.has(sound)) {
-    return { ok: false, error: "Neplatná voľba ozvučenia." };
-  }
-
   const items = normalizeRequirementItems(input.items ?? []);
 
   const row = {
     booking_id: input.bookingId,
-    sound_provided_by: sound,
-    sound_notes: normalizeText(input.soundNotes, 500),
     items,
     visible_to_client: input.visibleToClient !== false,
     updated_by: access.userId,
