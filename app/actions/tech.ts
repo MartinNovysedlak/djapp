@@ -1,26 +1,37 @@
 "use server";
 
 import { createClient as createSSRClient } from "@/utils/supabase/server";
-import {
-  adminClient,
-  resolveGuestShareBooking,
-} from "@/lib/guest-share";
+import { adminClient, resolveGuestShareBooking } from "@/lib/guest-share";
 import type {
+  DjRequirements,
   HallSize,
-  PaProvidedBy,
+  LightsSetup,
+  MicrophoneNeed,
   PowerAvailable,
-  TechRider,
+  SoundProvidedBy,
   VenueQuestionnaire,
   VenueSetting,
 } from "@/lib/tech/types";
 
-const RIDER_COLS =
-  "id, booking_id, power_requirements, table_or_stage, needs_di_boxes, di_boxes_count, lighting_notes, pa_provided_by, pa_notes, space_notes, parking_needed, load_in_notes, other_notes, visible_to_client, updated_by, created_at, updated_at";
+const REQ_COLS =
+  "id, booking_id, sound_provided_by, sound_notes, booth_table_notes, power_sockets_min, power_dedicated_circuit, power_notes, needs_booth_monitor, microphone_need, microphone_notes, lights_setup, lights_notes, needs_weather_cover, needs_parking, load_in_notes, other_notes, visible_to_client, updated_by, created_at, updated_at";
 
 const VENUE_COLS =
   "id, booking_id, venue_setting, guest_count, hall_size, hall_size_notes, ceiling_height, power_available, power_notes, stage_available, outdoor_notes, other_notes, submitted_at, updated_by, created_at, updated_at";
 
-const PA_SET = new Set(["dj", "venue", "shared", "other"]);
+const SOUND_SET = new Set([
+  "dj_brings",
+  "venue_has",
+  "shared",
+  "need_from_venue",
+]);
+const MIC_SET = new Set([
+  "none",
+  "dj_brings",
+  "venue_wired",
+  "venue_wireless",
+]);
+const LIGHTS_SET = new Set(["dj_brings", "venue_has", "both", "none"]);
 const SETTING_SET = new Set(["indoor", "outdoor", "mixed", "unknown"]);
 const HALL_SET = new Set(["small", "medium", "large", "unknown"]);
 const POWER_SET = new Set(["yes", "no", "unknown"]);
@@ -92,16 +103,20 @@ async function resolveTechAccess(
   return { ok: true, client: supabase, userId: user.id, role };
 }
 
-export type TechRiderInput = {
-  powerRequirements?: string | null;
-  tableOrStage?: string | null;
-  needsDiBoxes?: boolean;
-  diBoxesCount?: number | null;
-  lightingNotes?: string | null;
-  paProvidedBy?: PaProvidedBy | null;
-  paNotes?: string | null;
-  spaceNotes?: string | null;
-  parkingNeeded?: boolean;
+export type DjRequirementsInput = {
+  soundProvidedBy?: SoundProvidedBy | null;
+  soundNotes?: string | null;
+  boothTableNotes?: string | null;
+  powerSocketsMin?: number | null;
+  powerDedicatedCircuit?: boolean;
+  powerNotes?: string | null;
+  needsBoothMonitor?: boolean;
+  microphoneNeed?: MicrophoneNeed | null;
+  microphoneNotes?: string | null;
+  lightsSetup?: LightsSetup | null;
+  lightsNotes?: string | null;
+  needsWeatherCover?: boolean;
+  needsParking?: boolean;
   loadInNotes?: string | null;
   otherNotes?: string | null;
   visibleToClient?: boolean;
@@ -120,76 +135,92 @@ export type VenueQuestionnaireInput = {
   otherNotes?: string | null;
 };
 
-export async function getTechRider(
+export async function getDjRequirements(
   bookingId: string,
   shareToken?: string
-): Promise<{ ok: true; rider: TechRider | null } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; requirements: DjRequirements | null }
+  | { ok: false; error: string }
+> {
   if (!bookingId) return { ok: false, error: "Chýba ID rezervácie." };
 
   const access = await resolveTechAccess(bookingId, shareToken);
   if (!access.ok) return access;
 
   const { data, error } = await access.client
-    .from("booking_tech_riders")
-    .select(RIDER_COLS)
+    .from("booking_dj_requirements")
+    .select(REQ_COLS)
     .eq("booking_id", bookingId)
     .maybeSingle();
 
   if (error) {
-    console.error("[getTechRider]", error);
-    return { ok: false, error: "Rider sa nepodarilo načítať." };
+    console.error("[getDjRequirements]", error);
+    return { ok: false, error: "Požiadavky sa nepodarilo načítať." };
   }
 
-  const rider = (data as TechRider | null) ?? null;
+  const requirements = (data as DjRequirements | null) ?? null;
   if (
-    rider &&
+    requirements &&
     access.role !== "dj" &&
-    !rider.visible_to_client
+    !requirements.visible_to_client
   ) {
-    return { ok: true, rider: null };
+    return { ok: true, requirements: null };
   }
 
-  return { ok: true, rider };
+  return { ok: true, requirements };
 }
 
-export async function upsertTechRider(input: {
+export async function upsertDjRequirements(input: {
   bookingId: string;
-} & TechRiderInput): Promise<
-  { ok: true; rider: TechRider } | { ok: false; error: string }
+} & DjRequirementsInput): Promise<
+  { ok: true; requirements: DjRequirements } | { ok: false; error: string }
 > {
   if (!input.bookingId) return { ok: false, error: "Chýba ID rezervácie." };
 
   const access = await resolveTechAccess(input.bookingId);
   if (!access.ok) return access;
   if (access.role !== "dj") {
-    return { ok: false, error: "Rider môže upravovať len umelec." };
+    return { ok: false, error: "Požiadavky môže upravovať len umelec." };
   }
 
-  const pa = input.paProvidedBy ?? null;
-  if (pa && !PA_SET.has(pa)) {
+  const sound = input.soundProvidedBy ?? null;
+  const mic = input.microphoneNeed ?? null;
+  const lights = input.lightsSetup ?? null;
+
+  if (sound && !SOUND_SET.has(sound)) {
     return { ok: false, error: "Neplatná voľba ozvučenia." };
   }
+  if (mic && !MIC_SET.has(mic)) {
+    return { ok: false, error: "Neplatná voľba mikrofónu." };
+  }
+  if (lights && !LIGHTS_SET.has(lights)) {
+    return { ok: false, error: "Neplatná voľba svetiel." };
+  }
 
-  let diCount: number | null = null;
-  if (input.diBoxesCount != null && String(input.diBoxesCount) !== "") {
-    const n = Math.round(Number(input.diBoxesCount));
-    if (!Number.isFinite(n) || n < 0 || n > 50) {
-      return { ok: false, error: "Počet DI boxov musí byť 0–50." };
+  let sockets: number | null = null;
+  if (input.powerSocketsMin != null && String(input.powerSocketsMin) !== "") {
+    const n = Math.round(Number(input.powerSocketsMin));
+    if (!Number.isFinite(n) || n < 1 || n > 20) {
+      return { ok: false, error: "Počet zásuviek musí byť 1–20." };
     }
-    diCount = n;
+    sockets = n;
   }
 
   const row = {
     booking_id: input.bookingId,
-    power_requirements: normalizeText(input.powerRequirements, 400),
-    table_or_stage: normalizeText(input.tableOrStage, 300),
-    needs_di_boxes: Boolean(input.needsDiBoxes),
-    di_boxes_count: input.needsDiBoxes ? diCount : null,
-    lighting_notes: normalizeText(input.lightingNotes, 500),
-    pa_provided_by: pa,
-    pa_notes: normalizeText(input.paNotes, 400),
-    space_notes: normalizeText(input.spaceNotes, 500),
-    parking_needed: Boolean(input.parkingNeeded),
+    sound_provided_by: sound,
+    sound_notes: normalizeText(input.soundNotes, 500),
+    booth_table_notes: normalizeText(input.boothTableNotes, 400),
+    power_sockets_min: sockets,
+    power_dedicated_circuit: Boolean(input.powerDedicatedCircuit),
+    power_notes: normalizeText(input.powerNotes, 400),
+    needs_booth_monitor: Boolean(input.needsBoothMonitor),
+    microphone_need: mic,
+    microphone_notes: normalizeText(input.microphoneNotes, 300),
+    lights_setup: lights,
+    lights_notes: normalizeText(input.lightsNotes, 400),
+    needs_weather_cover: Boolean(input.needsWeatherCover),
+    needs_parking: Boolean(input.needsParking),
     load_in_notes: normalizeText(input.loadInNotes, 500),
     other_notes: normalizeText(input.otherNotes, 800),
     visible_to_client: input.visibleToClient !== false,
@@ -198,17 +229,17 @@ export async function upsertTechRider(input: {
   };
 
   const { data, error } = await access.client
-    .from("booking_tech_riders")
+    .from("booking_dj_requirements")
     .upsert(row, { onConflict: "booking_id" })
-    .select(RIDER_COLS)
+    .select(REQ_COLS)
     .single();
 
   if (error || !data) {
-    console.error("[upsertTechRider]", error);
-    return { ok: false, error: "Rider sa nepodarilo uložiť." };
+    console.error("[upsertDjRequirements]", error);
+    return { ok: false, error: "Požiadavky sa nepodarilo uložiť." };
   }
 
-  return { ok: true, rider: data as TechRider };
+  return { ok: true, requirements: data as DjRequirements };
 }
 
 export async function getVenueQuestionnaire(
@@ -299,11 +330,7 @@ export async function upsertVenueQuestionnaire(input: {
     updated_at: new Date().toISOString(),
   };
 
-  // Guest path uses service role; auth client for logged-in client
-  const writer =
-    access.role === "guest"
-      ? adminClient()
-      : access.client;
+  const writer = access.role === "guest" ? adminClient() : access.client;
 
   const { data, error } = await writer
     .from("booking_venue_questionnaires")

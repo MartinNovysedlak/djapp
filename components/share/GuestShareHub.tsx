@@ -5,7 +5,7 @@ import { Building2, CalendarClock, Music2, Plug } from "lucide-react";
 import type { GuestSharePublic } from "@/lib/guest-share";
 import { MusicPlanner } from "@/components/playlist/MusicPlanner";
 import { EventTimeline } from "@/components/timeline/EventTimeline";
-import { TechRiderPanel } from "@/components/tech/TechRiderPanel";
+import { DjRequirementsPanel } from "@/components/tech/DjRequirementsPanel";
 import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,7 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
   }[] = [
     { id: "timeline", label: "Program", icon: CalendarClock },
     { id: "playlist", label: "Hudba", icon: Music2 },
-    { id: "tech", label: "Technika", icon: Plug },
+    { id: "tech", label: "Požiadavky", icon: Plug },
   ];
 
   return (
@@ -68,8 +68,8 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
             {dateLabel ? ` · ${dateLabel}` : ""}
           </p>
           <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-            Unikátny odkaz pre tvoju akciu — harmonogram, playlist, technický
-            rider a krátky dotazník o mieste. Bez registrácie.
+            Unikátny odkaz pre tvoju akciu — program, hudba, požiadavky DJ a
+            krátky dotazník o mieste. Bez registrácie.
           </p>
         </header>
 
@@ -140,13 +140,13 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
             <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
               <p className="flex items-center gap-2 text-sm font-medium text-white">
                 <Plug className="size-4 text-amber-300" />
-                Technický rider
+                Požiadavky DJ
               </p>
               <p className="mt-1 text-[11px] text-zinc-500">
-                Požiadavky umelca na miesto konania.
+                Čo umelec potrebuje na ozvučenie a setup akcie.
               </p>
             </div>
-            <TechRiderPanel
+            <DjRequirementsPanel
               bookingId={share.bookingId}
               mode="client"
               shareToken={share.slug}

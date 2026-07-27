@@ -124,7 +124,7 @@ export function ClientShareQr({
                   <p className="text-xs leading-relaxed text-zinc-400">
                     Pošli klientovi tento unikátny odkaz. Môže kedykoľvek
                     otvoriť a upravovať harmonogram, playlist aj dotazník o
-                    mieste a pozrieť si technický rider — bez účtu.
+                    mieste a pozrieť si požiadavky DJ — bez účtu.
                   </p>
                   <p className="break-all rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 font-mono text-[11px] text-zinc-300">
                     {url}
