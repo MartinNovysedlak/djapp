@@ -1,0 +1,14 @@
+---
+description: Always commit and push finished UI/feature work to both remotes
+alwaysApply: true
+---
+
+# Always push after changes
+
+When you finish implementing a feature, bugfix, or UI change that the user needs to see on production:
+
+1. Commit the relevant files (unless the user said not to commit).
+2. Immediately `git push origin HEAD` **and** `git push djapps HEAD`.
+3. Do not wait for the user to say „pushni to“.
+
+This project deploys from GitHub; unpushed local changes are invisible on bookthevibe.com.
