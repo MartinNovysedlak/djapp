@@ -1,17 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <rect width="180" height="180" rx="40" fill="#0A0A0A"/>
   <defs>
-    <linearGradient id="check" x1="40" y1="90" x2="145" y2="90" gradientUnits="userSpaceOnUse">
+    <linearGradient id="wave" x1="24" y1="90" x2="156" y2="90" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="45%" stop-color="#00E5FF"/>
-      <stop offset="100%" stop-color="#8623A8"/>
+      <stop offset="35%" stop-color="#00E5FF"/>
+      <stop offset="70%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#C026D3"/>
     </linearGradient>
   </defs>
-  <rect width="180" height="180" rx="40" fill="#0A0A0A"/>
   <path
-    d="M48 91 L78 121 L132 58"
-    stroke="url(#check)"
-    stroke-width="18"
+    d="M28 98 L52 74 L70 112 C81 80 95 62 110 70 C128 80 140 106 156 82"
+    stroke="url(#wave)"
+    stroke-width="12"
     stroke-linecap="round"
     stroke-linejoin="round"
+    fill="none"
   />
 </svg>

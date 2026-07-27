@@ -1,17 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#0A0A0A"/>
   <defs>
-    <linearGradient id="check" x1="6" y1="16" x2="26" y2="16" gradientUnits="userSpaceOnUse">
+    <linearGradient id="wave" x1="4" y1="16" x2="28" y2="16" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="45%" stop-color="#00E5FF"/>
-      <stop offset="100%" stop-color="#8623A8"/>
+      <stop offset="35%" stop-color="#00E5FF"/>
+      <stop offset="70%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#C026D3"/>
     </linearGradient>
   </defs>
-  <rect width="32" height="32" rx="7" fill="#0A0A0A"/>
+  <!-- Simplified BookTheVibe wave mark for tiny favicon sizes -->
   <path
-    d="M8.5 16.2 L13.8 21.5 L23.5 10.5"
-    stroke="url(#check)"
-    stroke-width="3.4"
+    d="M5 17.5 L9.2 13.2 L12.2 19.8 C14.2 14.2 16.5 11.2 19.2 12.6 C22.2 14.2 24.2 18.8 27 14.5"
+    stroke="url(#wave)"
+    stroke-width="2.4"
     stroke-linecap="round"
     stroke-linejoin="round"
+    fill="none"
   />
 </svg>
