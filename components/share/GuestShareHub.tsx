@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, Music2 } from "lucide-react";
+import { Building2, CalendarClock, Music2, Plug } from "lucide-react";
 import type { GuestSharePublic } from "@/lib/guest-share";
 import { MusicPlanner } from "@/components/playlist/MusicPlanner";
 import { EventTimeline } from "@/components/timeline/EventTimeline";
+import { TechRiderPanel } from "@/components/tech/TechRiderPanel";
+import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +14,7 @@ type GuestShareHubProps = {
   share: GuestSharePublic;
 };
 
-type HubTab = "timeline" | "playlist";
+type HubTab = "timeline" | "playlist" | "tech";
 
 function formatDateSk(iso: string | null) {
   if (!iso) return null;
@@ -28,6 +30,16 @@ function formatDateSk(iso: string | null) {
 export function GuestShareHub({ share }: GuestShareHubProps) {
   const dateLabel = formatDateSk(share.eventDate);
   const [tab, setTab] = useState<HubTab>("timeline");
+
+  const tabs: {
+    id: HubTab;
+    label: string;
+    icon: typeof CalendarClock;
+  }[] = [
+    { id: "timeline", label: "Program", icon: CalendarClock },
+    { id: "playlist", label: "Hudba", icon: Music2 },
+    { id: "tech", label: "Technika", icon: Plug },
+  ];
 
   return (
     <div className="relative min-h-svh overflow-hidden bg-[#0A0A0A] px-4 py-8">
@@ -56,46 +68,38 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
             {dateLabel ? ` · ${dateLabel}` : ""}
           </p>
           <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-            Tento odkaz je unikátny pre tvoju akciu. Môžeš sa k nemu kedykoľvek
-            vrátiť a upraviť harmonogram alebo playlist — bez registrácie.
+            Unikátny odkaz pre tvoju akciu — harmonogram, playlist, technický
+            rider a krátky dotazník o mieste. Bez registrácie.
           </p>
         </header>
 
         <div
           role="tablist"
           aria-label="Sekcie prípravy"
-          className="flex gap-2"
+          className="grid grid-cols-3 gap-2"
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "timeline"}
-            onClick={() => setTab("timeline")}
-            className={cn(
-              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors",
-              tab === "timeline"
-                ? "border-violet-500/40 bg-violet-500/15 text-white"
-                : "border-white/10 bg-black/30 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-            )}
-          >
-            <CalendarClock className="size-4 shrink-0" />
-            Harmonogram
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "playlist"}
-            onClick={() => setTab("playlist")}
-            className={cn(
-              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors",
-              tab === "playlist"
-                ? "border-violet-500/40 bg-violet-500/15 text-white"
-                : "border-white/10 bg-black/30 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-            )}
-          >
-            <Music2 className="size-4 shrink-0" />
-            Playlist
-          </button>
+          {tabs.map((item) => {
+            const Icon = item.icon;
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(item.id)}
+                className={cn(
+                  "inline-flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors sm:flex-row sm:gap-2 sm:text-sm",
+                  active
+                    ? "border-violet-500/40 bg-violet-500/15 text-white"
+                    : "border-white/10 bg-black/30 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                )}
+              >
+                <Icon className="size-4 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
         {tab === "timeline" ? (
@@ -105,14 +109,51 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
             shareToken={share.slug}
             embedded
           />
-        ) : (
+        ) : null}
+
+        {tab === "playlist" ? (
           <MusicPlanner
             bookingId={share.bookingId}
             mode="client"
             shareToken={share.slug}
             embedded
           />
-        )}
+        ) : null}
+
+        {tab === "tech" ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-white">
+                <Building2 className="size-4 text-teal-300" />
+                Dotazník o mieste
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Vnútri/vonku, hostia, sála, prúd — pomôže umelcovi s prípravou.
+              </p>
+            </div>
+            <VenueQuestionnairePanel
+              bookingId={share.bookingId}
+              mode="client"
+              shareToken={share.slug}
+              embedded
+            />
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-white">
+                <Plug className="size-4 text-amber-300" />
+                Technický rider
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Požiadavky umelca na miesto konania.
+              </p>
+            </div>
+            <TechRiderPanel
+              bookingId={share.bookingId}
+              mode="client"
+              shareToken={share.slug}
+              embedded
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -54,6 +54,8 @@ import { EventTimeline } from "@/components/timeline/EventTimeline";
 import { BookingExtras } from "@/components/extras/BookingExtras";
 import { LiveRequestQr } from "@/components/live/LiveRequestQr";
 import { ClientShareQr } from "@/components/share/ClientShareQr";
+import { TechRiderPanel } from "@/components/tech/TechRiderPanel";
+import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
 import {
   rejectBooking,
   deleteDjBooking,
@@ -1855,6 +1857,8 @@ function BookingCard({
           <BookingExtras bookingId={booking.id} mode="dj" />
           <MusicPlanner bookingId={booking.id} mode="dj" />
           <EventTimeline bookingId={booking.id} mode="dj" />
+          <TechRiderPanel bookingId={booking.id} mode="dj" />
+          <VenueQuestionnairePanel bookingId={booking.id} mode="dj" />
         </div>
       ) : null}
 

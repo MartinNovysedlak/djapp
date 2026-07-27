@@ -33,6 +33,8 @@ import { MusicPlanner } from "@/components/playlist/MusicPlanner";
 import { EventTimeline } from "@/components/timeline/EventTimeline";
 import { BookingExtras } from "@/components/extras/BookingExtras";
 import { LiveRequestQr } from "@/components/live/LiveRequestQr";
+import { TechRiderPanel } from "@/components/tech/TechRiderPanel";
+import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
 import { isPastLocalDate, parseLocalDate } from "@/lib/dates";
 import { formatEventTypeLabel } from "@/lib/event-types";
 import { formatExtraPrice } from "@/lib/extras/types";
@@ -443,6 +445,8 @@ function BookingRow({
               <BookingExtras bookingId={booking.id} mode="client" />
               <MusicPlanner bookingId={booking.id} mode="client" />
               <EventTimeline bookingId={booking.id} mode="client" />
+              <TechRiderPanel bookingId={booking.id} mode="client" />
+              <VenueQuestionnairePanel bookingId={booking.id} mode="client" />
             </div>
           )}
 
