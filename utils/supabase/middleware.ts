@@ -29,6 +29,10 @@ function isAuthPlumbing(pathname: string): boolean {
   return false;
 }
 
+function isPublicGuestSurface(pathname: string): boolean {
+  return pathname.startsWith("/live") || pathname.startsWith("/akcia");
+}
+
 /**
  * Refresh auth cookies and hard-gate incomplete profiles to /onboarding
  * so they cannot browse the rest of the site.
@@ -67,7 +71,7 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  if (!user || isAuthPlumbing(pathname)) {
+  if (!user || isAuthPlumbing(pathname) || isPublicGuestSurface(pathname)) {
     return supabaseResponse;
   }
 

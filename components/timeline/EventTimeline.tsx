@@ -60,6 +60,8 @@ type EventTimelineProps = {
   mode: "client" | "dj";
   className?: string;
   defaultOpen?: boolean;
+  /** Guest hub token — enables timeline without login */
+  shareToken?: string;
 };
 
 type FormState = {
@@ -160,6 +162,7 @@ export function EventTimeline({
   mode,
   className,
   defaultOpen = false,
+  shareToken,
 }: EventTimelineProps) {
   const { showToast } = useToast();
   const draft = useMemo(() => readPersistedDraft(bookingId), [bookingId]);
@@ -203,7 +206,7 @@ export function EventTimeline({
 
   const loadItems = useCallback(async () => {
     setLoading(true);
-    const result = await getBookingTimeline(bookingId);
+    const result = await getBookingTimeline(bookingId, shareToken);
     if (!result.ok) {
       showToast(result.error, "error");
       setLoading(false);
@@ -212,7 +215,7 @@ export function EventTimeline({
     setItems(sortTimelineItems(result.items));
     setLoaded(true);
     setLoading(false);
-  }, [bookingId, showToast]);
+  }, [bookingId, shareToken, showToast]);
 
   useEffect(() => {
     if (!open || loaded) return;
@@ -323,7 +326,11 @@ export function EventTimeline({
     const payload = formToPayload();
 
     if (editingId) {
-      const result = await updateTimelineItem({ itemId: editingId, ...payload });
+      const result = await updateTimelineItem({
+        itemId: editingId,
+        shareToken,
+        ...payload,
+      });
       setSubmitting(false);
       if (!result.ok) {
         showToast(result.error, "error");
@@ -341,7 +348,11 @@ export function EventTimeline({
       return;
     }
 
-    const result = await addTimelineItem({ bookingId, ...payload });
+    const result = await addTimelineItem({
+      bookingId,
+      shareToken,
+      ...payload,
+    });
     setSubmitting(false);
     if (!result.ok) {
       showToast(result.error, "error");
@@ -363,7 +374,7 @@ export function EventTimeline({
 
   async function handleDelete(itemId: string) {
     setBusyId(itemId);
-    const result = await deleteTimelineItem(itemId);
+    const result = await deleteTimelineItem(itemId, shareToken);
     setBusyId(null);
     if (!result.ok) {
       showToast(result.error, "error");
@@ -376,7 +387,7 @@ export function EventTimeline({
 
   async function handleMove(itemId: string, direction: "up" | "down") {
     setBusyId(itemId);
-    const result = await moveTimelineItem(itemId, direction);
+    const result = await moveTimelineItem(itemId, direction, shareToken);
     setBusyId(null);
     if (!result.ok) {
       showToast(result.error, "error");

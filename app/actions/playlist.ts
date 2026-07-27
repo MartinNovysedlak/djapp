@@ -1,6 +1,10 @@
 "use server";
 
 import { createClient as createSSRClient } from "@/utils/supabase/server";
+import {
+  adminClient,
+  resolveGuestShareBooking,
+} from "@/lib/guest-share";
 import { normalizeSongInput } from "@/lib/songs/normalize";
 
 export type SongCategory = "must_play" | "optional" | "do_not_play";
@@ -8,7 +12,7 @@ export type SongCategory = "must_play" | "optional" | "do_not_play";
 export type BookingSong = {
   id: string;
   booking_id: string;
-  added_by: string;
+  added_by: string | null;
   title: string;
   artist: string;
   notes: string | null;
@@ -31,6 +35,15 @@ const SONG_COLS =
 function normalizeText(value: string | undefined | null, max = 200) {
   return (value ?? "").trim().slice(0, max);
 }
+
+type AccessOk = {
+  ok: true;
+  client: Awaited<ReturnType<typeof createSSRClient>>;
+  userId: string | null;
+  role: "client" | "dj" | "guest";
+};
+
+type AccessFail = { ok: false; error: string };
 
 async function getAcceptedBookingAccess(bookingId: string) {
   const supabase = await createSSRClient();
@@ -59,28 +72,46 @@ async function getAcceptedBookingAccess(bookingId: string) {
   return { supabase, user: authData.user, booking, role };
 }
 
+async function resolvePlaylistAccess(
+  bookingId: string,
+  shareToken?: string
+): Promise<AccessOk | AccessFail> {
+  if (shareToken) {
+    const guest = await resolveGuestShareBooking(bookingId, shareToken);
+    if (!guest.ok) return guest;
+    return {
+      ok: true,
+      client: guest.admin,
+      userId: null,
+      role: "guest",
+    };
+  }
+
+  const { supabase, user, booking, role } =
+    await getAcceptedBookingAccess(bookingId);
+  if (!user) return { ok: false, error: "Musíš byť prihlásený." };
+  if (!booking || !role) {
+    return {
+      ok: false,
+      error: "Hudobný plánovač je dostupný len pri potvrdenej rezervácii.",
+    };
+  }
+  return { ok: true, client: supabase, userId: user.id, role };
+}
+
 export async function getBookingSongs(
-  bookingId: string
+  bookingId: string,
+  shareToken?: string
 ): Promise<{ ok: true; songs: BookingSong[] } | { ok: false; error: string }> {
   if (!bookingId) {
     return { ok: false, error: "Chýba ID rezervácie." };
   }
 
   try {
-    const { supabase, user, booking, role } =
-      await getAcceptedBookingAccess(bookingId);
+    const access = await resolvePlaylistAccess(bookingId, shareToken);
+    if (!access.ok) return access;
 
-    if (!user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-    if (!booking || !role) {
-      return {
-        ok: false,
-        error: "Hudobný plánovač je dostupný len pri potvrdenej rezervácii.",
-      };
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await access.client
       .from("booking_songs")
       .select(SONG_COLS)
       .eq("booking_id", bookingId)
@@ -105,6 +136,7 @@ export async function addBookingSong(input: {
   notes?: string;
   url?: string;
   category: SongCategory;
+  shareToken?: string;
 }): Promise<PlaylistActionResult> {
   const notes = normalizeText(input.notes, 500) || null;
 
@@ -123,25 +155,24 @@ export async function addBookingSong(input: {
   if (!normalized.ok) return { ok: false, error: normalized.error };
 
   try {
-    const { supabase, user, booking, role } = await getAcceptedBookingAccess(
-      input.bookingId
+    const access = await resolvePlaylistAccess(
+      input.bookingId,
+      input.shareToken
     );
+    if (!access.ok) return access;
 
-    if (!user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-    if (!booking || role !== "client") {
+    if (access.role !== "client" && access.role !== "guest") {
       return {
         ok: false,
         error: "Skladby môže pridávať len klient pri potvrdenej rezervácii.",
       };
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await access.client
       .from("booking_songs")
       .insert({
         booking_id: input.bookingId,
-        added_by: user.id,
+        added_by: access.userId,
         title: normalized.song.title,
         artist: normalized.song.artist,
         notes,
@@ -165,13 +196,40 @@ export async function addBookingSong(input: {
 }
 
 export async function deleteBookingSong(
-  songId: string
+  songId: string,
+  shareToken?: string
 ): Promise<PlaylistActionResult> {
   if (!songId) {
     return { ok: false, error: "Chýba ID skladby." };
   }
 
   try {
+    if (shareToken) {
+      const admin = adminClient();
+      const { data: song } = await admin
+        .from("booking_songs")
+        .select("id, booking_id")
+        .eq("id", songId)
+        .maybeSingle();
+      if (!song) return { ok: false, error: "Skladba sa nenašla." };
+
+      const access = await resolvePlaylistAccess(song.booking_id, shareToken);
+      if (!access.ok) return access;
+      if (access.role !== "guest") {
+        return { ok: false, error: "Skladby môže mazať len klient." };
+      }
+
+      const { error } = await access.client
+        .from("booking_songs")
+        .delete()
+        .eq("id", songId);
+      if (error) {
+        console.error("[deleteBookingSong]", error);
+        return { ok: false, error: "Skladbu sa nepodarilo zmazať." };
+      }
+      return { ok: true };
+    }
+
     const supabase = await createSSRClient();
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {

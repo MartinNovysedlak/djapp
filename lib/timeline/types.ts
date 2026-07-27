@@ -34,7 +34,7 @@ export type TimelineStartMode =
 export type TimelineItem = {
   id: string;
   booking_id: string;
-  added_by: string;
+  added_by: string | null;
   event_time: string | null;
   end_time: string | null;
   duration_minutes: number | null;

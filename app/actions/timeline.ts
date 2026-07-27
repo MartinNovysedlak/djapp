@@ -1,6 +1,10 @@
 "use server";
 
 import { createClient as createSSRClient } from "@/utils/supabase/server";
+import {
+  adminClient,
+  resolveGuestShareBooking,
+} from "@/lib/guest-share";
 import { sortTimelineItems } from "@/lib/timeline/sort";
 import type {
   TimelineEnergy,
@@ -164,8 +168,89 @@ async function getAcceptedBookingAccess(bookingId: string) {
   return { supabase, user: authData.user, booking, role };
 }
 
+type AccessOk = {
+  ok: true;
+  client: Awaited<ReturnType<typeof createSSRClient>>;
+  userId: string | null;
+  role: "client" | "dj" | "guest";
+};
+
+type AccessFail = { ok: false; error: string };
+
+async function resolveTimelineAccess(
+  bookingId: string,
+  shareToken?: string
+): Promise<AccessOk | AccessFail> {
+  if (shareToken) {
+    const guest = await resolveGuestShareBooking(bookingId, shareToken);
+    if (!guest.ok) return guest;
+    return {
+      ok: true,
+      client: guest.admin,
+      userId: null,
+      role: "guest",
+    };
+  }
+
+  const { supabase, user, booking, role } =
+    await getAcceptedBookingAccess(bookingId);
+  if (!user) return { ok: false, error: "Musíš byť prihlásený." };
+  if (!booking || !role) {
+    return {
+      ok: false,
+      error: "Harmonogram je dostupný len pri potvrdenej rezervácii.",
+    };
+  }
+  return { ok: true, client: supabase, userId: user.id, role };
+}
+
+async function resolveItemAccess(
+  itemId: string,
+  shareToken?: string
+): Promise<
+  | (AccessOk & { bookingId: string })
+  | AccessFail
+> {
+  if (shareToken) {
+    const admin = adminClient();
+    const { data: existing } = await admin
+      .from("booking_timeline")
+      .select("id, booking_id")
+      .eq("id", itemId)
+      .maybeSingle();
+    if (!existing) return { ok: false, error: "Položka sa nenašla." };
+    const access = await resolveTimelineAccess(
+      existing.booking_id,
+      shareToken
+    );
+    if (!access.ok) return access;
+    return { ...access, bookingId: existing.booking_id };
+  }
+
+  const supabase = await createSSRClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) {
+    return { ok: false, error: "Musíš byť prihlásený." };
+  }
+
+  const { data: existing } = await supabase
+    .from("booking_timeline")
+    .select("id, booking_id")
+    .eq("id", itemId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { ok: false, error: "Položka sa nenašla." };
+  }
+
+  const access = await resolveTimelineAccess(existing.booking_id);
+  if (!access.ok) return access;
+  return { ...access, bookingId: existing.booking_id };
+}
+
 export async function getBookingTimeline(
-  bookingId: string
+  bookingId: string,
+  shareToken?: string
 ): Promise<
   { ok: true; items: TimelineItem[] } | { ok: false; error: string }
 > {
@@ -174,20 +259,10 @@ export async function getBookingTimeline(
   }
 
   try {
-    const { supabase, user, booking, role } =
-      await getAcceptedBookingAccess(bookingId);
+    const access = await resolveTimelineAccess(bookingId, shareToken);
+    if (!access.ok) return access;
 
-    if (!user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-    if (!booking || !role) {
-      return {
-        ok: false,
-        error: "Harmonogram je dostupný len pri potvrdenej rezervácii.",
-      };
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await access.client
       .from("booking_timeline")
       .select(SELECT_COLS)
       .eq("booking_id", bookingId)
@@ -210,6 +285,7 @@ export async function getBookingTimeline(
 
 export async function addTimelineItem(input: {
   bookingId: string;
+  shareToken?: string;
 } & TimelineItemInput): Promise<TimelineActionResult> {
   if (!input.bookingId) {
     return { ok: false, error: "Chýba ID rezervácie." };
@@ -221,21 +297,21 @@ export async function addTimelineItem(input: {
   }
 
   try {
-    const { supabase, user, booking, role } = await getAcceptedBookingAccess(
-      input.bookingId
+    const access = await resolveTimelineAccess(
+      input.bookingId,
+      input.shareToken
     );
+    if (!access.ok) return access;
 
-    if (!user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-    if (!booking || role !== "client") {
+    if (access.role !== "client" && access.role !== "guest") {
       return {
         ok: false,
-        error: "Harmonogram môže upravovať len klient pri potvrdenej rezervácii.",
+        error:
+          "Harmonogram môže upravovať len klient pri potvrdenej rezervácii.",
       };
     }
 
-    const { data: existing } = await supabase
+    const { data: existing } = await access.client
       .from("booking_timeline")
       .select("sort_order")
       .eq("booking_id", input.bookingId)
@@ -244,11 +320,11 @@ export async function addTimelineItem(input: {
 
     const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
 
-    const { data, error } = await supabase
+    const { data, error } = await access.client
       .from("booking_timeline")
       .insert({
         booking_id: input.bookingId,
-        added_by: user.id,
+        added_by: access.userId,
         sort_order: nextOrder,
         is_done: false,
         ...parsed.data,
@@ -270,6 +346,7 @@ export async function addTimelineItem(input: {
 
 export async function updateTimelineItem(input: {
   itemId: string;
+  shareToken?: string;
 } & TimelineItemInput): Promise<TimelineActionResult> {
   if (!input.itemId) {
     return { ok: false, error: "Chýba ID položky." };
@@ -281,30 +358,13 @@ export async function updateTimelineItem(input: {
   }
 
   try {
-    const supabase = await createSSRClient();
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-
-    const { data: existing } = await supabase
-      .from("booking_timeline")
-      .select("id, booking_id")
-      .eq("id", input.itemId)
-      .maybeSingle();
-
-    if (!existing) {
-      return { ok: false, error: "Položka sa nenašla." };
-    }
-
-    const { booking, role } = await getAcceptedBookingAccess(
-      existing.booking_id
-    );
-    if (!booking || role !== "client") {
+    const access = await resolveItemAccess(input.itemId, input.shareToken);
+    if (!access.ok) return access;
+    if (access.role !== "client" && access.role !== "guest") {
       return { ok: false, error: "Harmonogram môže upravovať len klient." };
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await access.client
       .from("booking_timeline")
       .update({
         ...parsed.data,
@@ -327,37 +387,21 @@ export async function updateTimelineItem(input: {
 }
 
 export async function deleteTimelineItem(
-  itemId: string
+  itemId: string,
+  shareToken?: string
 ): Promise<TimelineActionResult> {
   if (!itemId) {
     return { ok: false, error: "Chýba ID položky." };
   }
 
   try {
-    const supabase = await createSSRClient();
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-
-    const { data: existing } = await supabase
-      .from("booking_timeline")
-      .select("id, booking_id")
-      .eq("id", itemId)
-      .maybeSingle();
-
-    if (!existing) {
-      return { ok: false, error: "Položka sa nenašla." };
-    }
-
-    const { booking, role } = await getAcceptedBookingAccess(
-      existing.booking_id
-    );
-    if (!booking || role !== "client") {
+    const access = await resolveItemAccess(itemId, shareToken);
+    if (!access.ok) return access;
+    if (access.role !== "client" && access.role !== "guest") {
       return { ok: false, error: "Harmonogram môže mazať len klient." };
     }
 
-    const { error } = await supabase
+    const { error } = await access.client
       .from("booking_timeline")
       .delete()
       .eq("id", itemId);
@@ -376,40 +420,24 @@ export async function deleteTimelineItem(
 
 export async function moveTimelineItem(
   itemId: string,
-  direction: "up" | "down"
+  direction: "up" | "down",
+  shareToken?: string
 ): Promise<{ ok: true; items: TimelineItem[] } | { ok: false; error: string }> {
   if (!itemId) {
     return { ok: false, error: "Chýba ID položky." };
   }
 
   try {
-    const supabase = await createSSRClient();
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) {
-      return { ok: false, error: "Musíš byť prihlásený." };
-    }
-
-    const { data: existing } = await supabase
-      .from("booking_timeline")
-      .select("id, booking_id, sort_order")
-      .eq("id", itemId)
-      .maybeSingle();
-
-    if (!existing) {
-      return { ok: false, error: "Položka sa nenašla." };
-    }
-
-    const { booking, role } = await getAcceptedBookingAccess(
-      existing.booking_id
-    );
-    if (!booking || role !== "client") {
+    const access = await resolveItemAccess(itemId, shareToken);
+    if (!access.ok) return access;
+    if (access.role !== "client" && access.role !== "guest") {
       return { ok: false, error: "Poradie môže meniť len klient." };
     }
 
-    const { data: rows, error } = await supabase
+    const { data: rows, error } = await access.client
       .from("booking_timeline")
       .select(SELECT_COLS)
-      .eq("booking_id", existing.booking_id)
+      .eq("booking_id", access.bookingId)
       .order("sort_order", { ascending: true });
 
     if (error || !rows) {
@@ -432,11 +460,11 @@ export async function moveTimelineItem(
     const orderA = a.sort_order;
     const orderB = b.sort_order;
 
-    const { error: e1 } = await supabase
+    const { error: e1 } = await access.client
       .from("booking_timeline")
       .update({ sort_order: orderB, updated_at: new Date().toISOString() })
       .eq("id", a.id);
-    const { error: e2 } = await supabase
+    const { error: e2 } = await access.client
       .from("booking_timeline")
       .update({ sort_order: orderA, updated_at: new Date().toISOString() })
       .eq("id", b.id);
@@ -446,7 +474,10 @@ export async function moveTimelineItem(
       return { ok: false, error: "Poradie sa nepodarilo zmeniť." };
     }
 
-    const refreshed = await getBookingTimeline(existing.booking_id);
+    const refreshed = await getBookingTimeline(
+      access.bookingId,
+      shareToken
+    );
     if (!refreshed.ok) return refreshed;
     return { ok: true, items: refreshed.items };
   } catch (err) {

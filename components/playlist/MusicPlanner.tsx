@@ -80,6 +80,8 @@ type MusicPlannerProps = {
   mode: "client" | "dj";
   className?: string;
   defaultOpen?: boolean;
+  /** Guest hub token — enables playlist without login */
+  shareToken?: string;
 };
 
 export function MusicPlanner({
@@ -87,6 +89,7 @@ export function MusicPlanner({
   mode,
   className,
   defaultOpen = false,
+  shareToken,
 }: MusicPlannerProps) {
   const { showToast } = useToast();
   const [open, setOpen] = useState(defaultOpen);
@@ -104,7 +107,7 @@ export function MusicPlanner({
 
   const loadSongs = useCallback(async () => {
     setLoading(true);
-    const result = await getBookingSongs(bookingId);
+    const result = await getBookingSongs(bookingId, shareToken);
     if (!result.ok) {
       showToast(result.error, "error");
       setLoading(false);
@@ -113,7 +116,7 @@ export function MusicPlanner({
     setSongs(result.songs);
     setLoaded(true);
     setLoading(false);
-  }, [bookingId, showToast]);
+  }, [bookingId, shareToken, showToast]);
 
   useEffect(() => {
     if (!open || loaded) return;
@@ -146,6 +149,7 @@ export function MusicPlanner({
       notes,
       url,
       category,
+      shareToken,
     });
     setSubmitting(false);
 
@@ -166,7 +170,7 @@ export function MusicPlanner({
 
   async function handleDelete(songId: string) {
     setBusyId(songId);
-    const result = await deleteBookingSong(songId);
+    const result = await deleteBookingSong(songId, shareToken);
     setBusyId(null);
     if (!result.ok) {
       showToast(result.error, "error");
