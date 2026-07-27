@@ -62,6 +62,8 @@ type EventTimelineProps = {
   defaultOpen?: boolean;
   /** Guest hub token — enables timeline without login */
   shareToken?: string;
+  /** Always open, no accordion chrome (guest hub) */
+  embedded?: boolean;
 };
 
 type FormState = {
@@ -163,10 +165,11 @@ export function EventTimeline({
   className,
   defaultOpen = false,
   shareToken,
+  embedded = false,
 }: EventTimelineProps) {
   const { showToast } = useToast();
   const draft = useMemo(() => readPersistedDraft(bookingId), [bookingId]);
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || embedded);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [items, setItems] = useState<TimelineItem[]>([]);
@@ -464,6 +467,7 @@ export function EventTimeline({
         className
       )}
     >
+      {embedded ? null : (
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -507,9 +511,15 @@ export function EventTimeline({
           )}
         />
       </button>
+      )}
 
       {open ? (
-        <div className="space-y-4 border-t border-white/8 px-4 py-4">
+        <div
+          className={cn(
+            "space-y-4 px-4 py-4",
+            !embedded && "border-t border-white/8"
+          )}
+        >
           {loading && !loaded ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="size-5 animate-spin text-sky-400" />

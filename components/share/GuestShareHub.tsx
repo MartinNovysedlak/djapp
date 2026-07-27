@@ -1,15 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { CalendarClock, Music2 } from "lucide-react";
 import type { GuestSharePublic } from "@/lib/guest-share";
 import { MusicPlanner } from "@/components/playlist/MusicPlanner";
 import { EventTimeline } from "@/components/timeline/EventTimeline";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BRAND } from "@/lib/brand";
+import { cn } from "@/lib/utils";
 
 type GuestShareHubProps = {
   share: GuestSharePublic;
 };
+
+type HubTab = "timeline" | "playlist";
 
 function formatDateSk(iso: string | null) {
   if (!iso) return null;
@@ -24,6 +27,7 @@ function formatDateSk(iso: string | null) {
 
 export function GuestShareHub({ share }: GuestShareHubProps) {
   const dateLabel = formatDateSk(share.eventDate);
+  const [tab, setTab] = useState<HubTab>("timeline");
 
   return (
     <div className="relative min-h-svh overflow-hidden bg-[#0A0A0A] px-4 py-8">
@@ -36,7 +40,7 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
         className="pointer-events-none absolute -bottom-24 left-1/2 size-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl"
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-lg space-y-6">
+      <div className="relative z-10 mx-auto w-full max-w-lg space-y-5">
         <header className="text-center">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-violet-300/80">
             {BRAND.name}
@@ -57,42 +61,58 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
           </p>
         </header>
 
-        <Tabs defaultValue="timeline" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl border border-white/10 bg-black/40 p-1 backdrop-blur-xl">
-            <TabsTrigger
-              value="timeline"
-              className="gap-1.5 rounded-xl py-2.5 text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white"
-            >
-              <CalendarClock className="size-3.5" />
-              Harmonogram
-            </TabsTrigger>
-            <TabsTrigger
-              value="playlist"
-              className="gap-1.5 rounded-xl py-2.5 text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white"
-            >
-              <Music2 className="size-3.5" />
-              Playlist
-            </TabsTrigger>
-          </TabsList>
+        <div
+          role="tablist"
+          aria-label="Sekcie prípravy"
+          className="flex gap-2"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "timeline"}
+            onClick={() => setTab("timeline")}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors",
+              tab === "timeline"
+                ? "border-violet-500/40 bg-violet-500/15 text-white"
+                : "border-white/10 bg-black/30 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+            )}
+          >
+            <CalendarClock className="size-4 shrink-0" />
+            Harmonogram
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "playlist"}
+            onClick={() => setTab("playlist")}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors",
+              tab === "playlist"
+                ? "border-violet-500/40 bg-violet-500/15 text-white"
+                : "border-white/10 bg-black/30 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+            )}
+          >
+            <Music2 className="size-4 shrink-0" />
+            Playlist
+          </button>
+        </div>
 
-          <TabsContent value="timeline" className="mt-4 space-y-3">
-            <EventTimeline
-              bookingId={share.bookingId}
-              mode="client"
-              shareToken={share.slug}
-              defaultOpen
-            />
-          </TabsContent>
-
-          <TabsContent value="playlist" className="mt-4 space-y-3">
-            <MusicPlanner
-              bookingId={share.bookingId}
-              mode="client"
-              shareToken={share.slug}
-              defaultOpen
-            />
-          </TabsContent>
-        </Tabs>
+        {tab === "timeline" ? (
+          <EventTimeline
+            bookingId={share.bookingId}
+            mode="client"
+            shareToken={share.slug}
+            embedded
+          />
+        ) : (
+          <MusicPlanner
+            bookingId={share.bookingId}
+            mode="client"
+            shareToken={share.slug}
+            embedded
+          />
+        )}
       </div>
     </div>
   );

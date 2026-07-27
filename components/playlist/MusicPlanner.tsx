@@ -82,6 +82,8 @@ type MusicPlannerProps = {
   defaultOpen?: boolean;
   /** Guest hub token — enables playlist without login */
   shareToken?: string;
+  /** Always open, no accordion chrome (guest hub) */
+  embedded?: boolean;
 };
 
 export function MusicPlanner({
@@ -90,9 +92,10 @@ export function MusicPlanner({
   className,
   defaultOpen = false,
   shareToken,
+  embedded = false,
 }: MusicPlannerProps) {
   const { showToast } = useToast();
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || embedded);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [songs, setSongs] = useState<BookingSong[]>([]);
@@ -205,6 +208,7 @@ export function MusicPlanner({
         className
       )}
     >
+      {embedded ? null : (
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -242,9 +246,15 @@ export function MusicPlanner({
           )}
         />
       </button>
+      )}
 
       {open ? (
-        <div className="space-y-4 border-t border-white/8 px-4 py-4">
+        <div
+          className={cn(
+            "space-y-4 px-4 py-4",
+            !embedded && "border-t border-white/8"
+          )}
+        >
           {loading && !loaded ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="size-5 animate-spin text-violet-400" />
