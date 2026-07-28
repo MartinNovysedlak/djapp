@@ -2,11 +2,18 @@
 
 import { createClient as createSSRClient } from "@/utils/supabase/server";
 import { isPastLocalDate } from "@/lib/dates";
+import {
+  averageCategoryRating,
+  clampRating,
+  type CategoryRatings,
+  type ReviewCategoryKey,
+  REVIEW_CATEGORIES,
+} from "@/lib/review-categories";
 
 export type SubmitReviewInput = {
   bookingId: string;
   djId: string;
-  rating: number;
+  categories: CategoryRatings;
   comment?: string;
 };
 
@@ -46,6 +53,34 @@ export async function claimOrphanedBookings(): Promise<{ ok: boolean; claimed: n
   }
 }
 
+function parseCategories(
+  input: CategoryRatings | undefined
+): { ok: true; categories: CategoryRatings; rating: number } | { ok: false; error: string } {
+  if (!input) {
+    return { ok: false, error: "Chýbajú hodnotenia podľa kategórií." };
+  }
+
+  const categories = {} as CategoryRatings;
+  for (const cat of REVIEW_CATEGORIES) {
+    const key = cat.key as ReviewCategoryKey;
+    const raw = input[key];
+    if (typeof raw !== "number" || Number.isNaN(raw)) {
+      return { ok: false, error: `Chýba hodnotenie: ${cat.label}.` };
+    }
+    const value = clampRating(raw);
+    if (value < 1 || value > 5) {
+      return { ok: false, error: "Každá kategória musí byť 1 až 5." };
+    }
+    categories[key] = value;
+  }
+
+  return {
+    ok: true,
+    categories,
+    rating: averageCategoryRating(categories),
+  };
+}
+
 /**
  * Client rates a DJ after an accepted, already-happened event. Runs with the
  * caller's own SSR session so RLS enforces `client_id = auth.uid()`, and the
@@ -54,14 +89,14 @@ export async function claimOrphanedBookings(): Promise<{ ok: boolean; claimed: n
 export async function submitReview(
   input: SubmitReviewInput
 ): Promise<SubmitReviewResult> {
-  const rating = Math.round(input.rating);
   const comment = input.comment?.trim() || null;
+  const parsed = parseCategories(input.categories);
 
   if (!input.bookingId || !input.djId) {
     return { ok: false, error: "Chýbajú údaje o rezervácii." };
   }
-  if (rating < 1 || rating > 5) {
-    return { ok: false, error: "Hodnotenie musí byť 1 až 5 hviezdičiek." };
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error };
   }
 
   try {
@@ -100,7 +135,11 @@ export async function submitReview(
         booking_id: input.bookingId,
         dj_id: input.djId,
         client_id: authData.user.id,
-        rating,
+        rating: parsed.rating,
+        rating_communication: parsed.categories.communication,
+        rating_punctuality: parsed.categories.punctuality,
+        rating_performance: parsed.categories.performance,
+        rating_requests: parsed.categories.requests,
         comment,
       },
       { onConflict: "booking_id" }

@@ -20,9 +20,15 @@ import {
   claimOrphanedBookings,
   submitReview,
 } from "@/app/actions/reviews";
+import { CategoryRatingInputs } from "@/components/reviews/CategoryRatings";
 import { isPastLocalDate, parseLocalDate } from "@/lib/dates";
 import { formatEventTypeLabel } from "@/lib/event-types";
-import { cn } from "@/lib/utils";
+import {
+  averageCategoryRating,
+  DEFAULT_CATEGORY_RATINGS,
+  type CategoryRatings,
+  type ReviewCategoryKey,
+} from "@/lib/review-categories";
 
 type Booking = {
   id: string;
@@ -299,20 +305,25 @@ function ReviewComposer({
   onSubmitted: () => void;
 }) {
   const { showToast } = useToast();
-  const [rating, setRating] = useState(5);
-  const [hoverRating, setHoverRating] = useState(0);
+  const [categories, setCategories] = useState<CategoryRatings>(
+    DEFAULT_CATEGORY_RATINGS
+  );
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const djName = dj?.full_name || "Umelec";
-  const displayRating = hoverRating || rating;
+  const overall = averageCategoryRating(categories);
+
+  const setCategory = (key: ReviewCategoryKey, value: number) => {
+    setCategories((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     const result = await submitReview({
       bookingId: booking.id,
       djId: booking.dj_id,
-      rating,
+      categories,
       comment: comment.trim() || undefined,
     });
     setSubmitting(false);
@@ -373,31 +384,16 @@ function ReviewComposer({
       {expanded && (
         <div className="mt-5 space-y-4 border-t border-white/8 pt-5">
           <p className="text-sm text-zinc-400">
-            Klikni na hviezdičky a ulož hodnotenie pre {djName}.
+            Ohodnoť {djName} v 4 kategóriách (1–5). Celkové hodnotenie je
+            priemer.
           </p>
 
-          <div className="flex items-center justify-center gap-1.5 py-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                onClick={() => setRating(star)}
-                className="transition-transform duration-150 hover:scale-110"
-                aria-label={`${star} hviezdičiek`}
-              >
-                <Star
-                  className={cn(
-                    "size-9 transition-colors duration-150",
-                    star <= displayRating
-                      ? "fill-amber-400 text-amber-400"
-                      : "fill-transparent text-zinc-600"
-                  )}
-                />
-              </button>
-            ))}
-          </div>
+          <CategoryRatingInputs values={categories} onChange={setCategory} />
+
+          <p className="text-center text-xs text-zinc-500">
+            Celkovo{" "}
+            <span className="font-semibold text-amber-300">{overall}★</span>
+          </p>
 
           <Textarea
             value={comment}
@@ -422,7 +418,7 @@ function ReviewComposer({
               ) : (
                 <>
                   <Star className="size-4" />
-                  Uložiť recenziu ({rating}★)
+                  Uložiť recenziu ({overall}★)
                 </>
               )}
             </Button>

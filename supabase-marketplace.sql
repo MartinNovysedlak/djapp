@@ -92,6 +92,10 @@ CREATE TABLE IF NOT EXISTS public.reviews (
   client_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE SET NULL,
   rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  rating_communication SMALLINT CHECK (rating_communication IS NULL OR rating_communication BETWEEN 1 AND 5),
+  rating_punctuality SMALLINT CHECK (rating_punctuality IS NULL OR rating_punctuality BETWEEN 1 AND 5),
+  rating_performance SMALLINT CHECK (rating_performance IS NULL OR rating_performance BETWEEN 1 AND 5),
+  rating_requests SMALLINT CHECK (rating_requests IS NULL OR rating_requests BETWEEN 1 AND 5),
   comment TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (booking_id)

@@ -42,6 +42,10 @@ export type LandingReview = {
   comment: string | null;
   created_at: string;
   client_name: string | null;
+  rating_communication: number | null;
+  rating_punctuality: number | null;
+  rating_performance: number | null;
+  rating_requests: number | null;
 };
 
 export type LandingExtra = {
@@ -119,7 +123,9 @@ async function loadLandingReviews(
 ): Promise<LandingReview[]> {
   const { data: reviewsRaw } = await supabase
     .from("reviews")
-    .select("id, rating, comment, created_at, client_id")
+    .select(
+      "id, rating, comment, created_at, client_id, rating_communication, rating_punctuality, rating_performance, rating_requests"
+    )
     .eq("dj_id", djId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -147,6 +153,16 @@ async function loadLandingReviews(
     client_name: r.client_id
       ? nameByClient.get(r.client_id) || "Klient"
       : "Klient",
+    rating_communication:
+      typeof r.rating_communication === "number"
+        ? r.rating_communication
+        : null,
+    rating_punctuality:
+      typeof r.rating_punctuality === "number" ? r.rating_punctuality : null,
+    rating_performance:
+      typeof r.rating_performance === "number" ? r.rating_performance : null,
+    rating_requests:
+      typeof r.rating_requests === "number" ? r.rating_requests : null,
   }));
 }
 

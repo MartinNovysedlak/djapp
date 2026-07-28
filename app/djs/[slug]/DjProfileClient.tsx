@@ -41,6 +41,7 @@ import {
   GalleryLightbox,
   GalleryThumbButton,
 } from "@/components/GalleryLightbox";
+import { CategoryRatingsDisplay } from "@/components/reviews/CategoryRatings";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const gradients = [
@@ -103,6 +104,10 @@ type Review = {
   likes: number;
   dislikes: number;
   myVote: 1 | -1 | null;
+  rating_communication: number | null;
+  rating_punctuality: number | null;
+  rating_performance: number | null;
+  rating_requests: number | null;
 };
 
 type ReviewSort = "newest" | "highest" | "lowest";
@@ -214,7 +219,9 @@ export default function DjProfileClient() {
     const fetchReviews = async () => {
       const { data: reviewRows } = await supabase
         .from("reviews")
-        .select("id, rating, comment, created_at, client_id")
+        .select(
+          "id, rating, comment, created_at, client_id, rating_communication, rating_punctuality, rating_performance, rating_requests"
+        )
         .eq("dj_id", dj.id)
         .order("created_at", { ascending: false });
 
@@ -269,6 +276,10 @@ export default function DjProfileClient() {
           likes: likesByReview[r.id] ?? 0,
           dislikes: dislikesByReview[r.id] ?? 0,
           myVote: myVoteByReview[r.id] ?? null,
+          rating_communication: r.rating_communication ?? null,
+          rating_punctuality: r.rating_punctuality ?? null,
+          rating_performance: r.rating_performance ?? null,
+          rating_requests: r.rating_requests ?? null,
         }))
       );
     };
@@ -980,6 +991,14 @@ export default function DjProfileClient() {
                           />
                         ))}
                       </div>
+                      <CategoryRatingsDisplay
+                        ratings={{
+                          rating_communication: review.rating_communication,
+                          rating_punctuality: review.rating_punctuality,
+                          rating_performance: review.rating_performance,
+                          rating_requests: review.rating_requests,
+                        }}
+                      />
                       {review.comment ? (
                         <p className="mt-3 text-sm leading-relaxed text-zinc-300">
                           {review.comment}

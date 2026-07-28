@@ -6,6 +6,7 @@ import { MapPin, Plus, Star, Trash2 } from "lucide-react";
 import BookingDialog from "@/components/BookingDialog";
 import { GalleryLightbox } from "@/components/GalleryLightbox";
 import type { LandingExtra, LandingProfile, LandingReview } from "@/app/actions/dj-page";
+import { CategoryRatingsDisplay } from "@/components/reviews/CategoryRatings";
 import {
   GalleryBento,
   GalleryGrid,
@@ -1041,6 +1042,15 @@ export function DjPageRenderer({
                         {r.client_name}
                       </span>
                     </div>
+                    <CategoryRatingsDisplay
+                      ratings={{
+                        rating_communication: r.rating_communication,
+                        rating_punctuality: r.rating_punctuality,
+                        rating_performance: r.rating_performance,
+                        rating_requests: r.rating_requests,
+                      }}
+                      className={cn(big && "mx-auto max-w-xs text-left")}
+                    />
                     {r.comment ? (
                       <p
                         className={cn(
