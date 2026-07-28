@@ -68,8 +68,8 @@ export function GuestShareHub({ share }: GuestShareHubProps) {
             {dateLabel ? ` · ${dateLabel}` : ""}
           </p>
           <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-            Unikátny odkaz pre tvoju akciu — program, hudba, požiadavky DJ a
-            krátky dotazník o mieste. Bez registrácie.
+            Unikátny odkaz pre tvoju akciu — program, hudba (playlist +
+            skladby), požiadavky DJ a krátky dotazník o mieste. Bez registrácie.
           </p>
         </header>
 

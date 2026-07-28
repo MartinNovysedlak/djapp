@@ -6,6 +6,12 @@ import {
   resolveGuestShareBooking,
 } from "@/lib/guest-share";
 import { normalizeSongInput } from "@/lib/songs/normalize";
+import {
+  isPlaylistUrl,
+  providerLabel,
+  resolvePlaylistRef,
+  type PlaylistProvider,
+} from "@/lib/playlist-refs";
 
 export type SongCategory = "must_play" | "optional" | "do_not_play";
 
@@ -23,14 +29,34 @@ export type BookingSong = {
   created_at: string;
 };
 
+export type BookingPlaylistRef = {
+  id: string;
+  booking_id: string;
+  added_by: string | null;
+  url: string;
+  title: string | null;
+  provider: PlaylistProvider;
+  notes: string | null;
+  created_at: string;
+};
+
 export type PlaylistActionResult =
   | { ok: true; song?: BookingSong }
+  | { ok: false; error: string };
+
+export type PlaylistRefActionResult =
+  | { ok: true; playlist?: BookingPlaylistRef }
   | { ok: false; error: string };
 
 const CATEGORIES: SongCategory[] = ["must_play", "optional", "do_not_play"];
 
 const SONG_COLS =
   "id, booking_id, added_by, title, artist, notes, category, is_played, source_url, normalized_title, created_at";
+
+const PLAYLIST_COLS =
+  "id, booking_id, added_by, url, title, provider, notes, created_at";
+
+const MAX_PLAYLIST_REFS = 5;
 
 function normalizeText(value: string | undefined | null, max = 200) {
   return (value ?? "").trim().slice(0, max);
@@ -129,6 +155,39 @@ export async function getBookingSongs(
   }
 }
 
+export async function getBookingPlaylistRefs(
+  bookingId: string,
+  shareToken?: string
+): Promise<
+  | { ok: true; playlists: BookingPlaylistRef[] }
+  | { ok: false; error: string }
+> {
+  if (!bookingId) {
+    return { ok: false, error: "Chýba ID rezervácie." };
+  }
+
+  try {
+    const access = await resolvePlaylistAccess(bookingId, shareToken);
+    if (!access.ok) return access;
+
+    const { data, error } = await access.client
+      .from("booking_playlist_refs")
+      .select(PLAYLIST_COLS)
+      .eq("booking_id", bookingId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("[getBookingPlaylistRefs]", error);
+      return { ok: false, error: "Playlisty sa nepodarilo načítať." };
+    }
+
+    return { ok: true, playlists: (data ?? []) as BookingPlaylistRef[] };
+  } catch (err) {
+    console.error("[getBookingPlaylistRefs]", err);
+    return { ok: false, error: "Playlisty sa nepodarilo načítať." };
+  }
+}
+
 export async function addBookingSong(input: {
   bookingId: string;
   title?: string;
@@ -145,6 +204,14 @@ export async function addBookingSong(input: {
   }
   if (!CATEGORIES.includes(input.category)) {
     return { ok: false, error: "Neplatná kategória." };
+  }
+
+  if (input.url && isPlaylistUrl(input.url)) {
+    return {
+      ok: false,
+      error:
+        "Toto vyzerá ako playlist — pridaj ho v sekcii „Referenčný playlist“ vyššie.",
+    };
   }
 
   const normalized = await normalizeSongInput({
@@ -192,6 +259,82 @@ export async function addBookingSong(input: {
   } catch (err) {
     console.error("[addBookingSong]", err);
     return { ok: false, error: "Skladbu sa nepodarilo pridať." };
+  }
+}
+
+export async function addBookingPlaylistRef(input: {
+  bookingId: string;
+  url: string;
+  notes?: string;
+  shareToken?: string;
+}): Promise<PlaylistRefActionResult> {
+  if (!input.bookingId) {
+    return { ok: false, error: "Chýba ID rezervácie." };
+  }
+
+  const notes = normalizeText(input.notes, 500) || null;
+  const resolved = await resolvePlaylistRef(input.url);
+  if (!resolved.ok) return resolved;
+
+  try {
+    const access = await resolvePlaylistAccess(
+      input.bookingId,
+      input.shareToken
+    );
+    if (!access.ok) return access;
+
+    if (access.role !== "client" && access.role !== "guest") {
+      return {
+        ok: false,
+        error: "Playlist môže pridať len klient pri potvrdenej rezervácii.",
+      };
+    }
+
+    const { count } = await access.client
+      .from("booking_playlist_refs")
+      .select("id", { count: "exact", head: true })
+      .eq("booking_id", input.bookingId);
+
+    if ((count ?? 0) >= MAX_PLAYLIST_REFS) {
+      return {
+        ok: false,
+        error: `Maximum je ${MAX_PLAYLIST_REFS} referenčných playlistov.`,
+      };
+    }
+
+    const { data: existing } = await access.client
+      .from("booking_playlist_refs")
+      .select("id")
+      .eq("booking_id", input.bookingId)
+      .eq("url", resolved.playlist.url)
+      .maybeSingle();
+
+    if (existing) {
+      return { ok: false, error: "Tento playlist už je pridaný." };
+    }
+
+    const { data, error } = await access.client
+      .from("booking_playlist_refs")
+      .insert({
+        booking_id: input.bookingId,
+        added_by: access.userId,
+        url: resolved.playlist.url,
+        title: resolved.playlist.title,
+        provider: resolved.playlist.provider,
+        notes,
+      })
+      .select(PLAYLIST_COLS)
+      .single();
+
+    if (error || !data) {
+      console.error("[addBookingPlaylistRef]", error);
+      return { ok: false, error: "Playlist sa nepodarilo pridať." };
+    }
+
+    return { ok: true, playlist: data as BookingPlaylistRef };
+  } catch (err) {
+    console.error("[addBookingPlaylistRef]", err);
+    return { ok: false, error: "Playlist sa nepodarilo pridať." };
   }
 }
 
@@ -268,6 +411,79 @@ export async function deleteBookingSong(
   }
 }
 
+export async function deleteBookingPlaylistRef(
+  playlistId: string,
+  shareToken?: string
+): Promise<PlaylistRefActionResult> {
+  if (!playlistId) {
+    return { ok: false, error: "Chýba ID playlistu." };
+  }
+
+  try {
+    if (shareToken) {
+      const admin = adminClient();
+      const { data: row } = await admin
+        .from("booking_playlist_refs")
+        .select("id, booking_id")
+        .eq("id", playlistId)
+        .maybeSingle();
+      if (!row) return { ok: false, error: "Playlist sa nenašiel." };
+
+      const access = await resolvePlaylistAccess(row.booking_id, shareToken);
+      if (!access.ok) return access;
+      if (access.role !== "guest") {
+        return { ok: false, error: "Playlist môže mazať len klient." };
+      }
+
+      const { error } = await access.client
+        .from("booking_playlist_refs")
+        .delete()
+        .eq("id", playlistId);
+      if (error) {
+        console.error("[deleteBookingPlaylistRef]", error);
+        return { ok: false, error: "Playlist sa nepodarilo zmazať." };
+      }
+      return { ok: true };
+    }
+
+    const supabase = await createSSRClient();
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      return { ok: false, error: "Musíš byť prihlásený." };
+    }
+
+    const { data: row } = await supabase
+      .from("booking_playlist_refs")
+      .select("id, booking_id")
+      .eq("id", playlistId)
+      .maybeSingle();
+
+    if (!row) {
+      return { ok: false, error: "Playlist sa nenašiel." };
+    }
+
+    const { booking, role } = await getAcceptedBookingAccess(row.booking_id);
+    if (!booking || role !== "client") {
+      return { ok: false, error: "Playlist môže mazať len klient." };
+    }
+
+    const { error } = await supabase
+      .from("booking_playlist_refs")
+      .delete()
+      .eq("id", playlistId);
+
+    if (error) {
+      console.error("[deleteBookingPlaylistRef]", error);
+      return { ok: false, error: "Playlist sa nepodarilo zmazať." };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    console.error("[deleteBookingPlaylistRef]", err);
+    return { ok: false, error: "Playlist sa nepodarilo zmazať." };
+  }
+}
+
 export async function toggleSongPlayed(
   songId: string,
   isPlayed: boolean
@@ -316,3 +532,5 @@ export async function toggleSongPlayed(
     return { ok: false, error: "Stav skladby sa nepodarilo uložiť." };
   }
 }
+
+export { providerLabel };

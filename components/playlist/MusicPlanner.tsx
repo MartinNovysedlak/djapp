@@ -1,20 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
-  Ban,
-  Check,
-  ChevronDown,
-  Loader2,
-  Music,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import {
+  addBookingPlaylistRef,
   addBookingSong,
+  deleteBookingPlaylistRef,
   deleteBookingSong,
+  getBookingPlaylistRefs,
   getBookingSongs,
+  providerLabel,
   toggleSongPlayed,
+  type BookingPlaylistRef,
   type BookingSong,
   type SongCategory,
 } from "@/app/actions/playlist";
@@ -31,6 +26,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  ExternalLink,
+  ListMusic,
+  Loader2,
+  Music,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 const CATEGORY_META: Record<
   SongCategory,
@@ -99,6 +106,7 @@ export function MusicPlanner({
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [songs, setSongs] = useState<BookingSong[]>([]);
+  const [playlists, setPlaylists] = useState<BookingPlaylistRef[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
@@ -108,15 +116,28 @@ export function MusicPlanner({
   const [category, setCategory] = useState<SongCategory>("must_play");
   const [submitting, setSubmitting] = useState(false);
 
+  const [playlistUrl, setPlaylistUrl] = useState("");
+  const [playlistNotes, setPlaylistNotes] = useState("");
+  const [playlistSubmitting, setPlaylistSubmitting] = useState(false);
+
   const loadSongs = useCallback(async () => {
     setLoading(true);
-    const result = await getBookingSongs(bookingId, shareToken);
-    if (!result.ok) {
-      showToast(result.error, "error");
+    const [songsResult, playlistsResult] = await Promise.all([
+      getBookingSongs(bookingId, shareToken),
+      getBookingPlaylistRefs(bookingId, shareToken),
+    ]);
+    if (!songsResult.ok) {
+      showToast(songsResult.error, "error");
       setLoading(false);
       return;
     }
-    setSongs(result.songs);
+    if (!playlistsResult.ok) {
+      showToast(playlistsResult.error, "error");
+      setLoading(false);
+      return;
+    }
+    setSongs(songsResult.songs);
+    setPlaylists(playlistsResult.playlists);
     setLoaded(true);
     setLoading(false);
   }, [bookingId, shareToken, showToast]);
@@ -139,7 +160,45 @@ export function MusicPlanner({
   }, [songs]);
 
   const total = songs.length;
+  const playlistCount = playlists.length;
   const blacklistCount = grouped.do_not_play.length;
+
+  async function handleAddPlaylist(e: FormEvent) {
+    e.preventDefault();
+    if (playlistSubmitting) return;
+    setPlaylistSubmitting(true);
+    const result = await addBookingPlaylistRef({
+      bookingId,
+      url: playlistUrl,
+      notes: playlistNotes,
+      shareToken,
+    });
+    setPlaylistSubmitting(false);
+
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+
+    if (result.playlist) {
+      setPlaylists((prev) => [...prev, result.playlist!]);
+    }
+    setPlaylistUrl("");
+    setPlaylistNotes("");
+    showToast("Playlist pridaný.", "success");
+  }
+
+  async function handleDeletePlaylist(playlistId: string) {
+    setBusyId(playlistId);
+    const result = await deleteBookingPlaylistRef(playlistId, shareToken);
+    setBusyId(null);
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+    setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+    showToast("Playlist odstránený.", "success");
+  }
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -226,9 +285,18 @@ export function MusicPlanner({
             {loaded ? (
               <>
                 {" · "}
-                {total === 0
+                {playlistCount > 0 ? (
+                  <span>
+                    {playlistCount}{" "}
+                    {playlistCount === 1 ? "playlist" : "playlisty"}
+                    {total > 0 ? " · " : ""}
+                  </span>
+                ) : null}
+                {total === 0 && playlistCount === 0
                   ? "zatiaľ prázdne"
-                  : `${total} ${total === 1 ? "skladba" : total < 5 ? "skladby" : "skladieb"}`}
+                  : total > 0
+                    ? `${total} ${total === 1 ? "skladba" : total < 5 ? "skladby" : "skladieb"}`
+                    : null}
                 {blacklistCount > 0 ? (
                   <span className="text-red-400">
                     {" "}
@@ -261,8 +329,151 @@ export function MusicPlanner({
             </div>
           ) : (
             <>
+              <section className="space-y-3 rounded-2xl border border-violet-500/20 bg-violet-500/[0.05] p-3.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
+                    <ListMusic className="size-3.5 text-violet-300" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white">
+                      Referenčný playlist
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+                      {mode === "client"
+                        ? "Vlož Spotify alebo YouTube playlist — DJ uvidí štýl a žáner naraz, bez lúskania zoznamu."
+                        : "Playlisty od klienta ako rýchly prehľad štýlu / žánru."}
+                    </p>
+                  </div>
+                </div>
+
+                {mode === "client" ? (
+                  <form onSubmit={handleAddPlaylist} className="space-y-2.5">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`playlist-url-${bookingId}`}>
+                        Spotify / YouTube playlist
+                      </Label>
+                      <Input
+                        id={`playlist-url-${bookingId}`}
+                        type="url"
+                        value={playlistUrl}
+                        onChange={(e) => setPlaylistUrl(e.target.value)}
+                        placeholder="https://open.spotify.com/playlist/… alebo YouTube"
+                        className="h-10 rounded-xl"
+                        maxLength={500}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`playlist-notes-${bookingId}`}>
+                        Poznámka{" "}
+                        <span className="font-normal text-zinc-500">
+                          (voliteľné)
+                        </span>
+                      </Label>
+                      <Input
+                        id={`playlist-notes-${bookingId}`}
+                        value={playlistNotes}
+                        onChange={(e) => setPlaylistNotes(e.target.value)}
+                        placeholder="napr. vibe na večerný tanec, 80s/90s…"
+                        className="h-10 rounded-xl"
+                        maxLength={500}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={playlistSubmitting || !playlistUrl.trim()}
+                      size="sm"
+                      className="gap-1.5 rounded-full"
+                    >
+                      {playlistSubmitting ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="size-3.5" />
+                      )}
+                      Pridať playlist
+                    </Button>
+                  </form>
+                ) : null}
+
+                {playlists.length === 0 ? (
+                  <p className="px-0.5 text-xs text-zinc-600">
+                    {mode === "client"
+                      ? "Zatiaľ žiadny referenčný playlist."
+                      : "Klient ešte nepridal playlist."}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {playlists.map((pl) => {
+                      const busy = busyId === pl.id;
+                      const label = providerLabel(pl.provider);
+                      return (
+                        <li
+                          key={pl.id}
+                          className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5"
+                        >
+                          <div
+                            className={cn(
+                              "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold uppercase tracking-wide",
+                              pl.provider === "spotify"
+                                ? "bg-[#1DB954]/15 text-[#1DB954]"
+                                : pl.provider === "youtube"
+                                  ? "bg-red-500/15 text-red-300"
+                                  : "bg-white/10 text-zinc-300"
+                            )}
+                          >
+                            {pl.provider === "spotify"
+                              ? "Sp"
+                              : pl.provider === "youtube"
+                                ? "YT"
+                                : "PL"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-white">
+                              {pl.title || `${label} playlist`}
+                            </p>
+                            <p className="text-[11px] text-zinc-500">{label}</p>
+                            {pl.notes ? (
+                              <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                                {pl.notes}
+                              </p>
+                            ) : null}
+                            <a
+                              href={pl.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-violet-300/90 hover:text-violet-200"
+                            >
+                              Otvoriť playlist
+                              <ExternalLink className="size-3" />
+                            </a>
+                          </div>
+                          {mode === "client" ? (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => handleDeletePlaylist(pl.id)}
+                              className="mt-0.5 rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/5 hover:text-red-300"
+                              title="Odstrániť"
+                            >
+                              {busy ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3.5" />
+                              )}
+                            </button>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
               {mode === "client" ? (
                 <form onSubmit={handleAdd} className="space-y-3">
+                  <p className="text-xs font-medium text-zinc-400">
+                    Alebo konkrétne skladby
+                  </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor={`song-title-${bookingId}`}>
@@ -296,7 +507,7 @@ export function MusicPlanner({
 
                   <div className="space-y-1.5">
                     <Label htmlFor={`song-url-${bookingId}`}>
-                      YouTube / Spotify link
+                      YouTube / Spotify link na skladbu
                     </Label>
                     <Input
                       id={`song-url-${bookingId}`}
