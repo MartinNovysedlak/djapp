@@ -8,6 +8,12 @@ export type ExtrasActionResult =
   | { ok: true }
   | { ok: false; error: string };
 
+export type BookingExtraSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+};
+
 type RequireDjResult =
   | { ok: true; supabase: Awaited<ReturnType<typeof createSSRClient>>; userId: string }
   | { ok: false; error: string };
@@ -236,6 +242,57 @@ export async function getBookingExtrasBundle(bookingId: string): Promise<
     catalog: (catalog ?? []) as DjExtra[],
     selected: (selected ?? []) as BookingExtra[],
   };
+}
+
+export async function listBookingExtrasSummaries(
+  bookingIds: string[]
+): Promise<
+  | { ok: true; byBookingId: Record<string, BookingExtraSummary[]> }
+  | { ok: false; error: string }
+> {
+  const ids = [...new Set(bookingIds.filter(Boolean))];
+  if (ids.length === 0) return { ok: true, byBookingId: {} };
+
+  const auth = await requireDj();
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  const { data: owned, error: ownedError } = await auth.supabase
+    .from("bookings")
+    .select("id")
+    .eq("dj_id", auth.userId)
+    .in("id", ids);
+
+  if (ownedError) {
+    console.error("[listBookingExtrasSummaries owned]", ownedError);
+    return { ok: false, error: "Špeciálne požiadavky sa nepodarilo načítať." };
+  }
+
+  const ownedIds = (owned ?? []).map((b) => b.id as string);
+  if (ownedIds.length === 0) return { ok: true, byBookingId: {} };
+
+  const { data, error } = await auth.supabase
+    .from("booking_extras")
+    .select("id, booking_id, title, description, created_at")
+    .in("booking_id", ownedIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[listBookingExtrasSummaries]", error);
+    return { ok: false, error: "Špeciálne požiadavky sa nepodarilo načítať." };
+  }
+
+  const byBookingId: Record<string, BookingExtraSummary[]> = {};
+  for (const row of data ?? []) {
+    const bookingId = row.booking_id as string;
+    if (!byBookingId[bookingId]) byBookingId[bookingId] = [];
+    byBookingId[bookingId].push({
+      id: row.id as string,
+      title: (row.title as string) || "Položka",
+      description: (row.description as string | null) ?? null,
+    });
+  }
+
+  return { ok: true, byBookingId };
 }
 
 export async function addExtraToBooking(input: {

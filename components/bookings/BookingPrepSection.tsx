@@ -83,7 +83,9 @@ export function BookingPrepSection({
         <div className="space-y-2.5">
           <MusicPlanner bookingId={bookingId} mode={mode} />
           <EventTimeline bookingId={bookingId} mode={mode} />
-          <BookingExtras bookingId={bookingId} mode={mode} />
+          {mode === "client" ? (
+            <BookingExtras bookingId={bookingId} mode="client" />
+          ) : null}
           <DjRequirementsPanel bookingId={bookingId} mode={mode} />
           <VenueQuestionnairePanel bookingId={bookingId} mode={mode} />
         </div>

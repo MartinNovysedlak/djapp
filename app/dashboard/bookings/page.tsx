@@ -73,6 +73,11 @@ import {
   type BookingInvoiceSummary,
   type InvoiceWorkflowStatus,
 } from "@/app/actions/invoices";
+import {
+  listBookingExtrasSummaries,
+  type BookingExtraSummary,
+} from "@/app/actions/extras";
+import { BookingSelectedExtras } from "@/components/extras/BookingSelectedExtras";
 import { EVENT_TYPES, formatEventTypeLabel } from "@/lib/event-types";
 import { useDjBookings, type CachedBooking } from "@/hooks/useDjBookings";
 import { DjOfferForm } from "@/components/bulk/BulkOfferForm";
@@ -451,6 +456,9 @@ function BookingsPageInner() {
   const [invoiceByBooking, setInvoiceByBooking] = useState<
     Record<string, BookingInvoiceSummary>
   >({});
+  const [extrasByBooking, setExtrasByBooking] = useState<
+    Record<string, BookingExtraSummary[]>
+  >({});
   const [statusBusyBookingId, setStatusBusyBookingId] = useState<string | null>(
     null
   );
@@ -532,14 +540,17 @@ function BookingsPageInner() {
     if (ids.length === 0) {
       setContractByBooking({});
       setInvoiceByBooking({});
+      setExtrasByBooking({});
       return;
     }
-    const [contracts, invoices] = await Promise.all([
+    const [contracts, invoices, extras] = await Promise.all([
       getBookingContractSummaries(ids),
       getBookingInvoiceSummaries(ids),
+      listBookingExtrasSummaries(ids),
     ]);
     if (contracts.ok) setContractByBooking(contracts.byBookingId);
     if (invoices.ok) setInvoiceByBooking(invoices.byBookingId);
+    if (extras.ok) setExtrasByBooking(extras.byBookingId);
   }, []);
 
   useEffect(() => {
@@ -547,6 +558,7 @@ function BookingsPageInner() {
     if (ids.length === 0) {
       setContractByBooking({});
       setInvoiceByBooking({});
+      setExtrasByBooking({});
       return;
     }
     let cancelled = false;
@@ -971,6 +983,7 @@ function BookingsPageInner() {
                     returnTab={tab}
                     contract={contractByBooking[b.id]}
                     invoice={invoiceByBooking[b.id]}
+                    selectedExtras={extrasByBooking[b.id] ?? []}
                     statusBusy={statusBusyBookingId === b.id}
                     downloading={downloadingBookingId === b.id}
                     downloadingInvoice={downloadingInvoiceBookingId === b.id}
@@ -1015,6 +1028,7 @@ function BookingsPageInner() {
                     returnTab={tab}
                     contract={contractByBooking[b.id]}
                     invoice={invoiceByBooking[b.id]}
+                    selectedExtras={extrasByBooking[b.id] ?? []}
                     statusBusy={statusBusyBookingId === b.id}
                     downloading={downloadingBookingId === b.id}
                     downloadingInvoice={downloadingInvoiceBookingId === b.id}
@@ -1057,6 +1071,7 @@ function BookingsPageInner() {
                     returnTab={tab}
                     contract={contractByBooking[b.id]}
                     invoice={invoiceByBooking[b.id]}
+                    selectedExtras={extrasByBooking[b.id] ?? []}
                     statusBusy={statusBusyBookingId === b.id}
                     downloading={downloadingBookingId === b.id}
                     downloadingInvoice={downloadingInvoiceBookingId === b.id}
@@ -1179,6 +1194,7 @@ function BookingCard({
   onToggle,
   contract,
   invoice,
+  selectedExtras = [],
   statusBusy,
   downloading,
   downloadingInvoice,
@@ -1199,6 +1215,7 @@ function BookingCard({
   onToggle: () => void;
   contract?: BookingContractSummary;
   invoice?: BookingInvoiceSummary;
+  selectedExtras?: BookingExtraSummary[];
   statusBusy?: boolean;
   downloading?: boolean;
   downloadingInvoice?: boolean;
@@ -1297,6 +1314,12 @@ function BookingCard({
                 </>
               )}
             </p>
+            {!expanded ? (
+              <BookingSelectedExtras
+                items={selectedExtras}
+                variant="chips"
+              />
+            ) : null}
           </div>
           <ChevronDown
             className={cn(
@@ -1860,6 +1883,7 @@ function BookingCard({
               </p>
             </div>
           )}
+          <BookingSelectedExtras items={selectedExtras} variant="panel" />
           <BookingPrepSection
             bookingId={booking.id}
             mode="dj"
