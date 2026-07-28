@@ -54,6 +54,7 @@ import { EventTimeline } from "@/components/timeline/EventTimeline";
 import { BookingExtras } from "@/components/extras/BookingExtras";
 import { LiveRequestQr } from "@/components/live/LiveRequestQr";
 import { ClientShareQr } from "@/components/share/ClientShareQr";
+import { ReviewInviteLink } from "@/components/reviews/ReviewInviteLink";
 import { DjRequirementsPanel } from "@/components/tech/DjRequirementsPanel";
 import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
 import {
@@ -1854,6 +1855,10 @@ function BookingCard({
             returnTab={returnTab}
           />
           <ClientShareQr bookingId={booking.id} />
+          <ReviewInviteLink
+            bookingId={booking.id}
+            clientName={booking.client_name}
+          />
           <BookingExtras bookingId={booking.id} mode="dj" />
           <MusicPlanner bookingId={booking.id} mode="dj" />
           <EventTimeline bookingId={booking.id} mode="dj" />

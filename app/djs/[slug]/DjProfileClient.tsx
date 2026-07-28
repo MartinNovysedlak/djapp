@@ -220,7 +220,7 @@ export default function DjProfileClient() {
       const { data: reviewRows } = await supabase
         .from("reviews")
         .select(
-          "id, rating, comment, created_at, client_id, rating_communication, rating_punctuality, rating_performance, rating_requests"
+          "id, rating, comment, created_at, client_id, reviewer_name, rating_communication, rating_punctuality, rating_performance, rating_requests"
         )
         .eq("dj_id", dj.id)
         .order("created_at", { ascending: false });
@@ -231,13 +231,19 @@ export default function DjProfileClient() {
       }
 
       const reviewIds = reviewRows.map((r) => r.id);
-      const clientIds = Array.from(new Set(reviewRows.map((r) => r.client_id)));
+      const clientIds = Array.from(
+        new Set(
+          reviewRows.map((r) => r.client_id).filter((id): id is string => Boolean(id))
+        )
+      );
 
       const [{ data: clientRows }, { data: voteRows }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, full_name, real_first_name")
-          .in("id", clientIds),
+        clientIds.length > 0
+          ? supabase
+              .from("profiles")
+              .select("id, full_name, real_first_name")
+              .in("id", clientIds)
+          : Promise.resolve({ data: [] as { id: string; full_name: string | null; real_first_name: string | null }[] }),
         supabase
           .from("review_votes")
           .select("review_id, user_id, vote")
@@ -272,7 +278,9 @@ export default function DjProfileClient() {
           rating: r.rating,
           comment: r.comment,
           created_at: r.created_at,
-          client_name: nameById[r.client_id] ?? "Zákazník",
+          client_name: r.client_id
+            ? nameById[r.client_id] ?? "Zákazník"
+            : r.reviewer_name?.trim() || "Zákazník",
           likes: likesByReview[r.id] ?? 0,
           dislikes: dislikesByReview[r.id] ?? 0,
           myVote: myVoteByReview[r.id] ?? null,

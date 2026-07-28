@@ -89,13 +89,14 @@ CREATE POLICY "DJs can update their own booking requests"
 CREATE TABLE IF NOT EXISTS public.reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dj_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  client_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE SET NULL,
   rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
   rating_communication SMALLINT CHECK (rating_communication IS NULL OR rating_communication BETWEEN 1 AND 5),
   rating_punctuality SMALLINT CHECK (rating_punctuality IS NULL OR rating_punctuality BETWEEN 1 AND 5),
   rating_performance SMALLINT CHECK (rating_performance IS NULL OR rating_performance BETWEEN 1 AND 5),
   rating_requests SMALLINT CHECK (rating_requests IS NULL OR rating_requests BETWEEN 1 AND 5),
+  reviewer_name TEXT,
   comment TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (booking_id)

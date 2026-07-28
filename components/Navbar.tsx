@@ -104,6 +104,7 @@ export default function Navbar() {
   const isPageBuilderEdit = pathname.startsWith("/dashboard/page-builder/edit");
   const isLiveGuest = pathname.startsWith("/live");
   const isGuestShare = pathname.startsWith("/akcia");
+  const isGuestReview = pathname.startsWith("/hodnotenie");
   const isLiveBooth =
     pathname.includes("/bookings/") && pathname.endsWith("/live");
   const isAdminRoute = pathname.startsWith("/admin");
@@ -115,6 +116,7 @@ export default function Navbar() {
   if (
     isLiveGuest ||
     isGuestShare ||
+    isGuestReview ||
     isLiveBooth ||
     isAdminRoute ||
     isPageBuilderEdit

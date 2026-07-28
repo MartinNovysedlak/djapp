@@ -124,7 +124,7 @@ async function loadLandingReviews(
   const { data: reviewsRaw } = await supabase
     .from("reviews")
     .select(
-      "id, rating, comment, created_at, client_id, rating_communication, rating_punctuality, rating_performance, rating_requests"
+      "id, rating, comment, created_at, client_id, reviewer_name, rating_communication, rating_punctuality, rating_performance, rating_requests"
     )
     .eq("dj_id", djId)
     .order("created_at", { ascending: false })
@@ -152,7 +152,7 @@ async function loadLandingReviews(
     created_at: r.created_at,
     client_name: r.client_id
       ? nameByClient.get(r.client_id) || "Klient"
-      : "Klient",
+      : r.reviewer_name?.trim() || "Klient",
     rating_communication:
       typeof r.rating_communication === "number"
         ? r.rating_communication
