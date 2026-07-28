@@ -8,6 +8,8 @@ import { BRAND } from "@/lib/brand";
 import { getPublicSiteUrl } from "@/lib/site-url";
 import { SiteFooter } from "@/components/SiteFooter";
 
+export const revalidate = 120;
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };

@@ -189,11 +189,15 @@ export default function Navbar() {
               <Users className="size-3.5" />
               Katalóg
             </Link>
-            <Link href="/blog" className={linkClass(isActive("/blog"))}>
+            <Link href="/blog" prefetch className={linkClass(isActive("/blog"))}>
               <Newspaper className="size-3.5" />
               Blog
             </Link>
-            <Link href="/kontakt" className={linkClass(isActive("/kontakt"))}>
+            <Link
+              href="/kontakt"
+              prefetch
+              className={linkClass(isActive("/kontakt"))}
+            >
               <Mail className="size-3.5" />
               Kontakt
             </Link>

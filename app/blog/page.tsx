@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata("blog");
+export const revalidate = 120;
 
 export default async function BlogIndexPage() {
   const result = await listPublishedBlogPosts();

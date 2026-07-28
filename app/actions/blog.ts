@@ -84,7 +84,8 @@ export async function getAdminBlogPost(id: string) {
 }
 
 export async function listPublishedBlogPosts() {
-  const supabase = await createClient();
+  const { createPublicClient } = await import("@/utils/supabase/public");
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("blog_posts")
     .select(
@@ -98,7 +99,8 @@ export async function listPublishedBlogPosts() {
 }
 
 export async function getPublishedBlogBySlug(slug: string) {
-  const supabase = await createClient();
+  const { createPublicClient } = await import("@/utils/supabase/public");
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("blog_posts")
     .select("*")
