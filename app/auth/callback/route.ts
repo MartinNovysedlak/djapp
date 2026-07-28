@@ -9,6 +9,7 @@ import {
 import { syncOAuthProfileFromUser } from "@/lib/sync-oauth-profile";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { createBillingAdminClient } from "@/lib/stripe/config";
+import { ONBOARDING_OK_COOKIE, ONBOARDING_OK_MAX_AGE } from "@/lib/onboarding-cookie";
 
 /**
  * OAuth / email-verification callback. Prefills Google profile data,
@@ -100,5 +101,18 @@ export async function GET(request: Request) {
     path: "/",
     maxAge: 0,
   });
+  // Skip middleware Auth/DB on the first dashboard hit after login.
+  if (
+    destination !== "/onboarding" &&
+    isProfileOnboardingComplete(profile)
+  ) {
+    response.cookies.set(ONBOARDING_OK_COOKIE, data.user.id, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: ONBOARDING_OK_MAX_AGE,
+    });
+  }
   return response;
 }

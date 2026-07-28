@@ -2,11 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
+import {
+  ONBOARDING_OK_COOKIE,
+  ONBOARDING_OK_MAX_AGE,
+} from "@/lib/onboarding-cookie";
 
-/** Cookie: value = auth user id when onboarding is complete. */
-export const ONBOARDING_OK_COOKIE = "btv_pc";
-
-const ONBOARDING_OK_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+export { ONBOARDING_OK_COOKIE } from "@/lib/onboarding-cookie";
 
 function copyCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
@@ -43,7 +44,7 @@ function isPublicGuestSurface(pathname: string): boolean {
   );
 }
 
-/** Marketing / public browse — no Auth round-trip when onboarding is already verified. */
+/** Marketing / public — never hit Supabase from middleware. */
 function isPublicBrowse(pathname: string): boolean {
   if (pathname === "/") return true;
   return (
@@ -51,10 +52,21 @@ function isPublicBrowse(pathname: string): boolean {
     pathname.startsWith("/blog") ||
     pathname.startsWith("/kontakt") ||
     pathname.startsWith("/podmienky") ||
+    pathname.startsWith("/obchodne-podmienky") ||
     pathname.startsWith("/ochrana-udajov") ||
     pathname.startsWith("/p/") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/register")
+  );
+}
+
+function isProtectedApp(pathname: string): boolean {
+  return (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/client-dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname === "/onboarding" ||
+    pathname.startsWith("/onboarding/")
   );
 }
 
@@ -89,13 +101,16 @@ function clearOnboardingOkCookie(response: NextResponse) {
 }
 
 /**
- * Refresh auth cookies and gate incomplete profiles to /onboarding.
+ * Gate incomplete profiles to /onboarding — only on protected app routes.
  *
- * Performance rules:
- * 1. No auth cookies → pass through (no network).
- * 2. Public browse + onboarding cookie → pass through (no network).
- * 3. Fresh local session + onboarding cookie → pass through.
- * 4. Otherwise validate with getUser / profiles as needed.
+ * Fast paths (no network):
+ * 1. Auth plumbing / guest surfaces
+ * 2. Public marketing pages (always)
+ * 3. Anonymous visitors
+ * 4. Protected app + onboarding cookie already set
+ *
+ * Session refresh for Server Components happens on the rare path without
+ * the onboarding cookie (first dashboard hit after login).
  */
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -104,10 +119,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // Public site must stay instant — onboarding is enforced only in the app shell.
+  if (isPublicBrowse(pathname)) {
+    return NextResponse.next({ request });
+  }
+
   const onboardingCookie = request.cookies.get(ONBOARDING_OK_COOKIE)?.value;
   const hasAuth = hasSupabaseAuthCookie(request);
 
-  // Anonymous visitor — never hit Supabase Auth.
   if (!hasAuth) {
     if (onboardingCookie) {
       const res = NextResponse.next({ request });
@@ -117,11 +136,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // Logged-in user browsing public pages with verified onboarding —
-  // skip Auth entirely (session refresh happens on dashboard routes).
   const onOnboarding =
     pathname === "/onboarding" || pathname.startsWith("/onboarding/");
-  if (onboardingCookie && isPublicBrowse(pathname) && !onOnboarding) {
+
+  // Already verified — skip Auth/DB on every dashboard click.
+  if (onboardingCookie && isProtectedApp(pathname) && !onOnboarding) {
     return NextResponse.next({ request });
   }
 
@@ -148,7 +167,6 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Local JWT read (no network).
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -166,8 +184,6 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Fresh session but no onboarding cookie yet — check profiles via DB only
-  // (skip Auth server round-trip) and set the cookie.
   if (sessionFresh && session?.user?.id && !onOnboarding) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -197,7 +213,6 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Need server validation / token refresh.
   const {
     data: { user },
   } = await supabase.auth.getUser();

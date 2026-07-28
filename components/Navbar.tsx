@@ -173,7 +173,7 @@ export default function Navbar() {
               : "border-transparent bg-transparent"
           )}
         >
-          <Link href="/" className="group flex items-center">
+          <Link href="/" prefetch className="group flex items-center">
             <BrandLogo
               size="md"
               className="transition-opacity group-hover:opacity-90"
@@ -181,7 +181,7 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden items-center gap-1 sm:flex">
-            <Link href="/" className={linkClass(pathname === "/")}>
+            <Link href="/" prefetch className={linkClass(pathname === "/")}>
               <Home className="size-3.5" />
               Domov
             </Link>
@@ -204,6 +204,7 @@ export default function Navbar() {
             {authReady && user ? (
               <Link
                 href={dashboardHref}
+                prefetch
                 className={linkClass(
                   isActive(
                     role === "admin"
@@ -259,6 +260,7 @@ export default function Navbar() {
       <div className="btv-mobile-bottom-nav fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-background/80 px-3 py-2 shadow-[0_16px_50px_-12px_oklch(0_0_0/0.7)] backdrop-blur-2xl sm:hidden">
         <Link
           href="/"
+          prefetch
           className={cn(
             "flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[10px] transition-all duration-300",
             pathname === "/" ? "text-violet-300" : "text-zinc-500"
@@ -269,6 +271,7 @@ export default function Navbar() {
         </Link>
         <Link
           href="/djs"
+          prefetch
           className={cn(
             "flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[10px] transition-all duration-300",
             isActive("/djs") ? "text-violet-300" : "text-zinc-500"
@@ -300,6 +303,7 @@ export default function Navbar() {
         {authReady && user ? (
           <Link
             href={dashboardHref}
+            prefetch
             className={cn(
               "flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[10px] transition-all duration-300",
               isActive(
