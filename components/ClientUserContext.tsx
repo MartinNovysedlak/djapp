@@ -106,11 +106,13 @@ export function ClientUserProvider({ children }: { children: ReactNode }) {
         setProfile(cached.profile);
         setLoading(false);
         void loadProfile(nextUser);
+        void fetch("/api/session/ready", { method: "POST" }).catch(() => {});
         return;
       }
 
       await loadProfile(nextUser);
       if (active) setLoading(false);
+      void fetch("/api/session/ready", { method: "POST" }).catch(() => {});
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(

@@ -30,8 +30,8 @@ type CatalogCache = {
 };
 
 const AUTH_TTL_MS = 5 * 60 * 1000;
-const BOOKINGS_TTL_MS = 3 * 60 * 1000;
-const CATALOG_TTL_MS = 2 * 60 * 1000;
+const BOOKINGS_TTL_MS = 5 * 60 * 1000;
+const CATALOG_TTL_MS = 5 * 60 * 1000;
 
 let dashboardAuth: DashboardAuthCache | null = null;
 let clientAuth: ClientAuthCache | null = null;

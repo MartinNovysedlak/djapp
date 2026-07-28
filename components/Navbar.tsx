@@ -11,6 +11,9 @@ import {
   getClientAuthCache,
   getDashboardAuthCache,
 } from "@/lib/nav-cache";
+import { PrefetchRoutes } from "@/components/PrefetchRoutes";
+
+const MARKETING_PREFETCH = ["/", "/djs", "/blog", "/kontakt"] as const;
 
 type AuthUser = { id: string; email?: string };
 type NavRole = "dj" | "client" | "admin";
@@ -164,6 +167,7 @@ export default function Navbar() {
       className="btv-marketing-nav"
       data-shell={isDashboardRoute ? "dashboard" : "marketing"}
     >
+      {!isDashboardRoute ? <PrefetchRoutes hrefs={MARKETING_PREFETCH} /> : null}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
         <nav
           className={cn(

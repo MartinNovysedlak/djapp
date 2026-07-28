@@ -40,6 +40,23 @@ import {
 } from "@/lib/plans";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { cn } from "@/lib/utils";
+import { PrefetchRoutes } from "@/components/PrefetchRoutes";
+
+const DASHBOARD_PREFETCH = [
+  "/dashboard/profile",
+  "/dashboard/page-builder",
+  "/dashboard/bookings",
+  "/dashboard/messages",
+  "/dashboard/analytics",
+  "/dashboard/calendar",
+  "/dashboard/settings/marketing",
+  "/dashboard/extras",
+  "/dashboard/program-templates",
+  "/dashboard/requirement-templates",
+  "/dashboard/contracts",
+  "/dashboard/contracts/generate",
+  "/dashboard/invoices/generate",
+] as const;
 
 export default function DashboardLayout({
   children,
@@ -48,6 +65,7 @@ export default function DashboardLayout({
 }) {
   return (
     <DashboardUserProvider>
+      <PrefetchRoutes hrefs={DASHBOARD_PREFETCH} />
       <DashboardShell>{children}</DashboardShell>
     </DashboardUserProvider>
   );

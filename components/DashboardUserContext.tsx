@@ -178,11 +178,14 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         // Soft refresh in background — don't block the dashboard shell.
         void loadProfile(nextUser);
+        // Ensure middleware fast-path cookie exists (email/password login).
+        void fetch("/api/session/ready", { method: "POST" }).catch(() => {});
         return;
       }
 
       await loadProfile(nextUser);
       if (active) setLoading(false);
+      void fetch("/api/session/ready", { method: "POST" }).catch(() => {});
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(

@@ -60,16 +60,6 @@ function isPublicBrowse(pathname: string): boolean {
   );
 }
 
-function isProtectedApp(pathname: string): boolean {
-  return (
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/client-dashboard") ||
-    pathname.startsWith("/admin") ||
-    pathname === "/onboarding" ||
-    pathname.startsWith("/onboarding/")
-  );
-}
-
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
   return request.cookies
     .getAll()
@@ -139,8 +129,8 @@ export async function updateSession(request: NextRequest) {
   const onOnboarding =
     pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 
-  // Already verified — skip Auth/DB on every dashboard click.
-  if (onboardingCookie && isProtectedApp(pathname) && !onOnboarding) {
+  // Verified session — never hit Auth/DB (dashboard, APIs, server actions, RSC).
+  if (hasAuth && onboardingCookie && !onOnboarding) {
     return NextResponse.next({ request });
   }
 

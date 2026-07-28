@@ -3,6 +3,17 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(process.cwd()),
+  /**
+   * Next 15 sets dynamic staleTime to 0 — every soft navigation refetches RSC
+   * from the server (often 1–2s on Vercel). Cache page segments on the client
+   * so dashboard / marketing clicks feel instant after the first prefetch.
+   */
+  experimental: {
+    staleTimes: {
+      dynamic: 120,
+      static: 300,
+    },
+  },
   serverExternalPackages: [
     "mammoth",
     "puppeteer-core",

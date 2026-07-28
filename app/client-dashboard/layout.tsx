@@ -26,6 +26,17 @@ import { NewMessageToaster } from "@/components/chat/NewMessageToaster";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
+import { PrefetchRoutes } from "@/components/PrefetchRoutes";
+
+const CLIENT_DASHBOARD_PREFETCH = [
+  "/client-dashboard",
+  "/client-dashboard/messages",
+  "/client-dashboard/inquiries",
+  "/client-dashboard/documents",
+  "/client-dashboard/reviews",
+  "/client-dashboard/profile",
+  "/djs",
+] as const;
 
 export default function ClientDashboardLayout({
   children,
@@ -34,6 +45,7 @@ export default function ClientDashboardLayout({
 }) {
   return (
     <ClientUserProvider>
+      <PrefetchRoutes hrefs={CLIENT_DASHBOARD_PREFETCH} />
       <ClientDashboardShell>{children}</ClientDashboardShell>
     </ClientUserProvider>
   );
