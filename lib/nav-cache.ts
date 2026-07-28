@@ -23,12 +23,20 @@ type BookingsCache = {
   at: number;
 };
 
+type CatalogCache = {
+  djs: unknown[];
+  ratings: Record<string, { avg: number; count: number }>;
+  at: number;
+};
+
 const AUTH_TTL_MS = 5 * 60 * 1000;
 const BOOKINGS_TTL_MS = 60 * 1000;
+const CATALOG_TTL_MS = 2 * 60 * 1000;
 
 let dashboardAuth: DashboardAuthCache | null = null;
 let clientAuth: ClientAuthCache | null = null;
 let bookingsCache: BookingsCache | null = null;
+let catalogCache: CatalogCache | null = null;
 
 function fresh(at: number, ttl: number) {
   return Date.now() - at < ttl;
@@ -97,4 +105,22 @@ export function patchBookingsCache(
 
 export function clearBookingsCache() {
   bookingsCache = null;
+}
+
+export function getCatalogCache<TDj = unknown>(): {
+  djs: TDj[];
+  ratings: Record<string, { avg: number; count: number }>;
+} | null {
+  if (!catalogCache || !fresh(catalogCache.at, CATALOG_TTL_MS)) return null;
+  return {
+    djs: catalogCache.djs as TDj[],
+    ratings: catalogCache.ratings,
+  };
+}
+
+export function setCatalogCache(
+  djs: unknown[],
+  ratings: Record<string, { avg: number; count: number }>
+) {
+  catalogCache = { djs, ratings, at: Date.now() };
 }

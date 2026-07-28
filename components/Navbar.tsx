@@ -7,14 +7,40 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
 import { cn } from "@/lib/utils";
+import {
+  getClientAuthCache,
+  getDashboardAuthCache,
+} from "@/lib/nav-cache";
 
 type AuthUser = { id: string; email?: string };
+type NavRole = "dj" | "client" | "admin";
+
+function roleFromCaches(): { user: AuthUser; role: NavRole } | null {
+  const dash = getDashboardAuthCache<{ role?: string | null }>();
+  if (dash?.user) {
+    const r = dash.profile?.role;
+    return {
+      user: dash.user,
+      role: r === "client" ? "client" : r === "admin" ? "admin" : "dj",
+    };
+  }
+  const client = getClientAuthCache<{ role?: string | null }>();
+  if (client?.user) {
+    const r = client.profile?.role;
+    return {
+      user: client.user,
+      role: r === "client" ? "client" : r === "admin" ? "admin" : "dj",
+    };
+  }
+  return null;
+}
 
 export default function Navbar() {
   const pathname = usePathname() ?? "/";
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [role, setRole] = useState<"dj" | "client" | "admin">("dj");
-  const [authReady, setAuthReady] = useState(false);
+  const seeded = roleFromCaches();
+  const [user, setUser] = useState<AuthUser | null>(seeded?.user ?? null);
+  const [role, setRole] = useState<NavRole>(seeded?.role ?? "dj");
+  const [authReady, setAuthReady] = useState(Boolean(seeded));
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -31,6 +57,14 @@ export default function Navbar() {
       }
 
       setUser({ id: userId, email });
+
+      const fromCache = roleFromCaches();
+      if (fromCache && fromCache.user.id === userId) {
+        setRole(fromCache.role);
+        setAuthReady(true);
+        return;
+      }
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -151,7 +185,7 @@ export default function Navbar() {
               <Home className="size-3.5" />
               Domov
             </Link>
-            <Link href="/djs" className={linkClass(isActive("/djs"))}>
+            <Link href="/djs" prefetch className={linkClass(isActive("/djs"))}>
               <Users className="size-3.5" />
               Katalóg
             </Link>

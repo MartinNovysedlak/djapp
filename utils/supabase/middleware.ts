@@ -3,6 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 
+/** Cookie: value = auth user id when onboarding is complete. Avoids a profiles round-trip on every navigation. */
+export const ONBOARDING_OK_COOKIE = "btv_pc";
+
+const ONBOARDING_OK_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
 function copyCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
     to.cookies.set(cookie.name, cookie.value);
@@ -26,16 +31,47 @@ function isAuthPlumbing(pathname: string): boolean {
   if (pathname.startsWith("/auth/")) return true;
   if (pathname.startsWith("/api/stripe/webhook")) return true;
   if (pathname.startsWith("/api/calendar/export/")) return true;
+  if (pathname.startsWith("/api/cron/")) return true;
   return false;
 }
 
 function isPublicGuestSurface(pathname: string): boolean {
-  return pathname.startsWith("/live") || pathname.startsWith("/akcia");
+  return (
+    pathname.startsWith("/live") ||
+    pathname.startsWith("/akcia") ||
+    pathname.startsWith("/hodnotenie")
+  );
+}
+
+function setOnboardingOkCookie(
+  response: NextResponse,
+  userId: string
+) {
+  response.cookies.set(ONBOARDING_OK_COOKIE, userId, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: ONBOARDING_OK_MAX_AGE,
+  });
+}
+
+function clearOnboardingOkCookie(response: NextResponse) {
+  response.cookies.set(ONBOARDING_OK_COOKIE, "", {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 0,
+  });
 }
 
 /**
  * Refresh auth cookies and hard-gate incomplete profiles to /onboarding
  * so they cannot browse the rest of the site.
+ *
+ * Fast path: fresh local session + onboarding cookie → no Auth/DB round-trips.
+ * Otherwise validate with getUser() and (when needed) profiles.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -65,13 +101,50 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  const pathname = request.nextUrl.pathname;
+  const onOnboarding =
+    pathname === "/onboarding" || pathname.startsWith("/onboarding/");
+
+  // Local JWT read (no network). Prefer this when token is still fresh.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const expiresAtMs = (session?.expires_at ?? 0) * 1000;
+  const sessionFresh =
+    Boolean(session?.user?.id) && expiresAtMs - Date.now() > 5 * 60 * 1000;
+
+  if (
+    sessionFresh &&
+    session?.user?.id &&
+    !isAuthPlumbing(pathname) &&
+    !isPublicGuestSurface(pathname) &&
+    !onOnboarding &&
+    request.cookies.get(ONBOARDING_OK_COOKIE)?.value === session.user.id
+  ) {
+    return supabaseResponse;
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
+  if (!user) {
+    if (request.cookies.has(ONBOARDING_OK_COOKIE)) {
+      clearOnboardingOkCookie(supabaseResponse);
+    }
+    return supabaseResponse;
+  }
 
-  if (!user || isAuthPlumbing(pathname) || isPublicGuestSurface(pathname)) {
+  if (isAuthPlumbing(pathname) || isPublicGuestSurface(pathname)) {
+    return supabaseResponse;
+  }
+
+  const cachedOk =
+    request.cookies.get(ONBOARDING_OK_COOKIE)?.value === user.id;
+
+  // Validated user + onboarding cookie — skip profiles query.
+  if (cachedOk && !onOnboarding) {
     return supabaseResponse;
   }
 
@@ -89,17 +162,19 @@ export async function updateSession(request: NextRequest) {
       email: user.email,
     })
   ) {
+    setOnboardingOkCookie(supabaseResponse, user.id);
     return supabaseResponse;
   }
 
   const complete = isProfileOnboardingComplete(profile);
-  const onOnboarding =
-    pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 
   if (!complete) {
+    clearOnboardingOkCookie(supabaseResponse);
     if (onOnboarding) return supabaseResponse;
     return redirectWithSession(request, supabaseResponse, "/onboarding");
   }
+
+  setOnboardingOkCookie(supabaseResponse, user.id);
 
   if (onOnboarding) {
     const dest =

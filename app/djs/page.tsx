@@ -37,6 +37,7 @@ import {
   CZ_CITIES,
   type Country,
 } from "@/lib/locations";
+import { getCatalogCache, setCatalogCache } from "@/lib/nav-cache";
 
 type DJProfile = {
   id: string;
@@ -327,9 +328,12 @@ function DJCard({
 function DJsCatalogue() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [djs, setDjs] = useState<DJProfile[]>([]);
-  const [ratings, setRatings] = useState<Record<string, RatingInfo>>({});
-  const [loading, setLoading] = useState(true);
+  const cached = getCatalogCache<DJProfile>();
+  const [djs, setDjs] = useState<DJProfile[]>(cached?.djs ?? []);
+  const [ratings, setRatings] = useState<Record<string, RatingInfo>>(
+    cached?.ratings ?? {}
+  );
+  const [loading, setLoading] = useState(!cached);
   const [search, setSearch] = useState("");
   const [filterCountry, setFilterCountry] = useState<"all" | Country>("all");
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
@@ -359,6 +363,7 @@ function DJsCatalogue() {
 
   useEffect(() => {
     const supabase = createClient();
+    let cancelled = false;
 
     const load = async () => {
       const [profilesRes, reviewsRes] = await Promise.all([
@@ -375,29 +380,40 @@ function DJsCatalogue() {
         supabase.from("reviews").select("dj_id, rating"),
       ]);
 
-      if (!profilesRes.error && profilesRes.data) {
-        setDjs(profilesRes.data as DJProfile[]);
-      }
+      if (cancelled) return;
 
+      const nextDjs =
+        !profilesRes.error && profilesRes.data
+          ? (profilesRes.data as DJProfile[])
+          : [];
+      setDjs(nextDjs);
+
+      const computed: Record<string, RatingInfo> = {};
       if (!reviewsRes.error && reviewsRes.data) {
         const sums: Record<string, { total: number; count: number }> = {};
-        for (const row of reviewsRes.data as { dj_id: string; rating: number }[]) {
+        for (const row of reviewsRes.data as {
+          dj_id: string;
+          rating: number;
+        }[]) {
           const entry = sums[row.dj_id] ?? { total: 0, count: 0 };
           entry.total += row.rating;
           entry.count += 1;
           sums[row.dj_id] = entry;
         }
-        const computed: Record<string, RatingInfo> = {};
         for (const [djId, { total, count }] of Object.entries(sums)) {
           computed[djId] = { avg: total / count, count };
         }
-        setRatings(computed);
       }
-
+      setRatings(computed);
+      setCatalogCache(nextDjs, computed);
       setLoading(false);
     };
 
-    load();
+    // Soft refresh in background when we already have cache.
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filtered = useMemo(() => {
