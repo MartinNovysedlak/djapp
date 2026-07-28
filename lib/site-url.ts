@@ -19,23 +19,39 @@ export function isNonPublicSiteUrl(url: string): boolean {
 }
 
 /**
+ * Align apex ↔ www with the live Vercel primary host.
+ * Production currently serves on www (apex 308s); sitemap/canonicals must match.
+ */
+function normalizeCanonicalOrigin(url: string): string {
+  try {
+    const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    if (u.hostname === "bookthevibe.com") {
+      u.hostname = "www.bookthevibe.com";
+    }
+    return u.origin;
+  } catch {
+    return url.replace(/\/$/, "");
+  }
+}
+
+/**
  * Canonical public site origin for metadata, sitemap, emails, QR, share links.
  * Ignores localhost / LAN values in NEXT_PUBLIC_SITE_URL (e.g. 192.168.x.x).
- * Always falls back to BRAND.url (bookthevibe.com) — never localhost.
+ * Always falls back to BRAND.url — never localhost.
  */
 export function getPublicSiteUrl(): string {
   const raw = (process.env.NEXT_PUBLIC_SITE_URL || "").trim().replace(/\/$/, "");
-  if (raw && !isNonPublicSiteUrl(raw)) return raw;
-  return BRAND.url.replace(/\/$/, "");
+  if (raw && !isNonPublicSiteUrl(raw)) return normalizeCanonicalOrigin(raw);
+  return normalizeCanonicalOrigin(BRAND.url);
 }
 
-/** Absolute public DJ/band profile URL, e.g. https://bookthevibe.com/djs/dj-nova */
+/** Absolute public DJ/band profile URL, e.g. https://www.bookthevibe.com/djs/dj-nova */
 export function getPublicDjUrl(slug: string): string {
   const clean = slug.trim().replace(/^\/+|\/+$/g, "");
   return `${getPublicSiteUrl()}/djs/${clean}`;
 }
 
-/** Host + path for read-only UI, e.g. bookthevibe.com/djs/dj-nova */
+/** Host + path for read-only UI, e.g. www.bookthevibe.com/djs/dj-nova */
 export function getPublicDjDisplayPath(slug: string): string {
   const origin = getPublicSiteUrl().replace(/^https?:\/\//i, "");
   const clean = slug.trim().replace(/^\/+|\/+$/g, "");

@@ -1,8 +1,11 @@
 import type { MetadataRoute } from "next";
-import { createClient } from "@/utils/supabase/server";
+import { createPublicClient } from "@/utils/supabase/public";
 import { getPublicSiteUrl } from "@/lib/site-url";
 
 const siteUrl = getPublicSiteUrl();
+
+/** Public sitemap — keep in sync with pages we actually want indexed. */
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -49,16 +52,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.7,
     },
-    {
-      url: `${siteUrl}/login`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.4,
-    },
   ];
 
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const [{ data: posts }, { data: pages }] = await Promise.all([
       supabase
         .from("blog_posts")

@@ -6,7 +6,8 @@ export const BRAND = {
     "Platforma pre umelcov a klientov s katalógom, rezerváciami, kalendárom, zmluvami a live requesty — všetky nástroje na jednom mieste.",
   description:
     "BookTheVibe je webová platforma pre DJ-ov, kapely a klientov. Katalóg so smart filtrami podľa SK/CZ kraja, regiónu a mesta, hromadný dopyt až 4 umelcom, page builder, rezervácie, kalendár, PDF zmluvy, faktúry, live requesty a verifikácia profilu.",
-  url: "https://bookthevibe.com",
+  // Must match Vercel primary domain (apex → www 308). Wrong host breaks Google indexing.
+  url: "https://www.bookthevibe.com",
   email: "bookthevibeonline@gmail.com",
   locale: "sk_SK",
   logoPath: "/brand/bookthevibe-logo.svg",
