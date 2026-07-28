@@ -21,6 +21,7 @@ import {
   Trash2,
   Pencil,
   User as UserIcon,
+  Zap,
 } from "lucide-react";
 import { useDashboardUser } from "@/components/DashboardUserContext";
 import { Reveal } from "@/components/motion";
@@ -62,6 +63,17 @@ import {
 } from "@/app/actions/calendar-entries";
 import { useDjBookings, type CachedBooking } from "@/hooks/useDjBookings";
 import { CalendarSyncPanel } from "@/components/CalendarSyncPanel";
+import { listMyLastMinuteOffers } from "@/app/actions/last-minute";
+import {
+  LastMinuteOfferDialog,
+  LastMinuteOffersList,
+} from "@/components/last-minute/LastMinuteUI";
+import {
+  formatLastMinutePrice,
+  isOfferLive,
+  todayIsoLocal,
+  type LastMinuteOffer,
+} from "@/lib/last-minute";
 
 type BookingStatus = "pending" | "accepted" | "rejected";
 
@@ -183,6 +195,30 @@ export default function CalendarPage() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [lastMinuteOffers, setLastMinuteOffers] = useState<LastMinuteOffer[]>(
+    []
+  );
+  const [lastMinuteOpen, setLastMinuteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void listMyLastMinuteOffers().then((res) => {
+      if (cancelled || !res.ok) return;
+      setLastMinuteOffers(res.offers);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const offersByDate = useMemo(() => {
+    const map = new Map<string, LastMinuteOffer>();
+    for (const o of lastMinuteOffers) {
+      if (isOfferLive(o)) map.set(o.event_date, o);
+    }
+    return map;
+  }, [lastMinuteOffers]);
 
   const bookingsByDate = useMemo(() => {
     const map = new Map<string, Booking[]>();
@@ -228,8 +264,16 @@ export default function CalendarPage() {
     setSelectedDate(now);
   };
 
-  const selectedBookings = bookingsByDate.get(toISODate(selectedDate)) ?? [];
+  const selectedIso = toISODate(selectedDate);
+  const selectedBookings = bookingsByDate.get(selectedIso) ?? [];
+  const selectedOffer = offersByDate.get(selectedIso) ?? null;
   const today = new Date();
+  const todayIso = todayIsoLocal();
+  const selectedIsFree =
+    selectedIso >= todayIso &&
+    !selectedBookings.some(
+      (b) => b.type === "blockout" || b.status === "accepted"
+    );
 
   const handleDelete = async (booking: Booking) => {
     if (!isDeletable(booking)) return;
@@ -266,7 +310,7 @@ export default function CalendarPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white">Kalendár</h1>
             <p className="mt-1.5 text-sm text-zinc-500">
-              Rezervácie, vlastné akcie a nedostupnosť v mesačnom pohľade.
+              Rezervácie, vlastné akcie, last-minute ponuky a nedostupnosť.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -316,13 +360,78 @@ export default function CalendarPage() {
               </p>
             </div>
 
-            {selectedBookings.length === 0 ? (
-              <div className="glass flex flex-col items-center gap-2 rounded-3xl px-5 py-10 text-center">
-                <CalendarDays className="size-6 text-zinc-500" />
-                <p className="text-sm text-zinc-500">
-                  V tento deň nemáš žiadny záznam.
-                </p>
+            {selectedOffer ? (
+              <div className="rounded-3xl border border-amber-500/25 bg-amber-500/[0.08] p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                      <Zap className="size-3.5" />
+                      Voľný termín nablízku
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-white">
+                      {formatLastMinutePrice(selectedOffer.discounted_price)}
+                      {selectedOffer.original_price != null ? (
+                        <span className="ml-2 text-sm font-normal text-zinc-500 line-through">
+                          {formatLastMinutePrice(selectedOffer.original_price)}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-1 text-[11px] text-amber-100/70">
+                      Rezervovať do{" "}
+                      {parseLocalDate(
+                        selectedOffer.expires_at
+                      ).toLocaleDateString("sk-SK")}
+                      {" · "}
+                      {selectedOffer.book_within_days} dní od vytvorenia
+                    </p>
+                    {selectedOffer.note ? (
+                      <p className="mt-2 text-xs text-zinc-400">
+                        {selectedOffer.note}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 rounded-full border-amber-500/30 text-amber-100"
+                    onClick={() => setLastMinuteOpen(true)}
+                  >
+                    Upraviť
+                  </Button>
+                </div>
               </div>
+            ) : null}
+
+            {selectedIsFree && !selectedOffer ? (
+              <button
+                type="button"
+                onClick={() => setLastMinuteOpen(true)}
+                className="flex w-full items-center gap-3 rounded-3xl border border-dashed border-amber-500/30 bg-amber-500/[0.05] px-5 py-4 text-left transition-colors hover:border-amber-500/50 hover:bg-amber-500/[0.1]"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-200">
+                  <Zap className="size-4" />
+                </span>
+                <span>
+                  <span className="block text-sm font-medium text-amber-100">
+                    Označiť ako last-minute
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-zinc-500">
+                    Znížená cena, ak niekto rezervuje čoskoro.
+                  </span>
+                </span>
+              </button>
+            ) : null}
+
+            {selectedBookings.length === 0 && !selectedOffer ? (
+              selectedIsFree ? null : (
+                <div className="glass flex flex-col items-center gap-2 rounded-3xl px-5 py-10 text-center">
+                  <CalendarDays className="size-6 text-zinc-500" />
+                  <p className="text-sm text-zinc-500">
+                    V tento deň nemáš žiadny záznam.
+                  </p>
+                </div>
+              )
             ) : (
               selectedBookings.map((b) => (
                 <BookingDetailCard
@@ -394,6 +503,7 @@ export default function CalendarPage() {
 
                 const iso = toISODate(date);
                 const dayBookings = bookingsByDate.get(iso) ?? [];
+                const dayOffer = offersByDate.get(iso);
                 const isSelected = isSameDay(date, selectedDate);
                 const isToday = isSameDay(date, today);
                 const fullDayBlockouts = dayBookings.filter(
@@ -405,7 +515,7 @@ export default function CalendarPage() {
                 const hasFullDayGrey = fullDayBlockouts.length > 0;
                 const visibleStrips = [
                   ...fullDayBlockouts.slice(0, 1),
-                  ...otherBookings.slice(0, 2),
+                  ...otherBookings.slice(0, dayOffer ? 1 : 2),
                 ];
                 const overflowCount =
                   dayBookings.length - visibleStrips.length;
@@ -425,9 +535,12 @@ export default function CalendarPage() {
                     className={cn(
                       "relative flex min-h-[5.5rem] cursor-pointer flex-col gap-1 overflow-visible rounded-xl p-1 text-sm transition-all duration-200 sm:min-h-[6.5rem]",
                       hasFullDayGrey && "bg-zinc-500/25 ring-1 ring-zinc-500/20",
+                      dayOffer &&
+                        !hasFullDayGrey &&
+                        "bg-amber-500/[0.08] ring-1 ring-amber-500/25",
                       isSelected
                         ? "bg-violet-500/20 ring-2 ring-violet-400/60"
-                        : !hasFullDayGrey && "hover:bg-white/[0.04]",
+                        : !hasFullDayGrey && !dayOffer && "hover:bg-white/[0.04]",
                       isToday && !isSelected && "ring-1 ring-violet-500/30"
                     )}
                   >
@@ -446,6 +559,11 @@ export default function CalendarPage() {
                     </span>
 
                     <div className="flex flex-1 flex-col gap-1 overflow-visible">
+                      {dayOffer ? (
+                        <span className="truncate rounded-md bg-amber-500/25 px-1.5 py-[3px] text-left text-[10px] font-semibold text-amber-100">
+                          LM {formatLastMinutePrice(dayOffer.discounted_price)}
+                        </span>
+                      ) : null}
                       {visibleStrips.map((b) => (
                         <BookingStrip
                           key={b.id}
@@ -483,6 +601,9 @@ export default function CalendarPage() {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-amber-400" /> Čakajúce
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-amber-300" /> Last-minute
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-zinc-300" /> Nedostupnosť
@@ -560,8 +681,43 @@ export default function CalendarPage() {
         }}
       />
 
+      <LastMinuteOfferDialog
+        open={lastMinuteOpen}
+        onOpenChange={setLastMinuteOpen}
+        eventDate={selectedIso}
+        existing={selectedOffer}
+        onSaved={(offer) => {
+          setLastMinuteOffers((prev) => {
+            const without = prev.filter(
+              (o) => o.id !== offer.id && o.event_date !== offer.event_date
+            );
+            return [...without, offer];
+          });
+        }}
+        onRemoved={(offerId) => {
+          setLastMinuteOffers((prev) =>
+            prev.map((o) =>
+              o.id === offerId ? { ...o, is_active: false } : o
+            )
+          );
+        }}
+      />
+
       <Reveal delay={160}>
-        <div className="mt-8">
+        <div className="mt-8 space-y-4">
+          <div className="glass rounded-3xl p-5 md:p-6">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Zap className="size-4 text-amber-300" />
+              Aktívne last-minute ponuky
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Zákazníci ich uvidia v katalógu pod filtrom „Voľný termín
+              nablízku“.
+            </p>
+            <div className="mt-4">
+              <LastMinuteOffersList offers={lastMinuteOffers} />
+            </div>
+          </div>
           <CalendarSyncPanel />
         </div>
       </Reveal>

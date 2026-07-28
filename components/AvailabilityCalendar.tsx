@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { formatTimeSk, normalizeTime } from "@/lib/dates";
 import { formatEventTypeLabel } from "@/lib/event-types";
@@ -11,6 +11,12 @@ import {
   spanStripClass,
 } from "@/lib/calendar-span";
 import { cn } from "@/lib/utils";
+import { listPublicLastMinuteOffers } from "@/app/actions/last-minute";
+import {
+  formatLastMinutePrice,
+  type LastMinuteOffer,
+} from "@/lib/last-minute";
+import { LastMinuteOffersList } from "@/components/last-minute/LastMinuteUI";
 
 const WEEKDAYS = ["Po", "Ut", "St", "Št", "Pi", "So", "Ne"];
 
@@ -70,6 +76,7 @@ function slotLabel(slot: BusySlot) {
 export function AvailabilityCalendar({ djId }: { djId: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<BusySlot[]>([]);
+  const [offers, setOffers] = useState<LastMinuteOffer[]>([]);
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedIso, setSelectedIso] = useState<string | null>(null);
 
@@ -80,9 +87,12 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/calendar/availability/${djId}`, {
-          cache: "no-store",
-        });
+        const [res, offersRes] = await Promise.all([
+          fetch(`/api/calendar/availability/${djId}`, {
+            cache: "no-store",
+          }),
+          listPublicLastMinuteOffers(djId),
+        ]);
         if (!res.ok) throw new Error("availability fetch failed");
         const json = (await res.json()) as {
           slots?: {
@@ -120,14 +130,18 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
             allDay: Boolean(row.all_day),
           }))
         );
+        if (offersRes.ok) setOffers(offersRes.offers);
       } catch {
         const supabase = createClient();
-        const { data } = await supabase
-          .from("dj_busy_dates")
-          .select(
-            "event_date, end_date, start_time, end_time, event_type, type, title, all_day"
-          )
-          .eq("dj_id", djId);
+        const [{ data }, offersRes] = await Promise.all([
+          supabase
+            .from("dj_busy_dates")
+            .select(
+              "event_date, end_date, start_time, end_time, event_type, type, title, all_day"
+            )
+            .eq("dj_id", djId),
+          listPublicLastMinuteOffers(djId),
+        ]);
 
         if (cancelled) return;
         setBusy(
@@ -153,6 +167,7 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
             allDay: Boolean(row.all_day),
           }))
         );
+        if (offersRes.ok) setOffers(offersRes.offers);
       }
       if (!cancelled) setLoading(false);
     };
@@ -162,6 +177,12 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
       cancelled = true;
     };
   }, [djId]);
+
+  const offersByDate = useMemo(() => {
+    const map = new Map<string, LastMinuteOffer>();
+    for (const o of offers) map.set(o.event_date, o);
+    return map;
+  }, [offers]);
 
   const slotsByDay = useMemo(() => {
     const map = new Map<string, BusySlot[]>();
@@ -205,6 +226,9 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
   today.setHours(0, 0, 0, 0);
 
   const selectedSlots = selectedIso ? slotsByDay.get(selectedIso) ?? [] : [];
+  const selectedOffer = selectedIso
+    ? offersByDate.get(selectedIso) ?? null
+    : null;
 
   return (
     <div className="rounded-[0.75rem] border border-white/10 bg-black/40 p-5 backdrop-blur-md md:p-6">
@@ -216,6 +240,19 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
           Dostupnosť
         </h3>
       </div>
+
+      {offers.length > 0 ? (
+        <div className="mb-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] p-4">
+          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-200">
+            <Zap className="size-3.5" />
+            Voľný termín nablízku
+          </p>
+          <LastMinuteOffersList
+            offers={offers}
+            emptyLabel="Žiadne last-minute ponuky."
+          />
+        </div>
+      ) : null}
 
       <div className="mb-3 flex items-center justify-between">
         <button
@@ -273,6 +310,7 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
 
             const iso = toISODate(date);
             const daySlots = slotsByDay.get(iso) ?? [];
+            const dayOffer = offersByDate.get(iso);
             const isToday = isSameDay(date, today);
             const isPast = date < today && !isToday;
             const isSelected = selectedIso === iso;
@@ -289,7 +327,7 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
                 )
             );
             const hasFullDayGrey = fullDayBlockouts.length > 0;
-            const visible = timedSlots.slice(0, 2);
+            const visible = timedSlots.slice(0, dayOffer ? 1 : 2);
             const overflow =
               timedSlots.length -
               visible.length +
@@ -305,11 +343,14 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
                 className={cn(
                   "relative flex min-h-[4.5rem] flex-col gap-0.5 overflow-visible rounded-[0.75rem] p-1 text-left transition-all sm:min-h-[5.25rem]",
                   hasFullDayGrey && "bg-zinc-500/25 ring-1 ring-zinc-500/20",
+                  dayOffer &&
+                    !hasFullDayGrey &&
+                    "bg-amber-500/[0.08] ring-1 ring-amber-500/25",
                   isSelected
                     ? "bg-violet-500/15 ring-2 ring-violet-400/50"
-                    : !hasFullDayGrey && "hover:bg-white/[0.04]",
+                    : !hasFullDayGrey && !dayOffer && "hover:bg-white/[0.04]",
                   isToday && !isSelected && "ring-1 ring-violet-500/30",
-                  isPast && daySlots.length === 0 && "opacity-40"
+                  isPast && daySlots.length === 0 && !dayOffer && "opacity-40"
                 )}
               >
                 <span
@@ -326,6 +367,11 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
                 </span>
 
                 <div className="flex flex-1 flex-col gap-0.5 overflow-visible">
+                  {dayOffer ? (
+                    <span className="truncate rounded-md bg-amber-500/25 px-1 py-[2px] text-[8px] font-semibold leading-tight text-amber-100 sm:text-[9px]">
+                      LM {formatLastMinutePrice(dayOffer.discounted_price)}
+                    </span>
+                  ) : null}
                   {fullDayBlockouts.slice(0, 1).map((slot, idx) => {
                     const edge = getSpanEdge(iso, slot.start, slot.end);
                     const label = slotLabel(slot);
@@ -385,11 +431,23 @@ export function AvailabilityCalendar({ djId }: { djId: string }) {
           <p className="text-xs font-medium capitalize text-zinc-300">
             {dayFormatter.format(fromISODate(selectedIso))}
           </p>
-          {selectedSlots.length === 0 ? (
+          {selectedOffer ? (
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-amber-200">
+              <Zap className="size-3.5 shrink-0" />
+              Voľný termín nablízku ·{" "}
+              {formatLastMinutePrice(selectedOffer.discounted_price)}
+              {selectedOffer.original_price != null ? (
+                <span className="text-zinc-500 line-through">
+                  {formatLastMinutePrice(selectedOffer.original_price)}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          {selectedSlots.length === 0 && !selectedOffer ? (
             <p className="mt-1.5 text-xs text-emerald-300/80">
               V tento deň zatiaľ nie je potvrdená žiadna akcia.
             </p>
-          ) : (
+          ) : selectedSlots.length === 0 ? null : (
             <ul className="mt-2 space-y-1.5">
               {selectedSlots.map((slot, idx) => {
                 const label = slotLabel(slot);

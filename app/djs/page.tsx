@@ -17,6 +17,7 @@ import {
   Clock,
   ArrowDownAZ,
   X,
+  Zap,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,9 @@ import {
   type Country,
 } from "@/lib/locations";
 import { getCatalogCache, setCatalogCache } from "@/lib/nav-cache";
+import { listCatalogLastMinuteHits } from "@/app/actions/last-minute";
+import { LastMinuteBadge } from "@/components/last-minute/LastMinuteUI";
+import type { LastMinuteCatalogHit } from "@/lib/last-minute";
 
 type DJProfile = {
   id: string;
@@ -183,12 +187,14 @@ function RatingBadge({ rating }: { rating: RatingInfo | undefined }) {
 function DJCard({
   dj,
   rating,
+  lastMinute,
   compareMode,
   selected,
   onToggle,
 }: {
   dj: DJProfile;
   rating: RatingInfo | undefined;
+  lastMinute?: LastMinuteCatalogHit;
   compareMode: boolean;
   selected: boolean;
   onToggle: () => void;
@@ -274,6 +280,16 @@ function DJCard({
           <RatingBadge rating={rating} />
         </div>
 
+        {lastMinute ? (
+          <div className="mt-2">
+            <LastMinuteBadge
+              price={lastMinute.discounted_price}
+              eventDate={lastMinute.event_date}
+              compact
+            />
+          </div>
+        ) : null}
+
         <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-zinc-500">
           {dj.bio ||
             (normalizeArtistKind(dj.artist_kind) === "band"
@@ -338,6 +354,10 @@ function DJsCatalogue() {
   const [filterCountry, setFilterCountry] = useState<"all" | Country>("all");
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<"all" | ArtistKind>("all");
+  const [lastMinuteOnly, setLastMinuteOnly] = useState(false);
+  const [lastMinuteByDj, setLastMinuteByDj] = useState<
+    Record<string, LastMinuteCatalogHit>
+  >({});
   const [sortBy, setSortBy] = useState<SortBy>("rating");
   const [compareMode, setCompareMode] = useState(
     searchParams.get("compare") === "1"
@@ -366,7 +386,7 @@ function DJsCatalogue() {
     let cancelled = false;
 
     const load = async () => {
-      const [profilesRes, reviewsRes] = await Promise.all([
+      const [profilesRes, reviewsRes, lastMinuteRes] = await Promise.all([
         supabase
           .from("profiles")
           .select(
@@ -378,6 +398,7 @@ function DJsCatalogue() {
           .neq("location", "")
           .order("full_name", { ascending: true }),
         supabase.from("reviews").select("dj_id, rating"),
+        listCatalogLastMinuteHits(),
       ]);
 
       if (cancelled) return;
@@ -405,6 +426,9 @@ function DJsCatalogue() {
         }
       }
       setRatings(computed);
+      if (lastMinuteRes.ok) {
+        setLastMinuteByDj(lastMinuteRes.byDjId);
+      }
       setCatalogCache(nextDjs, computed);
       setLoading(false);
     };
@@ -438,7 +462,16 @@ function DJsCatalogue() {
         kindFilter === "all" ||
         normalizeArtistKind(dj.artist_kind) === kindFilter;
 
-      return matchesCountry && matchesName && matchesLocation && matchesKind;
+      const matchesLastMinute =
+        !lastMinuteOnly || Boolean(lastMinuteByDj[dj.id]);
+
+      return (
+        matchesCountry &&
+        matchesName &&
+        matchesLocation &&
+        matchesKind &&
+        matchesLastMinute
+      );
     });
 
     const sorted = [...result];
@@ -467,8 +500,25 @@ function DJsCatalogue() {
           (a.full_name || "").localeCompare(b.full_name || "", "sk")
         );
     }
+    if (lastMinuteOnly) {
+      sorted.sort((a, b) => {
+        const da = lastMinuteByDj[a.id]?.event_date ?? "9999";
+        const db = lastMinuteByDj[b.id]?.event_date ?? "9999";
+        return da.localeCompare(db);
+      });
+    }
     return sorted;
-  }, [djs, search, filterCountry, locationFilter, kindFilter, sortBy, ratings]);
+  }, [
+    djs,
+    search,
+    filterCountry,
+    locationFilter,
+    kindFilter,
+    lastMinuteOnly,
+    lastMinuteByDj,
+    sortBy,
+    ratings,
+  ]);
 
   return (
     <div className="relative flex min-h-svh flex-col bg-background">
@@ -560,6 +610,31 @@ function DJsCatalogue() {
                 />
               </FilterSegment>
 
+              <FilterSegment label="Last-minute">
+                <button
+                  type="button"
+                  onClick={() => setLastMinuteOnly((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+                    lastMinuteOnly
+                      ? "border-amber-400/45 bg-amber-500/20 text-amber-100 shadow-[0_0_20px_-8px_oklch(0.8_0.16_85/0.7)]"
+                      : "border-white/8 bg-white/[0.03] text-zinc-400 hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200"
+                  )}
+                >
+                  <Zap className="size-3.5" />
+                  Voľný termín nablízku
+                  {Object.keys(lastMinuteByDj).length > 0 ? (
+                    <span className="rounded-full bg-black/30 px-1.5 py-0.5 text-[10px] tabular-nums">
+                      {Object.keys(lastMinuteByDj).length}
+                    </span>
+                  ) : null}
+                </button>
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                  Umelci so zníženou cenou na skorú rezerváciu — vhodné na
+                  firemné akcie na poslednú chvíľu.
+                </p>
+              </FilterSegment>
+
               <div className="grid gap-5 sm:grid-cols-2">
                 <FilterSegment label="Krajina">
                   <SegmentedPills
@@ -635,14 +710,16 @@ function DJsCatalogue() {
                 {search ||
                 locationFilter ||
                 kindFilter !== "all" ||
-                filterCountry !== "all"
+                filterCountry !== "all" ||
+                lastMinuteOnly
                   ? "Žiadny umelec nezodpovedá tvojmu hľadaniu."
                   : "Zatiaľ tu nie sú žiadni umelci. Buď prvý!"}
               </p>
               {!search &&
                 !locationFilter &&
                 kindFilter === "all" &&
-                filterCountry === "all" && (
+                filterCountry === "all" &&
+                !lastMinuteOnly && (
                 <Link
                   href="/register"
                   className="mt-4 inline-flex items-center gap-1.5 text-sm text-violet-300 transition-all duration-300 hover:gap-2.5 hover:brightness-125"
@@ -685,6 +762,7 @@ function DJsCatalogue() {
                   <DJCard
                     dj={dj}
                     rating={ratings[dj.id]}
+                    lastMinute={lastMinuteByDj[dj.id]}
                     compareMode={compareMode}
                     selected={selected.includes(dj.id)}
                     onToggle={() => {
