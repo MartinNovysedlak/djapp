@@ -141,10 +141,19 @@ function ClientDashboardShell({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    void refreshUnread();
-    const id = window.setInterval(() => void refreshUnread(), 10000);
-    return () => window.clearInterval(id);
-  }, [refreshUnread, pathname]);
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      void refreshUnread();
+    };
+    const kickoff = window.setTimeout(run, 250);
+    const id = window.setInterval(run, 20_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(kickoff);
+      window.clearInterval(id);
+    };
+  }, [refreshUnread]);
 
   useEffect(() => {
     function onFocus() {

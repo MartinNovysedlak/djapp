@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Download, Loader2, QrCode, Radio } from "lucide-react";
+import { Check, ChevronDown, Copy, Download, Loader2, QrCode, Radio } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
 import { ensureLiveSlug } from "@/app/actions/live-requests";
@@ -103,6 +103,12 @@ export function LiveRequestQr({
               : "Zdieľaj QR s hosťami na akcii"}
           </p>
         </div>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-zinc-500 transition-transform",
+            open && "rotate-180"
+          )}
+        />
       </button>
 
       {open ? (

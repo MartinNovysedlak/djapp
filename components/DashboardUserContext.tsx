@@ -171,6 +171,16 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
 
       const nextUser = { id: sessionUser.id, email: sessionUser.email };
       setUser(nextUser);
+
+      const cached = getDashboardAuthCache<DashboardProfile>();
+      if (cached?.user.id === nextUser.id && cached.profile) {
+        setProfileState(cached.profile);
+        setLoading(false);
+        // Soft refresh in background — don't block the dashboard shell.
+        void loadProfile(nextUser);
+        return;
+      }
+
       await loadProfile(nextUser);
       if (active) setLoading(false);
     });

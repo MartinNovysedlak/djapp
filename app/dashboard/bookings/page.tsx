@@ -526,8 +526,16 @@ function BookingsPageInner() {
     }
   }, [expandedId, bookings, bookingsLoading, tab, tabForBooking]);
 
-  const refreshContracts = useCallback(async () => {
-    const ids = bookings.map((b) => b.id);
+  const bookingIdsKey = useMemo(
+    () =>
+      bookings
+        .map((b) => b.id)
+        .sort()
+        .join(","),
+    [bookings]
+  );
+
+  const refreshContracts = useCallback(async (ids: string[]) => {
     if (ids.length === 0) {
       setContractByBooking({});
       setInvoiceByBooking({});
@@ -539,11 +547,26 @@ function BookingsPageInner() {
     ]);
     if (contracts.ok) setContractByBooking(contracts.byBookingId);
     if (invoices.ok) setInvoiceByBooking(invoices.byBookingId);
-  }, [bookings]);
+  }, []);
 
   useEffect(() => {
-    void refreshContracts();
-  }, [refreshContracts]);
+    const ids = bookingIdsKey ? bookingIdsKey.split(",") : [];
+    if (ids.length === 0) {
+      setContractByBooking({});
+      setInvoiceByBooking({});
+      return;
+    }
+    let cancelled = false;
+    // Let the bookings list paint first — PDF summaries are secondary chrome.
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      void refreshContracts(ids);
+    }, 120);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [bookingIdsKey, refreshContracts]);
 
   const setBookings = (
     updater: Booking[] | ((prev: Booking[]) => Booking[])

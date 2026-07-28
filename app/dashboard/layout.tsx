@@ -80,15 +80,20 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       setUnreadMessages(0);
       return;
     }
+    let cancelled = false;
     const refresh = () => {
       void countUnreadBookingMessages().then((r) => {
-        if (r.ok) setUnreadMessages(r.count);
+        if (!cancelled && r.ok) setUnreadMessages(r.count);
       });
     };
-    refresh();
-    const id = window.setInterval(refresh, 10000);
-    return () => window.clearInterval(id);
-  }, [user, pathname, premium]);
+    const kickoff = window.setTimeout(refresh, 250);
+    const id = window.setInterval(refresh, 20_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(kickoff);
+      window.clearInterval(id);
+    };
+  }, [user, premium]);
 
   const navItems = [
     {

@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Link2, Loader2, MessageCircle, Star } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Loader2,
+  MessageCircle,
+  Star,
+} from "lucide-react";
 import { ensureReviewShareSlug } from "@/app/actions/review-invite";
 import { reviewInviteUrl } from "@/lib/review-invite";
 import { BRAND } from "@/lib/brand";
@@ -73,17 +80,17 @@ export function ReviewInviteLink({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.04]",
+        "overflow-hidden rounded-2xl border border-white/10 bg-black/25",
         className
       )}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-amber-500/[0.06]"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
       >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/10">
-          <Star className="size-3.5 text-amber-300" />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
+          <Star className="size-3.5 text-violet-300" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white">
@@ -93,14 +100,19 @@ export function ReviewInviteLink({
             Pošli klientovi — ohodnotí ťa aj bez účtu
           </p>
         </div>
-        <Link2 className="size-3.5 shrink-0 text-zinc-500" />
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-zinc-500 transition-transform",
+            open && "rotate-180"
+          )}
+        />
       </button>
 
       {open ? (
-        <div className="space-y-4 border-t border-amber-500/15 px-4 py-4">
+        <div className="space-y-4 border-t border-white/8 px-4 py-4">
           {loading ? (
             <div className="flex justify-center py-6">
-              <Loader2 className="size-5 animate-spin text-amber-400" />
+              <Loader2 className="size-5 animate-spin text-violet-400" />
             </div>
           ) : url ? (
             <>
@@ -109,7 +121,7 @@ export function ReviewInviteLink({
                 ľudí mimo {BRAND.name} — stačí WhatsApp, SMS alebo e-mail.
                 Platný až po skončení akcie; jedno hodnotenie na rezerváciu.
               </p>
-              <p className="break-all rounded-xl border border-white/8 bg-black/30 px-3 py-2 font-mono text-[11px] text-zinc-300">
+              <p className="break-all rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 font-mono text-[11px] text-zinc-300">
                 {url}
               </p>
               <div className="flex flex-wrap gap-2">

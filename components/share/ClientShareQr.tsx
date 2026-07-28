@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Download, Link2, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Copy, Download, Link2, Loader2 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { ensureGuestShareSlug } from "@/app/actions/guest-share";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,12 @@ export function ClientShareQr({
             Harmonogram, playlist, technika — bez registrácie
           </p>
         </div>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-zinc-500 transition-transform",
+            open && "rotate-180"
+          )}
+        />
       </button>
 
       {open ? (

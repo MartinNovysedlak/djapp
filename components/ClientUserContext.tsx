@@ -100,6 +100,15 @@ export function ClientUserProvider({ children }: { children: ReactNode }) {
 
       const nextUser = { id: sessionUser.id, email: sessionUser.email };
       setUser(nextUser);
+
+      const cached = getClientAuthCache<ClientProfile>();
+      if (cached?.user.id === nextUser.id && cached.profile) {
+        setProfile(cached.profile);
+        setLoading(false);
+        void loadProfile(nextUser);
+        return;
+      }
+
       await loadProfile(nextUser);
       if (active) setLoading(false);
     });
