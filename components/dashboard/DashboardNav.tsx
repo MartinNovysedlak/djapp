@@ -6,67 +6,165 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
+  type ComponentType,
   type MouseEvent,
   type ReactNode,
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  DASHBOARD_SPA_LOADERS,
+  isDashboardSpaPath,
+} from "@/lib/dashboard-spa";
 import { cn } from "@/lib/utils";
 
-type NavPendingContextValue = {
-  pendingHref: string | null;
-  isNavigating: boolean;
-  markPending: (href: string) => void;
+type SpaContextValue = {
+  viewPath: string;
+  navigating: boolean;
+  navigate: (href: string, opts?: { replace?: boolean }) => void;
+  outlet: ReactNode | null;
+  useOutlet: boolean;
 };
 
-const NavPendingContext = createContext<NavPendingContextValue>({
-  pendingHref: null,
-  isNavigating: false,
-  markPending: () => {},
+const SpaContext = createContext<SpaContextValue>({
+  viewPath: "/dashboard/profile",
+  navigating: false,
+  navigate: () => {},
+  outlet: null,
+  useOutlet: false,
 });
 
-export function useDashboardNavPending() {
-  return useContext(NavPendingContext);
+export function useDashboardSpa() {
+  return useContext(SpaContext);
 }
 
+type CacheEntry = { Comp: ComponentType };
+
 /**
- * Instant click feedback for dashboard soft-nav — shows skeleton immediately
- * while Next.js still fetches the RSC payload from Vercel.
+ * True SPA navigation for main /dashboard sidebar routes.
+ * Clicks render a preloaded client page — zero wait on Vercel RSC.
  */
-export function DashboardNavProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname() ?? "";
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
+export function DashboardSpaProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const pathname = usePathname() ?? "/dashboard/profile";
+  const [viewPath, setViewPath] = useState(pathname);
+  const [cache, setCache] = useState<Record<string, CacheEntry>>({});
+  const [navigating, setNavigating] = useState(false);
+  const [spaMode, setSpaMode] = useState(false);
   const [, startTransition] = useTransition();
+  const preloaded = useRef(false);
+
+  const ensureLoaded = useCallback(async (path: string) => {
+    const loader = DASHBOARD_SPA_LOADERS[path];
+    if (!loader) return null;
+    const mod = await loader();
+    const Comp = mod.default;
+    setCache((prev) => {
+      if (prev[path]?.Comp === Comp) return prev;
+      return { ...prev, [path]: { Comp } };
+    });
+    return Comp;
+  }, []);
 
   useEffect(() => {
-    setPendingHref(null);
-  }, [pathname]);
+    if (preloaded.current) return;
+    preloaded.current = true;
+    const paths = Object.keys(DASHBOARD_SPA_LOADERS);
+    let i = 0;
+    const tick = () => {
+      if (i >= paths.length) return;
+      const path = paths[i++];
+      void ensureLoaded(path).finally(() => {
+        window.setTimeout(tick, 25);
+      });
+    };
+    window.setTimeout(tick, 40);
+  }, [ensureLoaded]);
 
-  const markPending = useCallback(
-    (href: string) => {
+  // Next.js navigated (nested chat/live, refresh, external link).
+  useEffect(() => {
+    setSpaMode(false);
+    setViewPath(pathname);
+    setNavigating(false);
+    if (isDashboardSpaPath(pathname)) {
+      void ensureLoaded(pathname);
+    }
+  }, [pathname, ensureLoaded]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const path = window.location.pathname;
+      startTransition(() => {
+        setSpaMode(isDashboardSpaPath(path));
+        setViewPath(path);
+        setNavigating(false);
+      });
+      if (isDashboardSpaPath(path)) void ensureLoaded(path);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [ensureLoaded, startTransition]);
+
+  const navigate = useCallback(
+    (href: string, opts?: { replace?: boolean }) => {
       const path = href.split("?")[0]?.split("#")[0] ?? href;
-      if (path === pathname) return;
-      startTransition(() => setPendingHref(path));
+      if (!isDashboardSpaPath(path)) {
+        window.location.assign(href);
+        return;
+      }
+
+      const cached = Boolean(cache[path]);
+      startTransition(() => {
+        setSpaMode(true);
+        setViewPath(path);
+        setNavigating(!cached);
+      });
+
+      if (opts?.replace) {
+        window.history.replaceState({ spa: true }, "", href);
+      } else {
+        window.history.pushState({ spa: true }, "", href);
+      }
+
+      void ensureLoaded(path).then(() => setNavigating(false));
     },
-    [pathname, startTransition]
+    [cache, ensureLoaded, startTransition]
   );
 
+  const useOutlet = spaMode && isDashboardSpaPath(viewPath);
+  const Active = cache[viewPath]?.Comp;
+  const outlet = useOutlet ? (
+    Active ? (
+      <Active />
+    ) : (
+      <div className="mx-auto max-w-4xl space-y-4 animate-pulse">
+        <div className="h-8 w-48 rounded-xl bg-white/5" />
+        <div className="h-4 w-72 rounded-lg bg-white/[0.04]" />
+        <div className="mt-6 h-40 rounded-3xl bg-white/[0.03]" />
+        <div className="h-40 rounded-3xl bg-white/[0.03]" />
+      </div>
+    )
+  ) : null;
+
   const value = useMemo(
-    () => ({
-      pendingHref,
-      isNavigating: Boolean(pendingHref && pendingHref !== pathname),
-      markPending,
-    }),
-    [pendingHref, pathname, markPending]
+    () => ({ viewPath, navigating, navigate, outlet, useOutlet }),
+    [viewPath, navigating, navigate, outlet, useOutlet]
   );
 
   return (
-    <NavPendingContext.Provider value={value}>
-      {children}
-    </NavPendingContext.Provider>
+    <SpaContext.Provider value={value}>{children}</SpaContext.Provider>
   );
+}
+
+export function DashboardSpaOutlet({ children }: { children: ReactNode }) {
+  const { useOutlet, outlet } = useDashboardSpa();
+  return <>{useOutlet ? outlet : children}</>;
 }
 
 export function DashboardNavLink({
@@ -82,21 +180,51 @@ export function DashboardNavLink({
   onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
   prefetch?: boolean;
 }) {
-  const { markPending } = useDashboardNavPending();
+  const { navigate, viewPath } = useDashboardSpa();
+  const path = href.split("?")[0] ?? href;
+  const spa = isDashboardSpaPath(path);
+
+  if (!spa) {
+    return (
+      <Link
+        href={href}
+        prefetch={prefetch}
+        className={className}
+        onClick={onClick}
+      >
+        {children}
+      </Link>
+    );
+  }
 
   return (
-    <Link
+    <a
       href={href}
-      prefetch={prefetch}
       className={className}
+      aria-current={viewPath === path ? "page" : undefined}
       onClick={(e) => {
-        markPending(href);
+        if (
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey ||
+          e.button !== 0
+        ) {
+          return;
+        }
+        e.preventDefault();
+        navigate(href);
         onClick?.(e);
       }}
     >
       {children}
-    </Link>
+    </a>
   );
+}
+
+/** Back-compat aliases */
+export function DashboardNavProvider({ children }: { children: ReactNode }) {
+  return <DashboardSpaProvider>{children}</DashboardSpaProvider>;
 }
 
 export function DashboardNavPendingShell({
@@ -104,25 +232,9 @@ export function DashboardNavPendingShell({
 }: {
   children: ReactNode;
 }) {
-  const { isNavigating } = useDashboardNavPending();
+  return <div className={cn("relative min-w-0 flex-1")}>{children}</div>;
+}
 
-  return (
-    <div className={cn("relative min-w-0 flex-1")}>
-      {children}
-      {isNavigating ? (
-        <div
-          className="absolute inset-0 z-20 bg-background/70 p-4 backdrop-blur-[2px] md:p-8 lg:p-10"
-          aria-busy
-          aria-live="polite"
-        >
-          <div className="mx-auto max-w-4xl space-y-4 animate-pulse">
-            <div className="h-8 w-48 rounded-xl bg-white/5" />
-            <div className="h-4 w-72 rounded-lg bg-white/[0.04]" />
-            <div className="mt-6 h-40 rounded-3xl bg-white/[0.03]" />
-            <div className="h-40 rounded-3xl bg-white/[0.03]" />
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
+export function useDashboardNavPending() {
+  return { pendingHref: null, isNavigating: false, markPending: () => {} };
 }

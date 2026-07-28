@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   User,
@@ -39,29 +38,14 @@ import {
 } from "@/lib/plans";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { cn } from "@/lib/utils";
-import { PrefetchRoutes } from "@/components/PrefetchRoutes";
 import {
   DashboardNavLink,
   DashboardNavPendingShell,
   DashboardNavProvider,
+  DashboardSpaOutlet,
+  useDashboardSpa,
 } from "@/components/dashboard/DashboardNav";
 import { useChatThreads } from "@/hooks/useChatThreads";
-
-const DASHBOARD_PREFETCH = [
-  "/dashboard/messages",
-  "/dashboard/bookings",
-  "/dashboard/profile",
-  "/dashboard/calendar",
-  "/dashboard/page-builder",
-  "/dashboard/analytics",
-  "/dashboard/settings/marketing",
-  "/dashboard/extras",
-  "/dashboard/program-templates",
-  "/dashboard/requirement-templates",
-  "/dashboard/contracts",
-  "/dashboard/contracts/generate",
-  "/dashboard/invoices/generate",
-] as const;
 
 export default function DashboardLayout({
   children,
@@ -71,7 +55,6 @@ export default function DashboardLayout({
   return (
     <DashboardUserProvider>
       <DashboardNavProvider>
-        <PrefetchRoutes hrefs={DASHBOARD_PREFETCH} />
         <DashboardShell>{children}</DashboardShell>
       </DashboardNavProvider>
     </DashboardUserProvider>
@@ -80,6 +63,8 @@ export default function DashboardLayout({
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { viewPath } = useDashboardSpa();
+  const activePath = viewPath || pathname;
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, loading } = useDashboardUser();
@@ -187,7 +172,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     !loading &&
     !!user &&
     !premium &&
-    isPremiumDashboardPath(pathname ?? "");
+    isPremiumDashboardPath(activePath ?? "");
 
   const handleSignOut = async () => {
     clearDashboardAuthCache();
@@ -240,16 +225,19 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     >
       <div className="glass flex h-full w-full flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_-30px_oklch(0_0_0/0.8)]">
         <div className="flex h-[4.5rem] shrink-0 items-center border-b border-white/5 px-3">
-          <Link href="/dashboard/bookings" className="inline-flex min-w-0 items-center">
+          <DashboardNavLink
+            href="/dashboard/bookings"
+            className="inline-flex min-w-0 items-center"
+          >
             <BrandLogo size="md" />
-          </Link>
+          </DashboardNavLink>
         </div>
 
         <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
           {navItems.map((item) => {
             // Chat under /bookings/:id/chat belongs to Správy, not Rezervácie.
             const isChatRoute =
-              pathname?.includes("/bookings/") && pathname.includes("/chat");
+              activePath?.includes("/bookings/") && activePath.includes("/chat");
             let isActive = false;
             if (isChatRoute) {
               isActive = item.href === "/dashboard/messages";
@@ -257,7 +245,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               const bestMatch = navItems
                 .filter(
                   (i) =>
-                    pathname === i.href || pathname?.startsWith(`${i.href}/`)
+                    activePath === i.href || activePath?.startsWith(`${i.href}/`)
                 )
                 .sort((a, b) => b.href.length - a.href.length)[0];
               isActive = bestMatch?.href === item.href;
@@ -365,7 +353,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           ) : blocked ? (
             <PremiumUpgradeGate profile={profile} />
           ) : (
-            children
+            <DashboardSpaOutlet>{children}</DashboardSpaOutlet>
           )}
         </div>
       </DashboardNavPendingShell>

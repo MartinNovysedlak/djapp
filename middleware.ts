@@ -8,9 +8,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all paths except static assets & image optimization.
-     * Incomplete profiles are forced to /onboarding on every navigation.
+     * Skip static assets AND the logged-in app shells.
+     * Dashboard / client-dashboard / admin auth is enforced client-side;
+     * excluding them from middleware removes Edge latency on every click.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|dashboard|client-dashboard|admin|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
