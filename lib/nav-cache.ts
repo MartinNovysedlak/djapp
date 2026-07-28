@@ -32,11 +32,19 @@ type CatalogCache = {
 const AUTH_TTL_MS = 5 * 60 * 1000;
 const BOOKINGS_TTL_MS = 5 * 60 * 1000;
 const CATALOG_TTL_MS = 5 * 60 * 1000;
+const CHAT_THREADS_TTL_MS = 2 * 60 * 1000;
+
+type ChatThreadsCache = {
+  userId: string;
+  threads: unknown[];
+  at: number;
+};
 
 let dashboardAuth: DashboardAuthCache | null = null;
 let clientAuth: ClientAuthCache | null = null;
 let bookingsCache: BookingsCache | null = null;
 let catalogCache: CatalogCache | null = null;
+let chatThreadsCache: ChatThreadsCache | null = null;
 
 function fresh(at: number, ttl: number) {
   return Date.now() - at < ttl;
@@ -60,6 +68,7 @@ export function setDashboardAuthCache(user: AuthUser, profile: unknown) {
 export function clearDashboardAuthCache() {
   dashboardAuth = null;
   bookingsCache = null;
+  chatThreadsCache = null;
 }
 
 export function getClientAuthCache<TProfile = unknown>(): {
@@ -123,4 +132,20 @@ export function setCatalogCache(
   ratings: Record<string, { avg: number; count: number }>
 ) {
   catalogCache = { djs, ratings, at: Date.now() };
+}
+
+export function getChatThreadsCache<T = unknown>(
+  userId: string
+): T[] | null {
+  if (!chatThreadsCache || chatThreadsCache.userId !== userId) return null;
+  if (!fresh(chatThreadsCache.at, CHAT_THREADS_TTL_MS)) return null;
+  return chatThreadsCache.threads as T[];
+}
+
+export function setChatThreadsCache(userId: string, threads: unknown[]) {
+  chatThreadsCache = { userId, threads, at: Date.now() };
+}
+
+export function clearChatThreadsCache() {
+  chatThreadsCache = null;
 }

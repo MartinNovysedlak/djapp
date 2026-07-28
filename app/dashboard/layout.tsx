@@ -29,7 +29,6 @@ import {
 import { NewMessageToaster } from "@/components/chat/NewMessageToaster";
 import { clearDashboardAuthCache } from "@/lib/nav-cache";
 import { BrandLogo } from "@/components/BrandLogo";
-import { countUnreadBookingMessages } from "@/app/actions/booking-messages";
 import { PremiumUpgradeGate } from "@/components/PremiumUpgradeGate";
 import {
   hasPremiumAccess,
@@ -41,14 +40,20 @@ import {
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { cn } from "@/lib/utils";
 import { PrefetchRoutes } from "@/components/PrefetchRoutes";
+import {
+  DashboardNavLink,
+  DashboardNavPendingShell,
+  DashboardNavProvider,
+} from "@/components/dashboard/DashboardNav";
+import { useChatThreads } from "@/hooks/useChatThreads";
 
 const DASHBOARD_PREFETCH = [
-  "/dashboard/profile",
-  "/dashboard/page-builder",
-  "/dashboard/bookings",
   "/dashboard/messages",
-  "/dashboard/analytics",
+  "/dashboard/bookings",
+  "/dashboard/profile",
   "/dashboard/calendar",
+  "/dashboard/page-builder",
+  "/dashboard/analytics",
   "/dashboard/settings/marketing",
   "/dashboard/extras",
   "/dashboard/program-templates",
@@ -65,8 +70,10 @@ export default function DashboardLayout({
 }) {
   return (
     <DashboardUserProvider>
-      <PrefetchRoutes hrefs={DASHBOARD_PREFETCH} />
-      <DashboardShell>{children}</DashboardShell>
+      <DashboardNavProvider>
+        <PrefetchRoutes hrefs={DASHBOARD_PREFETCH} />
+        <DashboardShell>{children}</DashboardShell>
+      </DashboardNavProvider>
     </DashboardUserProvider>
   );
 }
@@ -75,9 +82,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const { user, profile, loading } = useDashboardUser();
   const premium = hasPremiumAccess(profile);
+  const { threads: chatThreads } = useChatThreads(user?.id);
+  const unreadMessages = chatThreads.reduce((sum, t) => sum + t.unread, 0);
   const trialDays = getTrialDaysLeft(profile);
   const onTrial = isTrialActive(profile) && !isPaidPremiumActive(profile);
 
@@ -89,30 +97,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     }
   }, [loading, user, profile, router]);
 
-  useEffect(() => {
-    if (!user) {
-      setUnreadMessages(0);
-      return;
-    }
-    if (!premium) {
-      setUnreadMessages(0);
-      return;
-    }
-    let cancelled = false;
-    const refresh = () => {
-      void countUnreadBookingMessages().then((r) => {
-        if (!cancelled && r.ok) setUnreadMessages(r.count);
-      });
-    };
-    const kickoff = window.setTimeout(refresh, 250);
-    const id = window.setInterval(refresh, 20_000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(kickoff);
-      window.clearInterval(id);
-    };
-  }, [user, premium]);
-
+  // Unread count comes from useChatThreads cache — no server-action polling.
   const navItems = [
     {
       label: "Môj profil",
@@ -278,7 +263,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               isActive = bestMatch?.href === item.href;
             }
             return (
-              <Link
+              <DashboardNavLink
                 key={item.href}
                 href={item.href}
                 prefetch
@@ -311,7 +296,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                     {unreadMessages > 9 ? "9+" : unreadMessages}
                   </span>
                 ) : null}
-              </Link>
+              </DashboardNavLink>
             );
           })}
         </nav>
@@ -353,7 +338,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {sidebar}
 
-      <main className="relative min-w-0 flex-1">
+      <DashboardNavPendingShell>
         <div className="flex items-center gap-3 px-4 py-3 md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -383,7 +368,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             children
           )}
         </div>
-      </main>
+      </DashboardNavPendingShell>
       <NewMessageToaster
         chatBasePath="/dashboard/bookings"
         inboxHref="/dashboard/messages"

@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Loader2, MessageCircle } from "lucide-react";
-import {
-  listChatThreads,
-  type ChatThread,
-} from "@/app/actions/booking-messages";
+import { useChatThreads } from "@/hooks/useChatThreads";
 import { createClient } from "@/utils/supabase/client";
+import {
+  getClientAuthCache,
+  getDashboardAuthCache,
+} from "@/lib/nav-cache";
 import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string | null) {
@@ -24,32 +25,35 @@ function formatWhen(iso: string | null) {
   }
 }
 
+function seedUserId() {
+  return (
+    getDashboardAuthCache()?.user.id ??
+    getClientAuthCache()?.user.id ??
+    undefined
+  );
+}
+
 /** Inbox of chat threads only — click opens one conversation. */
 export function ChatInbox({ basePath }: { basePath: string }) {
-  const [loading, setLoading] = useState(true);
-  const [threads, setThreads] = useState<ChatThread[]>([]);
-  const loadingRef = useRef(false);
-
-  const load = useCallback(async (silent = false) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    if (!silent) setLoading(true);
-    try {
-      const result = await listChatThreads();
-      if (result.ok) setThreads(result.threads);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  }, []);
+  const [userId, setUserId] = useState<string | undefined>(seedUserId);
+  const { threads, loading, refresh } = useChatThreads(userId);
 
   useEffect(() => {
-    void load(false);
-    const id = window.setInterval(() => void load(true), 20000);
+    if (userId) return;
+    const supabase = createClient();
+    void supabase.auth.getSession().then(({ data }: { data: { session: { user?: { id: string } } | null } }) => {
+      setUserId(data.session?.user?.id);
+    });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const id = window.setInterval(() => void refresh(), 20000);
     return () => window.clearInterval(id);
-  }, [load]);
+  }, [userId, refresh]);
 
   useEffect(() => {
+    if (!userId) return;
     const supabase = createClient();
     const channel = supabase
       .channel("chat-inbox")
@@ -57,16 +61,16 @@ export function ChatInbox({ basePath }: { basePath: string }) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "booking_messages" },
         () => {
-          void load(true);
+          void refresh();
         }
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [load]);
+  }, [userId, refresh]);
 
-  if (loading) {
+  if (!userId || (loading && threads.length === 0)) {
     return (
       <div className="flex justify-center py-16 text-zinc-500">
         <Loader2 className="size-5 animate-spin" />
