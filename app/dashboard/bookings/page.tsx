@@ -49,14 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Reveal } from "@/components/motion";
 import { useDashboardUser } from "@/components/DashboardUserContext";
-import { MusicPlanner } from "@/components/playlist/MusicPlanner";
-import { EventTimeline } from "@/components/timeline/EventTimeline";
-import { BookingExtras } from "@/components/extras/BookingExtras";
-import { LiveRequestQr } from "@/components/live/LiveRequestQr";
-import { ClientShareQr } from "@/components/share/ClientShareQr";
-import { ReviewInviteLink } from "@/components/reviews/ReviewInviteLink";
-import { DjRequirementsPanel } from "@/components/tech/DjRequirementsPanel";
-import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
+import { BookingPrepSection } from "@/components/bookings/BookingPrepSection";
 import {
   rejectBooking,
   deleteDjBooking,
@@ -1867,26 +1860,12 @@ function BookingCard({
               </p>
             </div>
           )}
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              Príprava akcie
-            </p>
-          </div>
-          <LiveRequestQr
+          <BookingPrepSection
             bookingId={booking.id}
             mode="dj"
+            clientName={booking.client_name}
             returnTab={returnTab}
           />
-          <ClientShareQr bookingId={booking.id} />
-          <ReviewInviteLink
-            bookingId={booking.id}
-            clientName={booking.client_name}
-          />
-          <BookingExtras bookingId={booking.id} mode="dj" />
-          <MusicPlanner bookingId={booking.id} mode="dj" />
-          <EventTimeline bookingId={booking.id} mode="dj" />
-          <DjRequirementsPanel bookingId={booking.id} mode="dj" />
-          <VenueQuestionnairePanel bookingId={booking.id} mode="dj" />
         </div>
       ) : null}
 

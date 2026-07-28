@@ -16,6 +16,8 @@ type LiveRequestQrProps = {
   mode: "client" | "dj";
   className?: string;
   defaultOpen?: boolean;
+  /** Tighter header for grid layouts */
+  compact?: boolean;
   /** Current bookings tab — used so Live "Späť" returns to the same place. */
   returnTab?: BookingsTab;
 };
@@ -29,6 +31,7 @@ export function LiveRequestQr({
   mode,
   className,
   defaultOpen = false,
+  compact = false,
   returnTab,
 }: LiveRequestQrProps) {
   const { showToast } = useToast();
@@ -90,22 +93,49 @@ export function LiveRequestQr({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+        className={cn(
+          "flex w-full items-center gap-3 text-left transition-colors hover:bg-white/[0.03]",
+          compact ? "px-3 py-2.5" : "px-4 py-3"
+        )}
       >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
-          <QrCode className="size-3.5 text-violet-300" />
+        <div
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10",
+            compact ? "size-7" : "size-8"
+          )}
+        >
+          <QrCode
+            className={cn(
+              "text-violet-300",
+              compact ? "size-3" : "size-3.5"
+            )}
+          />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Live želania · QR</p>
-          <p className="text-[11px] text-zinc-500">
-            {mode === "dj"
-              ? "QR pre hostí + live obrazovka za pultom"
-              : "Zdieľaj QR s hosťami na akcii"}
+          <p
+            className={cn(
+              "font-semibold text-white",
+              compact ? "text-[13px] leading-tight" : "text-sm"
+            )}
+          >
+            Live želania · QR
           </p>
+          {!compact ? (
+            <p className="text-[11px] text-zinc-500">
+              {mode === "dj"
+                ? "QR pre hostí + live obrazovka za pultom"
+                : "Zdieľaj QR s hosťami na akcii"}
+            </p>
+          ) : (
+            <p className="truncate text-[10px] text-zinc-500">
+              {mode === "dj" ? "QR + live booth" : "QR pre hostí"}
+            </p>
+          )}
         </div>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-zinc-500 transition-transform",
+            "shrink-0 text-zinc-500 transition-transform",
+            compact ? "size-3.5" : "size-4",
             open && "rotate-180"
           )}
         />

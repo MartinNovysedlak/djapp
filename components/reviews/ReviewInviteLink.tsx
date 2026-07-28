@@ -21,6 +21,7 @@ type ReviewInviteLinkProps = {
   clientName?: string | null;
   className?: string;
   defaultOpen?: boolean;
+  compact?: boolean;
 };
 
 export function ReviewInviteLink({
@@ -28,6 +29,7 @@ export function ReviewInviteLink({
   clientName,
   className,
   defaultOpen = false,
+  compact = false,
 }: ReviewInviteLinkProps) {
   const { showToast } = useToast();
   const [open, setOpen] = useState(defaultOpen);
@@ -87,22 +89,47 @@ export function ReviewInviteLink({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+        className={cn(
+          "flex w-full items-center gap-3 text-left transition-colors hover:bg-white/[0.03]",
+          compact ? "px-3 py-2.5" : "px-4 py-3"
+        )}
       >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
-          <Star className="size-3.5 text-violet-300" />
+        <div
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10",
+            compact ? "size-7" : "size-8"
+          )}
+        >
+          <Star
+            className={cn(
+              "text-violet-300",
+              compact ? "size-3" : "size-3.5"
+            )}
+          />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">
+          <p
+            className={cn(
+              "font-semibold text-white",
+              compact ? "text-[13px] leading-tight" : "text-sm"
+            )}
+          >
             Odkaz na hodnotenie
           </p>
-          <p className="text-[11px] text-zinc-500">
-            Pošli klientovi — ohodnotí ťa aj bez účtu
-          </p>
+          {!compact ? (
+            <p className="text-[11px] text-zinc-500">
+              Pošli klientovi — ohodnotí ťa aj bez účtu
+            </p>
+          ) : (
+            <p className="truncate text-[10px] text-zinc-500">
+              Recenzia bez registrácie
+            </p>
+          )}
         </div>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-zinc-500 transition-transform",
+            "shrink-0 text-zinc-500 transition-transform",
+            compact ? "size-3.5" : "size-4",
             open && "rotate-180"
           )}
         />

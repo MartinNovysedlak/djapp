@@ -29,12 +29,7 @@ import {
   confirmClientBookingOffer,
   declineClientBookingOffer,
 } from "@/app/actions/booking-status";
-import { MusicPlanner } from "@/components/playlist/MusicPlanner";
-import { EventTimeline } from "@/components/timeline/EventTimeline";
-import { BookingExtras } from "@/components/extras/BookingExtras";
-import { LiveRequestQr } from "@/components/live/LiveRequestQr";
-import { DjRequirementsPanel } from "@/components/tech/DjRequirementsPanel";
-import { VenueQuestionnairePanel } from "@/components/tech/VenueQuestionnairePanel";
+import { BookingPrepSection } from "@/components/bookings/BookingPrepSection";
 import { isPastLocalDate, parseLocalDate } from "@/lib/dates";
 import { formatEventTypeLabel } from "@/lib/event-types";
 import { formatExtraPrice } from "@/lib/extras/types";
@@ -436,17 +431,7 @@ function BookingRow({
                   </p>
                 </div>
               )}
-              <div className="flex flex-wrap items-end justify-between gap-2">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                  Príprava akcie
-                </p>
-              </div>
-              <LiveRequestQr bookingId={booking.id} mode="client" />
-              <BookingExtras bookingId={booking.id} mode="client" />
-              <MusicPlanner bookingId={booking.id} mode="client" />
-              <EventTimeline bookingId={booking.id} mode="client" />
-              <DjRequirementsPanel bookingId={booking.id} mode="client" />
-              <VenueQuestionnairePanel bookingId={booking.id} mode="client" />
+              <BookingPrepSection bookingId={booking.id} mode="client" />
             </div>
           )}
 
