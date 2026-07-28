@@ -14,7 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   DASHBOARD_SPA_LOADERS,
   isDashboardSpaPath,
@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 type SpaContextValue = {
   viewPath: string;
   navigating: boolean;
-  navigate: (href: string, opts?: { replace?: boolean }) => void;
+  navigate: (href: string) => void;
   outlet: ReactNode | null;
   useOutlet: boolean;
 };
@@ -44,8 +44,9 @@ export function useDashboardSpa() {
 type CacheEntry = { Comp: ComponentType };
 
 /**
- * True SPA navigation for main /dashboard sidebar routes.
- * Clicks render a preloaded client page — zero wait on Vercel RSC.
+ * Instant dashboard navigation: show the client page immediately, keep Next
+ * router in sync via router.push (never raw history.pushState — Next patches
+ * it and was resetting spa mode on the first click).
  */
 export function DashboardSpaProvider({
   children,
@@ -53,12 +54,15 @@ export function DashboardSpaProvider({
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? "/dashboard/profile";
+  const router = useRouter();
   const [viewPath, setViewPath] = useState(pathname);
   const [cache, setCache] = useState<Record<string, CacheEntry>>({});
   const [navigating, setNavigating] = useState(false);
   const [spaMode, setSpaMode] = useState(false);
   const [, startTransition] = useTransition();
   const preloaded = useRef(false);
+  /** Path we intentionally SPA-navigated to — don't drop spaMode when it lands. */
+  const pendingSpaPath = useRef<string | null>(null);
 
   const ensureLoaded = useCallback(async (path: string) => {
     const loader = DASHBOARD_SPA_LOADERS[path];
@@ -87,38 +91,52 @@ export function DashboardSpaProvider({
     window.setTimeout(tick, 40);
   }, [ensureLoaded]);
 
-  // Next.js navigated (nested chat/live, refresh, external link).
   useEffect(() => {
-    setSpaMode(false);
-    setViewPath(pathname);
-    setNavigating(false);
-    if (isDashboardSpaPath(pathname)) {
-      void ensureLoaded(pathname);
-    }
-  }, [pathname, ensureLoaded]);
+    const path = pathname.split("?")[0] ?? pathname;
 
-  useEffect(() => {
-    const onPop = () => {
-      const path = window.location.pathname;
+    // Our SPA click finished syncing — keep rendering the client page.
+    if (pendingSpaPath.current && pendingSpaPath.current === path) {
+      pendingSpaPath.current = null;
       startTransition(() => {
-        setSpaMode(isDashboardSpaPath(path));
+        setSpaMode(true);
         setViewPath(path);
         setNavigating(false);
       });
-      if (isDashboardSpaPath(path)) void ensureLoaded(path);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, [ensureLoaded, startTransition]);
+      void ensureLoaded(path);
+      return;
+    }
+
+    // Nested route (chat / live / editor) or hard navigation.
+    if (!isDashboardSpaPath(path)) {
+      pendingSpaPath.current = null;
+      startTransition(() => {
+        setSpaMode(false);
+        setViewPath(path);
+        setNavigating(false);
+      });
+      return;
+    }
+
+    // Landed on a sidebar page via Next (refresh, external link, first paint).
+    // Show RSC children — do not force spaMode (avoids remount flash).
+    pendingSpaPath.current = null;
+    startTransition(() => {
+      setViewPath(path);
+      setNavigating(false);
+    });
+    void ensureLoaded(path);
+  }, [pathname, ensureLoaded, startTransition]);
 
   const navigate = useCallback(
-    (href: string, opts?: { replace?: boolean }) => {
+    (href: string) => {
       const path = href.split("?")[0]?.split("#")[0] ?? href;
       if (!isDashboardSpaPath(path)) {
-        window.location.assign(href);
+        router.push(href);
         return;
       }
+      if (path === viewPath && spaMode && cache[path]) return;
 
+      pendingSpaPath.current = path;
       const cached = Boolean(cache[path]);
       startTransition(() => {
         setSpaMode(true);
@@ -126,15 +144,10 @@ export function DashboardSpaProvider({
         setNavigating(!cached);
       });
 
-      if (opts?.replace) {
-        window.history.replaceState({ spa: true }, "", href);
-      } else {
-        window.history.pushState({ spa: true }, "", href);
-      }
-
       void ensureLoaded(path).then(() => setNavigating(false));
+      router.push(href);
     },
-    [cache, ensureLoaded, startTransition]
+    [viewPath, spaMode, cache, ensureLoaded, startTransition, router]
   );
 
   const useOutlet = spaMode && isDashboardSpaPath(viewPath);
@@ -222,7 +235,6 @@ export function DashboardNavLink({
   );
 }
 
-/** Back-compat aliases */
 export function DashboardNavProvider({ children }: { children: ReactNode }) {
   return <DashboardSpaProvider>{children}</DashboardSpaProvider>;
 }
