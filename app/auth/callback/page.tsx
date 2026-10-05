@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { authErrorCode } from "@/lib/auth-errors";
 import { getPostAuthPath } from "@/utils/supabase/auth";
+import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
 import { finalizeGoogleLogin } from "./actions";
 
 export default function AuthCallbackPage() {
@@ -16,6 +17,14 @@ export default function AuthCallbackPage() {
     let cancelled = false;
 
     async function finish() {
+      if (isNonPublicSiteUrl(window.location.origin)) {
+        const params = new URLSearchParams(window.location.search);
+        const target = new URL("/login", getPublicSiteUrl());
+        if (!params.get("error")) target.searchParams.set("google", "1");
+        window.location.replace(target.toString());
+        return;
+      }
+
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const providerError = params.get("error_description") || params.get("error");
@@ -32,7 +41,6 @@ export default function AuthCallbackPage() {
       if (cancelled) return;
 
       if (error) {
-        console.error("[auth/callback] exchange", error.message);
         setFailed(true);
         router.replace(`/login?error=${authErrorCode(error.message)}`);
         return;

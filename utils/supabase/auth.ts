@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
 import {
   clearOAuthNextCookie,
   writeOAuthNextCookie,
@@ -31,11 +32,24 @@ export async function signInWithGoogle(
   next?: string,
   intent?: OAuthSignupIntent
 ): Promise<AuthResult> {
-  // 0.0.0.0 cannot store the login cookie the callback later reads.
-  if (window.location.hostname === "0.0.0.0") {
-    const target = new URL(window.location.href);
-    target.hostname = "localhost";
-    window.location.replace(target.toString());
+  const canonical = getPublicSiteUrl();
+  // Localhost must not finish the Google round-trip. The session would stay
+  // on :3000 and the live site would look logged out.
+  if (
+    isNonPublicSiteUrl(window.location.origin) ||
+    window.location.origin !== canonical
+  ) {
+    const path = intent ? "/register" : "/login";
+    const target = new URL(path, canonical);
+    target.searchParams.set("google", "1");
+    if (next?.startsWith("/") && !next.startsWith("//")) {
+      target.searchParams.set("redirect", next);
+    }
+    if (intent?.role) target.searchParams.set("role", intent.role);
+    if (intent?.artistKind && intent.artistKind !== "dj") {
+      target.searchParams.set("kind", intent.artistKind);
+    }
+    window.location.assign(target.toString());
     return { error: null };
   }
 
@@ -50,8 +64,7 @@ export async function signInWithGoogle(
     clearOAuthNextCookie();
   }
 
-  // Verifier cookie and the return URL must be the same host.
-  const redirectTo = new URL("/auth/callback", window.location.origin);
+  const redirectTo = new URL("/auth/callback", canonical);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
