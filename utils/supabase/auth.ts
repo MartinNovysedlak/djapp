@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
 import {
   clearOAuthNextCookie,
   writeOAuthNextCookie,
@@ -23,59 +24,59 @@ export async function signInWithEmail(
   return { error: error ? authErrorMessage(error.message) : null };
 }
 
-/** Public Google web client already configured on the Supabase Google provider. */
-export const GOOGLE_CLIENT_ID =
-  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-  "428818539814-17i9tmdpqqb6cqjhj0k10l189gqrttl7.apps.googleusercontent.com";
-
-function isLiveBookTheVibeHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return host === "bookthevibe.com" || host === "www.bookthevibe.com";
-}
-
-/** Localhost must open Google on the live site. Apex and www stay where they are. */
-export function redirectGoogleAuthIfNeeded(
+/**
+ * Kicks off the Google OAuth flow client-side. Optional `intent` is stored
+ * in a short-lived cookie so /auth/callback can set role (dj|client) safely.
+ */
+export async function signInWithGoogle(
   next?: string,
   intent?: OAuthSignupIntent
-): boolean {
-  if (isLiveBookTheVibeHost(window.location.hostname)) return false;
-  const path = intent ? "/register" : "/login";
-  const target = new URL(path, "https://bookthevibe.com");
-  target.searchParams.set("google", "1");
-  if (next?.startsWith("/") && !next.startsWith("//")) {
-    target.searchParams.set("redirect", next);
+): Promise<AuthResult> {
+  const canonical = getPublicSiteUrl();
+  // Localhost must not finish the Google round-trip. The session would stay
+  // on :3000 and the live site would look logged out.
+  if (
+    isNonPublicSiteUrl(window.location.origin) ||
+    window.location.origin !== canonical
+  ) {
+    const path = intent ? "/register" : "/login";
+    const target = new URL(path, canonical);
+    target.searchParams.set("google", "1");
+    if (next?.startsWith("/") && !next.startsWith("//")) {
+      target.searchParams.set("redirect", next);
+    }
+    if (intent?.role) target.searchParams.set("role", intent.role);
+    if (intent?.artistKind && intent.artistKind !== "dj") {
+      target.searchParams.set("kind", intent.artistKind);
+    }
+    window.location.assign(target.toString());
+    return { error: null };
   }
-  if (intent?.role) target.searchParams.set("role", intent.role);
-  if (intent?.artistKind && intent.artistKind !== "dj") {
-    target.searchParams.set("kind", intent.artistKind);
-  }
-  window.location.assign(target.toString());
-  return true;
-}
 
-export function rememberGoogleIntent(next?: string, intent?: OAuthSignupIntent) {
-  if (intent) writeOAuthIntentCookie(intent);
-  if (next?.startsWith("/") && !next.startsWith("//")) writeOAuthNextCookie(next);
-  else clearOAuthNextCookie();
-}
-
-/** Turn a Google ID token into a session and return where to go next. */
-export async function completeGoogleSignIn(
-  credential: string,
-  nonce: string
-): Promise<AuthResult & { path?: string }> {
   const supabase = createClient();
-  const { error } = await supabase.auth.signInWithIdToken({
-    provider: "google",
-    token: credential,
-    nonce,
-  });
-  if (error) return { error: authErrorMessage(error.message) };
 
-  const { finalizeGoogleLogin } = await import("@/app/auth/callback/actions");
-  const { next } = await finalizeGoogleLogin();
-  const path = await getPostAuthPath(next);
-  return { error: null, path };
+  if (intent) {
+    writeOAuthIntentCookie(intent);
+  }
+  if (next?.startsWith("/") && !next.startsWith("//")) {
+    writeOAuthNextCookie(next);
+  } else {
+    clearOAuthNextCookie();
+  }
+
+  const redirectTo = new URL("/auth/callback", canonical);
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: redirectTo.toString(),
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error) return { error: authErrorMessage(error.message) };
+  if (data?.url) window.location.assign(data.url);
+  return { error: null };
 }
 
 export type SignUpDetails = {
