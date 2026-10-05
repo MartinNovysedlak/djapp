@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Mail, Lock } from "lucide-react";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInWithEmail, getPostAuthPath } from "@/utils/supabase/auth";
+import { signInWithEmail, signInWithGoogle, getPostAuthPath } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -25,6 +25,7 @@ const OAUTH_ERROR_MESSAGE =
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const googleStarted = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -38,6 +39,13 @@ function LoginForm() {
       setErrorMessage(OAUTH_ERROR_MESSAGE);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (googleStarted.current) return;
+    if (searchParams.get("google") !== "1" || searchParams.get("error")) return;
+    googleStarted.current = true;
+    void signInWithGoogle(redirectParam ?? undefined);
+  }, [searchParams, redirectParam]);
 
   useEffect(() => {
     let cancelled = false;

@@ -10,13 +10,34 @@ import { syncOAuthProfileFromUser } from "@/lib/sync-oauth-profile";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { createBillingAdminClient } from "@/lib/stripe/config";
 import { ONBOARDING_OK_COOKIE, ONBOARDING_OK_MAX_AGE } from "@/lib/onboarding-cookie";
+import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
+
+/** Never send the browser to 0.0.0.0 or localhost after Google login. */
+function callbackOrigin(request: Request): string {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = (forwardedHost || request.headers.get("host") || "")
+    .split(",")[0]
+    .trim();
+  const proto = (
+    request.headers.get("x-forwarded-proto") ||
+    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https")
+  )
+    .split(",")[0]
+    .trim();
+
+  if (!host || host.startsWith("0.0.0.0")) return getPublicSiteUrl();
+  const origin = `${proto}://${host}`;
+  if (isNonPublicSiteUrl(origin)) return getPublicSiteUrl();
+  return origin;
+}
 
 /**
  * OAuth / email-verification callback. Prefills Google profile data,
  * applies signup intent (dj|client), then routes incomplete users to onboarding.
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = callbackOrigin(request);
   const code = searchParams.get("code");
   const rawNext = searchParams.get("next");
   const next = rawNext && rawNext.startsWith("/") ? rawNext : null;

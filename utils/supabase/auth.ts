@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import {
   writeOAuthIntentCookie,
   type OAuthSignupIntent,
@@ -26,13 +27,30 @@ export async function signInWithGoogle(
   next?: string,
   intent?: OAuthSignupIntent
 ): Promise<AuthResult> {
+  const canonical = getPublicSiteUrl();
+
+  // PKCE cookies only work on the host that starts Google login.
+  // Localhost / 0.0.0.0 must hand off to the live site first.
+  if (window.location.origin !== canonical) {
+    const path = intent ? "/register" : "/login";
+    const target = new URL(path, canonical);
+    target.searchParams.set("google", "1");
+    if (next) target.searchParams.set("redirect", next);
+    if (intent?.role) target.searchParams.set("role", intent.role);
+    if (intent?.artistKind && intent.artistKind !== "dj") {
+      target.searchParams.set("kind", intent.artistKind);
+    }
+    window.location.assign(target.toString());
+    return { error: null };
+  }
+
   const supabase = createClient();
 
   if (intent) {
     writeOAuthIntentCookie(intent);
   }
 
-  const redirectTo = new URL("/auth/callback", window.location.origin);
+  const redirectTo = new URL("/auth/callback", canonical);
   if (next) redirectTo.searchParams.set("next", next);
 
   const { error } = await supabase.auth.signInWithOAuth({

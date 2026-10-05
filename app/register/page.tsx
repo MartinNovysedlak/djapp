@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Disc, Loader2, Lock, Mail, MapPin, Music2, Phone, Sparkles, User, Users } from "lucide-react";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
-import { signUpWithEmail } from "@/utils/supabase/auth";
+import { signUpWithEmail, signInWithGoogle } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -33,9 +33,13 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
   const initialRole = searchParams.get("role") === "dj" ? "dj" : "client";
+  const kindParam = searchParams.get("kind");
+  const initialKind: ArtistKind =
+    kindParam === "band" || kindParam === "dj_band" ? kindParam : "dj";
+  const googleStarted = useRef(false);
 
   const [role, setRole] = useState<Role>(initialRole);
-  const [artistKind, setArtistKind] = useState<ArtistKind>("dj");
+  const [artistKind, setArtistKind] = useState<ArtistKind>(initialKind);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
@@ -54,6 +58,16 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  useEffect(() => {
+    if (googleStarted.current) return;
+    if (searchParams.get("google") !== "1") return;
+    googleStarted.current = true;
+    void signInWithGoogle(redirectParam ?? undefined, {
+      role: initialRole,
+      artistKind: initialRole === "dj" ? initialKind : undefined,
+    });
+  }, [searchParams, redirectParam, initialRole, initialKind]);
 
   const cityOptions: ComboboxOption[] = getCitiesForCountry(country).map(
     (c) => ({
