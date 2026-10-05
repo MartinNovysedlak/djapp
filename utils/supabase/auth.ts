@@ -24,59 +24,60 @@ export async function signInWithEmail(
   return { error: error ? authErrorMessage(error.message) : null };
 }
 
-/**
- * Kicks off the Google OAuth flow client-side. Optional `intent` is stored
- * in a short-lived cookie so /auth/callback can set role (dj|client) safely.
- */
-export async function signInWithGoogle(
+/** Public Google web client already configured on the Supabase Google provider. */
+export const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "428818539814-17i9tmdpqqb6cqjhj0k10l189gqrttl7.apps.googleusercontent.com";
+
+/** Leave localhost / apex before Google, so the session is created on www. */
+export function redirectGoogleAuthIfNeeded(
   next?: string,
   intent?: OAuthSignupIntent
-): Promise<AuthResult> {
+): boolean {
   const canonical = getPublicSiteUrl();
-  // Localhost must not finish the Google round-trip. The session would stay
-  // on :3000 and the live site would look logged out.
   if (
-    isNonPublicSiteUrl(window.location.origin) ||
-    window.location.origin !== canonical
+    !isNonPublicSiteUrl(window.location.origin) &&
+    window.location.origin === canonical
   ) {
-    const path = intent ? "/register" : "/login";
-    const target = new URL(path, canonical);
-    target.searchParams.set("google", "1");
-    if (next?.startsWith("/") && !next.startsWith("//")) {
-      target.searchParams.set("redirect", next);
-    }
-    if (intent?.role) target.searchParams.set("role", intent.role);
-    if (intent?.artistKind && intent.artistKind !== "dj") {
-      target.searchParams.set("kind", intent.artistKind);
-    }
-    window.location.assign(target.toString());
-    return { error: null };
+    return false;
   }
-
-  const supabase = createClient();
-
-  if (intent) {
-    writeOAuthIntentCookie(intent);
-  }
+  const path = intent ? "/register" : "/login";
+  const target = new URL(path, canonical);
+  target.searchParams.set("google", "1");
   if (next?.startsWith("/") && !next.startsWith("//")) {
-    writeOAuthNextCookie(next);
-  } else {
-    clearOAuthNextCookie();
+    target.searchParams.set("redirect", next);
   }
+  if (intent?.role) target.searchParams.set("role", intent.role);
+  if (intent?.artistKind && intent.artistKind !== "dj") {
+    target.searchParams.set("kind", intent.artistKind);
+  }
+  window.location.assign(target.toString());
+  return true;
+}
 
-  const redirectTo = new URL("/auth/callback", canonical);
+export function rememberGoogleIntent(next?: string, intent?: OAuthSignupIntent) {
+  if (intent) writeOAuthIntentCookie(intent);
+  if (next?.startsWith("/") && !next.startsWith("//")) writeOAuthNextCookie(next);
+  else clearOAuthNextCookie();
+}
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
+/** Turn a Google ID token into a session and return where to go next. */
+export async function completeGoogleSignIn(
+  credential: string,
+  nonce: string
+): Promise<AuthResult & { path?: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.auth.signInWithIdToken({
     provider: "google",
-    options: {
-      redirectTo: redirectTo.toString(),
-      skipBrowserRedirect: true,
-    },
+    token: credential,
+    nonce,
   });
-
   if (error) return { error: authErrorMessage(error.message) };
-  if (data?.url) window.location.assign(data.url);
-  return { error: null };
+
+  const { finalizeGoogleLogin } = await import("@/app/auth/callback/actions");
+  const { next } = await finalizeGoogleLogin();
+  const path = await getPostAuthPath(next);
+  return { error: null, path };
 }
 
 export type SignUpDetails = {

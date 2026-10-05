@@ -1,76 +1,173 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { signInWithGoogle } from "@/utils/supabase/auth";
+import {
+  GOOGLE_CLIENT_ID,
+  completeGoogleSignIn,
+  redirectGoogleAuthIfNeeded,
+  rememberGoogleIntent,
+} from "@/utils/supabase/auth";
 import type { OAuthSignupIntent } from "@/lib/oauth-intent";
 
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4">
-      <path
-        fill="#4285F4"
-        d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.48a5.54 5.54 0 0 1-2.4 3.64v3.02h3.87c2.27-2.09 3.57-5.17 3.57-8.84Z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 24c3.24 0 5.95-1.07 7.95-2.9l-3.87-3.02c-1.08.73-2.46 1.16-4.08 1.16-3.14 0-5.8-2.12-6.75-4.97H1.24v3.12A11.998 11.998 0 0 0 12 24Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.25 14.27a7.2 7.2 0 0 1 0-4.54V6.61H1.24a12.02 12.02 0 0 0 0 10.78l4.01-3.12Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.43-3.43C17.94 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.24 6.61l4.01 3.12C6.2 6.87 8.86 4.75 12 4.75Z"
-      />
-    </svg>
-  );
+type GoogleCredential = { credential?: string };
+
+type GoogleId = {
+  initialize: (config: {
+    client_id: string;
+    callback: (response: GoogleCredential) => void;
+    nonce: string;
+    ux_mode?: "popup";
+    use_fedcm_for_prompt?: boolean;
+  }) => void;
+  renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+  prompt: () => void;
+};
+
+declare global {
+  interface Window {
+    google?: { accounts: { id: GoogleId } };
+  }
+}
+
+function loadGoogleScript(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("gsi")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("gsi"));
+    document.head.appendChild(script);
+  });
+}
+
+function createNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 type GoogleSignInButtonProps = {
   next?: string;
   label?: string;
-  /** When registering — locked to selected role on the form. */
   intent?: OAuthSignupIntent;
+  autoPrompt?: boolean;
 };
 
 export function GoogleSignInButton({
   next,
   label = "Prihlásiť sa cez Google",
   intent,
+  autoPrompt = false,
 }: GoogleSignInButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const nonceRef = useRef("");
+  const intentRef = useRef(intent);
+  const nextRef = useRef(next);
+  intentRef.current = intent;
+  nextRef.current = next;
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
-  async function handleClick() {
-    setError(null);
-    setIsLoading(true);
-    const { error: authError } = await signInWithGoogle(next, intent);
-    if (authError) {
-      setIsLoading(false);
-      setError(authError);
+  useEffect(() => {
+    if (redirectGoogleAuthIfNeeded(nextRef.current, intentRef.current)) {
+      setLeaving(true);
+      return;
     }
+
+    let cancelled = false;
+    const rawNonce = createNonce();
+    nonceRef.current = rawNonce;
+    rememberGoogleIntent(nextRef.current, intentRef.current);
+
+    void (async () => {
+      try {
+        const hashed = await sha256Hex(rawNonce);
+        await loadGoogleScript();
+        if (cancelled || !hostRef.current || !window.google?.accounts?.id) return;
+        const googleId = window.google.accounts.id;
+        googleId.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          nonce: hashed,
+          ux_mode: "popup",
+          use_fedcm_for_prompt: true,
+          callback: (response) => {
+            void (async () => {
+              if (!response.credential) {
+                setError("Prihlásenie cez Google sa nepodarilo. Skús to znova.");
+                return;
+              }
+              setIsLoading(true);
+              setError(null);
+              rememberGoogleIntent(nextRef.current, intentRef.current);
+              const result = await completeGoogleSignIn(response.credential, rawNonce);
+              if (result.error || !result.path) {
+                setIsLoading(false);
+                setError(result.error || "Prihlásenie cez Google sa nepodarilo. Skús to znova.");
+                return;
+              }
+              window.location.assign(result.path);
+            })();
+          },
+        });
+        googleId.renderButton(hostRef.current, {
+          type: "standard",
+          theme: "filled_black",
+          size: "large",
+          text: "continue_with",
+          shape: "rectangular",
+          width: Math.max(hostRef.current.offsetWidth, 320),
+          locale: "sk",
+        });
+        if (autoPrompt) googleId.prompt();
+      } catch {
+        if (!cancelled) setError("Prihlásenie cez Google sa nepodarilo. Skús to znova.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoPrompt]);
+
+  if (leaving) {
+    return (
+      <Button type="button" variant="outline" disabled className="h-10 w-full gap-2 text-zinc-200">
+        <Loader2 className="size-4 animate-spin" />
+        {label}
+      </Button>
+    );
   }
 
   return (
     <div className="space-y-2">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleClick}
-        disabled={isLoading}
-        className="h-10 w-full gap-2 text-zinc-200"
-      >
-        {isLoading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <GoogleIcon />
-        )}
-        {label}
-      </Button>
+      <div ref={hostRef} className="flex min-h-10 w-full justify-center overflow-hidden rounded-xl" />
+      {isLoading ? (
+        <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          Prihlasujem…
+        </p>
+      ) : null}
       {error ? (
         <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {error}
