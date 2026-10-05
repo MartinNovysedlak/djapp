@@ -95,6 +95,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user) {
+    console.error("[auth/callback]", error?.message);
     return redirect(`/login?error=${authErrorCode(error?.message)}`);
   }
 
