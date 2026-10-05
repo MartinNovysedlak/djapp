@@ -27,14 +27,24 @@ export async function signInWithEmail(
  * Kicks off the Google OAuth flow client-side. Optional `intent` is stored
  * in a short-lived cookie so /auth/callback can set role (dj|client) safely.
  */
+const LIVE_ORIGIN = "https://www.bookthevibe.com";
+
 export async function signInWithGoogle(
   next?: string,
   intent?: OAuthSignupIntent
 ): Promise<AuthResult> {
-  if (window.location.hostname === "0.0.0.0") {
-    const target = new URL(window.location.href);
-    target.hostname = "localhost";
-    window.location.replace(target.toString());
+  if (window.location.origin !== LIVE_ORIGIN) {
+    const path = intent ? "/register" : "/login";
+    const target = new URL(path, LIVE_ORIGIN);
+    target.searchParams.set("google", "1");
+    if (next?.startsWith("/") && !next.startsWith("//")) {
+      target.searchParams.set("redirect", next);
+    }
+    if (intent?.role) target.searchParams.set("role", intent.role);
+    if (intent?.artistKind && intent.artistKind !== "dj") {
+      target.searchParams.set("kind", intent.artistKind);
+    }
+    window.location.assign(target.toString());
     return { error: null };
   }
 
@@ -49,7 +59,7 @@ export async function signInWithGoogle(
     clearOAuthNextCookie();
   }
 
-  const redirectTo = new URL("/auth/callback", window.location.origin);
+  const redirectTo = new URL("/auth/callback", LIVE_ORIGIN);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

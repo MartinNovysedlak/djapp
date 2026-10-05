@@ -45,13 +45,23 @@ function requestOrigin(request: Request): string {
   return `${proto}://${host}`;
 }
 
+function isLocalHost(host: string): boolean {
+  const name = host.split(":")[0].toLowerCase();
+  return name === "localhost" || name === "127.0.0.1" || name === "0.0.0.0" || name === "::1";
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const origin = requestOrigin(request);
+  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
+    .split(",")[0]
+    .trim();
+  if (isLocalHost(host)) {
+    return NextResponse.redirect("https://www.bookthevibe.com/login?google=1");
+  }
   const code = searchParams.get("code");
   const providerError =
     searchParams.get("error_description") || searchParams.get("error");
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const cookieOptions = serverAuthCookieOptions(host);
   const cookieStore = await cookies();
   const pending: PendingCookie[] = [];
