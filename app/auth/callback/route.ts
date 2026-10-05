@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@/utils/supabase/server";
+import { createServerClient } from "@supabase/ssr";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import {
+  OAUTH_NEXT_COOKIE,
+  readOAuthNext,
+  serverAuthCookieOptions,
+  type AuthCookieOptions,
+} from "@/lib/auth-cookies";
+import { authErrorCode } from "@/lib/auth-errors";
 import {
   OAUTH_INTENT_COOKIE,
   parseOAuthIntentCookieValue,
@@ -11,6 +18,20 @@ import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import { createBillingAdminClient } from "@/lib/stripe/config";
 import { ONBOARDING_OK_COOKIE, ONBOARDING_OK_MAX_AGE } from "@/lib/onboarding-cookie";
 import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
+
+type PendingCookie = {
+  name: string;
+  value: string;
+  options?: {
+    domain?: string;
+    path?: string;
+    sameSite?: boolean | "lax" | "strict" | "none";
+    secure?: boolean;
+    maxAge?: number;
+    httpOnly?: boolean;
+    expires?: Date;
+  };
+};
 
 /** Never send the browser to 0.0.0.0 or localhost after Google login. */
 function callbackOrigin(request: Request): string {
@@ -31,37 +52,89 @@ function callbackOrigin(request: Request): string {
   return origin;
 }
 
+function expireCookie(
+  response: NextResponse,
+  name: string,
+  options: AuthCookieOptions
+) {
+  response.cookies.set(name, "", {
+    path: "/",
+    maxAge: 0,
+    sameSite: "lax",
+    secure: options.secure,
+    ...(options.domain ? { domain: options.domain } : {}),
+  });
+}
+
 /**
- * OAuth / email-verification callback. Prefills Google profile data,
- * applies signup intent (dj|client), then routes incomplete users to onboarding.
+ * OAuth / email-verification callback. Session cookies are written onto the
+ * redirect response itself so the browser keeps the login.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const origin = callbackOrigin(request);
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next");
-  const next = rawNext && rawNext.startsWith("/") ? rawNext : null;
+  const providerError =
+    searchParams.get("error_description") || searchParams.get("error");
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const cookieOptions = serverAuthCookieOptions(host);
+  const cookieStore = await cookies();
+  const pending: PendingCookie[] = [];
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookieOptions,
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const merged = { ...cookieOptions, ...options };
+            pending.push({ name, value, options: merged });
+            try {
+              cookieStore.set(name, value, merged);
+            } catch (err) {
+              console.error("[auth/callback] cookie", err);
+            }
+          });
+        },
+      },
+    }
+  );
+
+  const redirect = (path: string) => {
+    const response = NextResponse.redirect(`${origin}${path}`);
+    for (const cookie of pending) {
+      response.cookies.set(cookie.name, cookie.value, cookie.options);
+    }
+    return response;
+  };
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`);
+    const codeKey = providerError ? authErrorCode(providerError) : "missing_code";
+    if (providerError) console.error("[auth/callback] provider", providerError);
+    return redirect(`/login?error=${codeKey}`);
   }
 
-  const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
-    return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+    console.error("[auth/callback] exchange", error?.message);
+    return redirect(`/login?error=${authErrorCode(error?.message)}`);
   }
 
-  const cookieStore = await cookies();
   const intent = parseOAuthIntentCookieValue(
     cookieStore.get(OAUTH_INTENT_COOKIE)?.value
   );
+  const next =
+    readOAuthNext(cookieStore.get(OAUTH_NEXT_COOKIE)?.value) ||
+    readOAuthNext(searchParams.get("next"));
 
-  // Clear intent cookie on the response later
   let profile = await syncOAuthProfileFromUser(supabase, data.user, null);
 
-  // Apply dj|client intent via service role (role column is otherwise locked)
   if (intent && profile && profile.role !== "admin") {
     try {
       const admin = createBillingAdminClient();
@@ -75,7 +148,6 @@ export async function GET(request: Request) {
       if (Object.keys(rolePatch).length > 0) {
         await admin.from("profiles").update(rolePatch).eq("id", data.user.id);
       }
-      // Re-sync non-role Google fields
       profile = await syncOAuthProfileFromUser(supabase, data.user, null);
       const { data: refreshed } = await supabase
         .from("profiles")
@@ -117,22 +189,17 @@ export async function GET(request: Request) {
     destination = "/dashboard/profile";
   }
 
-  const response = NextResponse.redirect(`${origin}${destination}`);
-  response.cookies.set(OAUTH_INTENT_COOKIE, "", {
-    path: "/",
-    maxAge: 0,
-  });
-  // Skip middleware Auth/DB on the first dashboard hit after login.
-  if (
-    destination !== "/onboarding" &&
-    isProfileOnboardingComplete(profile)
-  ) {
+  const response = redirect(destination);
+  expireCookie(response, OAUTH_INTENT_COOKIE, cookieOptions);
+  expireCookie(response, OAUTH_NEXT_COOKIE, cookieOptions);
+  if (destination !== "/onboarding" && isProfileOnboardingComplete(profile)) {
     response.cookies.set(ONBOARDING_OK_COOKIE, data.user.id, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieOptions.secure ?? process.env.NODE_ENV === "production",
       maxAge: ONBOARDING_OK_MAX_AGE,
+      ...(cookieOptions.domain ? { domain: cookieOptions.domain } : {}),
     });
   }
   return response;

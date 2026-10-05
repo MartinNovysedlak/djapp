@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { serverAuthCookieOptions } from "@/lib/auth-cookies";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
 import { isProfileOnboardingComplete } from "@/lib/profile-completeness";
 import {
@@ -9,22 +10,32 @@ import {
 
 export { ONBOARDING_OK_COOKIE } from "@/lib/onboarding-cookie";
 
-function copyCookies(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach((cookie) => {
-    to.cookies.set(cookie.name, cookie.value);
-  });
-}
+type PendingCookie = {
+  name: string;
+  value: string;
+  options?: {
+    domain?: string;
+    path?: string;
+    sameSite?: boolean | "lax" | "strict" | "none";
+    secure?: boolean;
+    maxAge?: number;
+    httpOnly?: boolean;
+    expires?: Date;
+  };
+};
 
 function redirectWithSession(
   request: NextRequest,
-  supabaseResponse: NextResponse,
-  pathname: string
+  pathname: string,
+  jar: PendingCookie[]
 ) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   url.search = "";
   const redirect = NextResponse.redirect(url);
-  copyCookies(supabaseResponse, redirect);
+  for (const cookie of jar) {
+    redirect.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
   return redirect;
 }
 
@@ -135,11 +146,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   let supabaseResponse = NextResponse.next({ request });
+  const jar: PendingCookie[] = [];
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: serverAuthCookieOptions(host),
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -149,9 +163,10 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+            jar.push({ name, value, options });
+          });
         },
       },
     }
@@ -196,7 +211,7 @@ export async function updateSession(request: NextRequest) {
     const complete = isProfileOnboardingComplete(profile);
     if (!complete) {
       clearOnboardingOkCookie(supabaseResponse);
-      return redirectWithSession(request, supabaseResponse, "/onboarding");
+      return redirectWithSession(request, "/onboarding", jar);
     }
 
     setOnboardingOkCookie(supabaseResponse, session.user.id);
@@ -239,7 +254,7 @@ export async function updateSession(request: NextRequest) {
   if (!complete) {
     clearOnboardingOkCookie(supabaseResponse);
     if (onOnboarding) return supabaseResponse;
-    return redirectWithSession(request, supabaseResponse, "/onboarding");
+    return redirectWithSession(request, "/onboarding", jar);
   }
 
   setOnboardingOkCookie(supabaseResponse, user.id);
@@ -247,7 +262,7 @@ export async function updateSession(request: NextRequest) {
   if (onOnboarding) {
     const dest =
       profile?.role === "client" ? "/client-dashboard" : "/dashboard/profile";
-    return redirectWithSession(request, supabaseResponse, dest);
+    return redirectWithSession(request, dest, jar);
   }
 
   return supabaseResponse;

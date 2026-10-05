@@ -18,9 +18,7 @@ import { Label } from "@/components/ui/label";
 import { signInWithEmail, signInWithGoogle, getPostAuthPath } from "@/utils/supabase/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { BrandLogo } from "@/components/BrandLogo";
-
-const OAUTH_ERROR_MESSAGE =
-  "Prihlásenie cez Google sa nepodarilo. Skús to znova.";
+import { loginErrorFromCode } from "@/lib/auth-errors";
 
 function LoginForm() {
   const router = useRouter();
@@ -35,9 +33,8 @@ function LoginForm() {
   const redirectParam = searchParams.get("redirect");
 
   useEffect(() => {
-    if (searchParams.get("error")) {
-      setErrorMessage(OAUTH_ERROR_MESSAGE);
-    }
+    const code = searchParams.get("error");
+    if (code) setErrorMessage(loginErrorFromCode(code));
   }, [searchParams]);
 
   useEffect(() => {

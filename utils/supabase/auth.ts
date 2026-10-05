@@ -1,5 +1,10 @@
 import { createClient } from "@/utils/supabase/client";
 import { getPublicSiteUrl } from "@/lib/site-url";
+import { authErrorMessage } from "@/lib/auth-errors";
+import {
+  clearOAuthNextCookie,
+  writeOAuthNextCookie,
+} from "@/lib/auth-cookies";
 import {
   writeOAuthIntentCookie,
   type OAuthSignupIntent,
@@ -16,7 +21,7 @@ export async function signInWithEmail(
   const supabase = createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  return { error: error?.message ?? null };
+  return { error: error ? authErrorMessage(error.message) : null };
 }
 
 /**
@@ -49,9 +54,13 @@ export async function signInWithGoogle(
   if (intent) {
     writeOAuthIntentCookie(intent);
   }
+  if (next?.startsWith("/") && !next.startsWith("//")) {
+    writeOAuthNextCookie(next);
+  } else {
+    clearOAuthNextCookie();
+  }
 
   const redirectTo = new URL("/auth/callback", canonical);
-  if (next) redirectTo.searchParams.set("next", next);
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -60,7 +69,7 @@ export async function signInWithGoogle(
     },
   });
 
-  return { error: error?.message ?? null };
+  return { error: error ? authErrorMessage(error.message) : null };
 }
 
 export type SignUpDetails = {
@@ -109,7 +118,7 @@ export async function signUpWithEmail(
   });
 
   if (error) {
-    return { error: error.message, needsEmailConfirmation: false };
+    return { error: authErrorMessage(error.message), needsEmailConfirmation: false };
   }
 
   // With "Confirm email" enabled in Supabase, signUp succeeds but returns

@@ -1,3 +1,5 @@
+import { writeClientCookie } from "@/lib/auth-cookies";
+
 export type OAuthSignupIntent = {
   role: "dj" | "client";
   artistKind?: "dj" | "band" | "dj_band";
@@ -23,9 +25,8 @@ export function parseOAuthIntent(raw: string | undefined | null): OAuthSignupInt
 
 /** Client-side: persist intent before redirecting to Google. */
 export function writeOAuthIntentCookie(intent: OAuthSignupIntent) {
-  if (typeof document === "undefined") return;
   const value = encodeURIComponent(JSON.stringify(intent));
-  document.cookie = `${OAUTH_INTENT_COOKIE}=${value}; Path=/; Max-Age=600; SameSite=Lax`;
+  writeClientCookie(OAUTH_INTENT_COOKIE, value, 600);
 }
 
 export function parseOAuthIntentCookieValue(
@@ -40,6 +41,5 @@ export function parseOAuthIntentCookieValue(
 }
 
 export function clearOAuthIntentCookie() {
-  if (typeof document === "undefined") return;
-  document.cookie = `${OAUTH_INTENT_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  writeClientCookie(OAUTH_INTENT_COOKIE, "", 0);
 }
