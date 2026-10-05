@@ -163,7 +163,7 @@ export default function DjProfileClient() {
   useEffect(() => {
     const supabase = createClient();
 
-    supabase.auth.getUser().then(async ({ data }) => {
+    supabase.auth.getUser().then(async ({ data }: { data: { user: { id: string } | null } }) => {
       if (!data.user) {
         setViewerRole("guest");
         setViewerId(null);
@@ -230,10 +230,22 @@ export default function DjProfileClient() {
         return;
       }
 
-      const reviewIds = reviewRows.map((r) => r.id);
+      const typedReviews = reviewRows as {
+        id: string;
+        rating: number;
+        comment: string | null;
+        created_at: string;
+        client_id: string | null;
+        reviewer_name: string | null;
+        rating_communication: number | null;
+        rating_punctuality: number | null;
+        rating_performance: number | null;
+        rating_requests: number | null;
+      }[];
+      const reviewIds = typedReviews.map((r) => r.id);
       const clientIds = Array.from(
         new Set(
-          reviewRows.map((r) => r.client_id).filter((id): id is string => Boolean(id))
+          typedReviews.map((r) => r.client_id).filter((id): id is string => Boolean(id))
         )
       );
 
@@ -251,7 +263,7 @@ export default function DjProfileClient() {
       ]);
 
       const nameById: Record<string, string> = {};
-      (clientRows ?? []).forEach((c) => {
+      ((clientRows ?? []) as { id: string; full_name: string | null; real_first_name: string | null }[]).forEach((c) => {
         const first =
           c.real_first_name?.trim() ||
           c.full_name?.trim().split(/\s+/)[0] ||
@@ -262,7 +274,7 @@ export default function DjProfileClient() {
       const likesByReview: Record<string, number> = {};
       const dislikesByReview: Record<string, number> = {};
       const myVoteByReview: Record<string, 1 | -1> = {};
-      (voteRows ?? []).forEach((v) => {
+      ((voteRows ?? []) as { review_id: string; user_id: string; vote: number }[]).forEach((v) => {
         const rid = v.review_id as string;
         if (v.vote === 1) likesByReview[rid] = (likesByReview[rid] ?? 0) + 1;
         if (v.vote === -1)
@@ -273,7 +285,7 @@ export default function DjProfileClient() {
       });
 
       setReviews(
-        reviewRows.map((r) => ({
+        typedReviews.map((r) => ({
           id: r.id,
           rating: r.rating,
           comment: r.comment,

@@ -46,7 +46,7 @@ export function NewMessageToaster({
       .in("status", ["pending", "accepted"])
       .limit(40);
 
-    const ids = (bookings ?? []).map((b) => b.id);
+    const ids = ((bookings ?? []) as { id: string }[]).map((b) => b.id);
     if (!ids.length) {
       setUnread(0);
       return;
@@ -62,7 +62,9 @@ export function NewMessageToaster({
       .limit(50);
 
     const rows = data ?? [];
-    knownUnreadRef.current = new Set(rows.map((r) => r.id));
+    knownUnreadRef.current = new Set(
+      (rows as { id: string; booking_id: string }[]).map((r) => r.id)
+    );
     setUnread(rows.length);
     if (rows[0]) {
       setHref(`${chatBasePath}/${rows[0].booking_id}/chat`);
@@ -111,7 +113,9 @@ export function NewMessageToaster({
           schema: "public",
           table: "booking_messages",
         },
-        (payload) => {
+        (payload: {
+          new: { id: string; booking_id: string; sender_id: string };
+        }) => {
           const row = payload.new as {
             id: string;
             booking_id: string;

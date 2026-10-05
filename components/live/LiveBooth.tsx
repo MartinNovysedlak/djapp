@@ -81,7 +81,7 @@ export function LiveBooth({
           table: "live_requests",
           filter: `booking_id=eq.${bookingId}`,
         },
-        (payload) => {
+        (payload: { eventType: string; new: LiveRequest; old?: { id?: string } }) => {
           if (payload.eventType === "INSERT") {
             const row = payload.new as LiveRequest;
             setRequests((prev) => {

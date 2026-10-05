@@ -527,7 +527,11 @@ export default function ClientDashboardPage() {
       const rows = (bookingsRes.data ?? []) as Booking[];
       setBookings(rows);
       setReviewedIds(
-        new Set((reviewsRes.data ?? []).map((r) => r.booking_id as string))
+        new Set(
+          ((reviewsRes.data ?? []) as { booking_id: string }[]).map(
+            (r) => r.booking_id
+          )
+        )
       );
 
       const djIds = Array.from(new Set(rows.map((r) => r.dj_id)));
@@ -538,7 +542,7 @@ export default function ClientDashboardPage() {
           .in("id", djIds);
         if (cancelled) return;
         const map: Record<string, DJInfo> = {};
-        (djRows ?? []).forEach((d) => (map[d.id] = d as DJInfo));
+        ((djRows ?? []) as DJInfo[]).forEach((d) => (map[d.id] = d));
         setDjs(map);
       }
 

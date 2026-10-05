@@ -112,8 +112,8 @@ export default function ClientReviewsPage() {
           .select("id, full_name, avatar_url, public_slug")
           .in("id", djIds);
         const map: Record<string, DJInfo> = {};
-        (djRows ?? []).forEach((d) => {
-          map[d.id] = d as DJInfo;
+        ((djRows ?? []) as DJInfo[]).forEach((d) => {
+          map[d.id] = d;
         });
         setDjs(map);
       }
@@ -126,7 +126,11 @@ export default function ClientReviewsPage() {
           .eq("client_id", user.id)
           .in("booking_id", bookingIds);
         setReviewedIds(
-          new Set((reviewRows ?? []).map((r) => r.booking_id).filter(Boolean))
+          new Set(
+            ((reviewRows ?? []) as { booking_id: string | null }[])
+              .map((r) => r.booking_id)
+              .filter((id): id is string => Boolean(id))
+          )
         );
       } else {
         setReviewedIds(new Set());

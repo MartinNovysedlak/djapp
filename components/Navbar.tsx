@@ -84,15 +84,15 @@ export default function Navbar() {
       setAuthReady(true);
     };
 
-    void supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(({ data }: { data: { session: { user: { id: string; email?: string | null } } | null } }) => {
       const session = data.session;
-      void applySession(session?.user?.id, session?.user?.email);
+      void applySession(session?.user?.id, session?.user?.email ?? undefined);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      void applySession(session?.user?.id, session?.user?.email);
+    } = supabase.auth.onAuthStateChange((_event: string, session: { user: { id: string; email?: string | null } } | null) => {
+      void applySession(session?.user?.id, session?.user?.email ?? undefined);
     });
 
     return () => {

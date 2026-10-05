@@ -156,7 +156,7 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
     let active = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(async ({ data }: { data: { session: { user: { id: string; email?: string | null } } | null } }) => {
       const sessionUser = data.session?.user;
       if (!active) return;
 
@@ -169,11 +169,11 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const nextUser = { id: sessionUser.id, email: sessionUser.email };
+      const nextUser = { id: sessionUser.id, email: sessionUser.email ?? undefined };
       setUser(nextUser);
 
       const cached = getDashboardAuthCache<DashboardProfile>();
-      if (cached?.user.id === nextUser.id && cached.profile) {
+      if (cached && cached.user.id === nextUser.id && cached.profile) {
         setProfileState(cached.profile);
         setLoading(false);
         // Soft refresh in background — don't block the dashboard shell.
@@ -189,7 +189,7 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (_event: string, session: { user: { id: string; email?: string | null } } | null) => {
         if (!active) return;
         if (!session?.user) {
           clearDashboardAuthCache();
@@ -199,7 +199,7 @@ export function DashboardUserProvider({ children }: { children: ReactNode }) {
           return;
         }
         setUser((prev) => {
-          const next = { id: session.user.id, email: session.user.email };
+          const next = { id: session.user.id, email: session.user.email ?? undefined };
           return prev?.id === next.id && prev?.email === next.email
             ? prev
             : next;

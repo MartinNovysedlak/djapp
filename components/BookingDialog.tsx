@@ -137,7 +137,7 @@ export default function BookingDialog({
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
+    supabase.auth.getUser().then(async ({ data }: { data: { user: { id: string } | null } }) => {
       if (!data.user) {
         setAuthState("guest");
         return;
