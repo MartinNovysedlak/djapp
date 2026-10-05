@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
 import { authErrorMessage } from "@/lib/auth-errors";
-import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
 import {
   clearOAuthNextCookie,
   writeOAuthNextCookie,
@@ -29,20 +28,19 @@ export const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
   "428818539814-17i9tmdpqqb6cqjhj0k10l189gqrttl7.apps.googleusercontent.com";
 
-/** Leave localhost / apex before Google, so the session is created on www. */
+function isLiveBookTheVibeHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "bookthevibe.com" || host === "www.bookthevibe.com";
+}
+
+/** Localhost must open Google on the live site. Apex and www stay where they are. */
 export function redirectGoogleAuthIfNeeded(
   next?: string,
   intent?: OAuthSignupIntent
 ): boolean {
-  const canonical = getPublicSiteUrl();
-  if (
-    !isNonPublicSiteUrl(window.location.origin) &&
-    window.location.origin === canonical
-  ) {
-    return false;
-  }
+  if (isLiveBookTheVibeHost(window.location.hostname)) return false;
   const path = intent ? "/register" : "/login";
-  const target = new URL(path, canonical);
+  const target = new URL(path, "https://bookthevibe.com");
   target.searchParams.set("google", "1");
   if (next?.startsWith("/") && !next.startsWith("//")) {
     target.searchParams.set("redirect", next);

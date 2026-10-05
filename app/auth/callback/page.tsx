@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { authErrorCode } from "@/lib/auth-errors";
 import { getPostAuthPath } from "@/utils/supabase/auth";
-import { getPublicSiteUrl, isNonPublicSiteUrl } from "@/lib/site-url";
+import { isNonPublicSiteUrl } from "@/lib/site-url";
 import { finalizeGoogleLogin } from "./actions";
 
 export default function AuthCallbackPage() {
@@ -19,7 +19,7 @@ export default function AuthCallbackPage() {
     async function finish() {
       if (isNonPublicSiteUrl(window.location.origin)) {
         const params = new URLSearchParams(window.location.search);
-        const target = new URL("/login", getPublicSiteUrl());
+        const target = new URL("/login", "https://bookthevibe.com");
         if (!params.get("error")) target.searchParams.set("google", "1");
         window.location.replace(target.toString());
         return;
