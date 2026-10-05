@@ -1,5 +1,4 @@
 import { createClient } from "@/utils/supabase/client";
-import { getPublicSiteUrl } from "@/lib/site-url";
 import { authErrorMessage } from "@/lib/auth-errors";
 import {
   clearOAuthNextCookie,
@@ -32,20 +31,11 @@ export async function signInWithGoogle(
   next?: string,
   intent?: OAuthSignupIntent
 ): Promise<AuthResult> {
-  const canonical = getPublicSiteUrl();
-
-  // PKCE cookies only work on the host that starts Google login.
-  // Localhost / 0.0.0.0 must hand off to the live site first.
-  if (window.location.origin !== canonical) {
-    const path = intent ? "/register" : "/login";
-    const target = new URL(path, canonical);
-    target.searchParams.set("google", "1");
-    if (next) target.searchParams.set("redirect", next);
-    if (intent?.role) target.searchParams.set("role", intent.role);
-    if (intent?.artistKind && intent.artistKind !== "dj") {
-      target.searchParams.set("kind", intent.artistKind);
-    }
-    window.location.assign(target.toString());
+  // 0.0.0.0 cannot store the login cookie the callback later reads.
+  if (window.location.hostname === "0.0.0.0") {
+    const target = new URL(window.location.href);
+    target.hostname = "localhost";
+    window.location.replace(target.toString());
     return { error: null };
   }
 
@@ -60,16 +50,20 @@ export async function signInWithGoogle(
     clearOAuthNextCookie();
   }
 
-  const redirectTo = new URL("/auth/callback", canonical);
+  // Verifier cookie and the return URL must be the same host.
+  const redirectTo = new URL("/auth/callback", window.location.origin);
 
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: redirectTo.toString(),
+      skipBrowserRedirect: true,
     },
   });
 
-  return { error: error ? authErrorMessage(error.message) : null };
+  if (error) return { error: authErrorMessage(error.message) };
+  if (data?.url) window.location.assign(data.url);
+  return { error: null };
 }
 
 export type SignUpDetails = {
